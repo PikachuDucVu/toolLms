@@ -1,0 +1,2337 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LMS Auto Comment Tool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --success: #10b981;
+            --success-dark: #059669;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--gray-800);
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius);
+            padding: 20px 28px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary) 0%, #a855f7 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        .header p {
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-top: 2px;
+        }
+
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--gray-100);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--gray-400);
+        }
+
+        .status-dot.online { background: var(--success); }
+
+        /* Cards */
+        .card {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-header h2 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--gray-800);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* Layout */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-bottom: 6px;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--gray-400);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-group .form-input {
+            flex: 1;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: var(--success-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: white;
+            border: 1px solid var(--gray-300);
+            color: var(--gray-700);
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: var(--gray-50);
+            border-color: var(--gray-400);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            border-radius: 8px;
+        }
+
+        .btn-block {
+            width: 100%;
+        }
+
+        /* Class List */
+        .class-list {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .class-item {
+            padding: 14px 16px;
+            border: 1px solid var(--gray-200);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .class-item:hover {
+            border-color: var(--primary-light);
+            background: rgba(99, 102, 241, 0.02);
+        }
+
+        .class-item.selected {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .class-item h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 4px;
+        }
+
+        .class-item p {
+            font-size: 12px;
+            color: var(--gray-500);
+        }
+
+        /* Student Cards */
+        .student-grid {
+            display: grid;
+            gap: 12px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .student-card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 10px;
+            padding: 16px;
+            transition: all 0.2s;
+        }
+
+        .student-card:hover {
+            box-shadow: var(--shadow);
+        }
+
+        .student-card.has-comment {
+            border-left: 3px solid var(--success);
+        }
+
+        .student-card.no-comment {
+            border-left: 3px solid var(--warning);
+        }
+
+        .student-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .student-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .student-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .student-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--gray-800);
+        }
+
+        .student-meta {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-top: 2px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .badge-gray {
+            background: rgba(107, 114, 128, 0.1);
+            color: var(--gray-500);
+        }
+
+        .comment-box {
+            background: var(--gray-50);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--gray-700);
+            line-height: 1.5;
+        }
+
+        .comment-box.ai-generated {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .comment-box-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .comment-edit {
+            width: 100%;
+            min-height: 80px;
+            padding: 8px;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            resize: vertical;
+            background: white;
+        }
+
+        .comment-edit:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--gray-400);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .btn-icon:hover {
+            background: var(--gray-100);
+            color: var(--danger);
+        }
+
+        .btn-xs {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        .btn-template {
+            background: var(--gray-100);
+            color: var(--gray-600);
+            border: 1px solid var(--gray-200);
+        }
+
+        .btn-template:hover {
+            background: var(--gray-200);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .template-buttons {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .student-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .note-input {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .note-input .form-input {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 16px;
+            padding: 12px 16px;
+            background: var(--gray-50);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .confirm-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .confirm-modal.hidden {
+            display: none;
+        }
+
+        .confirm-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .confirm-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .confirm-preview {
+            background: var(--gray-50);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .confirm-preview-item {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .confirm-preview-item:last-child {
+            border-bottom: none;
+        }
+
+        .confirm-preview-name {
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .confirm-preview-comment {
+            font-size: 12px;
+            color: var(--gray-600);
+            margin-top: 4px;
+        }
+
+        .confirm-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        /* Action Bar */
+        .action-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            background: var(--gray-50);
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .action-bar .btn {
+            flex: 1;
+        }
+
+        /* Progress */
+        .progress-container {
+            margin-top: 12px;
+            display: none;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--gray-200);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+
+        .progress-text {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-top: 6px;
+            text-align: center;
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            padding: 14px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            font-size: 14px;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        .toast.info { background: var(--primary); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .loading.show { display: block; }
+
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--gray-500);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+        }
+
+        /* Summary Section */
+        .summary-section {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .summary-section .form-label {
+            color: var(--primary-dark);
+        }
+
+        .summary-section textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--gray-100);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-400);
+        }
+
+        /* Config Section */
+        .config-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 640px) {
+            .config-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .app-container {
+                padding: 10px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 12px;
+                padding: 16px;
+                text-align: center;
+            }
+            
+            .header-left {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 18px;
+            }
+            
+            .card-header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+            
+            .card-header > div {
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            
+            .card-header #searchStudent {
+                width: 100% !important;
+            }
+            
+            .card-header #filterStatus {
+                flex: 1;
+            }
+            
+            .action-bar {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .action-bar .btn {
+                width: 100%;
+            }
+            
+            .student-card {
+                padding: 12px;
+            }
+            
+            .student-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .student-actions {
+                flex-direction: column;
+            }
+            
+            .student-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .template-buttons {
+                justify-content: center;
+            }
+            
+            .template-buttons .btn {
+                flex: 1;
+                min-width: calc(50% - 4px);
+                text-align: center;
+                justify-content: center;
+            }
+            
+            .note-input {
+                flex-direction: column;
+            }
+            
+            .note-input .btn {
+                width: 100%;
+            }
+            
+            .stats-bar {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .confirm-content {
+                width: 95%;
+                max-height: 90vh;
+                margin: 10px;
+            }
+            
+            .toast-container {
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+            }
+            
+            .toast {
+                width: 100%;
+            }
+            
+            .slot-selector {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Touch-friendly buttons */
+        @media (pointer: coarse) {
+            .btn {
+                min-height: 44px;
+                padding: 12px 18px;
+            }
+            
+            .btn-sm {
+                min-height: 40px;
+                padding: 10px 14px;
+            }
+            
+            .btn-xs {
+                min-height: 36px;
+                padding: 8px 12px;
+            }
+            
+            .form-input, .form-select {
+                min-height: 44px;
+            }
+        }
+
+        /* Copy modal for mobile */
+        .copy-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+        
+        .copy-modal.hidden {
+            display: none;
+        }
+        
+        .copy-modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .copy-modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--gray-800);
+        }
+        
+        .copy-modal-textarea {
+            flex: 1;
+            min-height: 200px;
+            max-height: 50vh;
+            padding: 12px;
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            margin-bottom: 12px;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        
+        .copy-modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .copy-modal-actions .btn {
+            flex: 1;
+        }
+
+        .config-section {
+            padding: 16px;
+            background: var(--gray-50);
+            border-radius: 10px;
+        }
+
+        .config-section h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Slot Selector */
+        .slot-selector {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">🎓</div>
+                <div>
+                    <h1>LMS Auto Comment</h1>
+                    <p>Tự động nhận xét học sinh bằng AI</p>
+                </div>
+            </div>
+            <div class="header-status" id="loginStatus">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Chưa đăng nhập</span>
+            </div>
+        </header>
+
+        <!-- Config Card -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-header">
+                <h2>⚙️ Cấu hình</h2>
+                <button class="btn btn-sm btn-outline" onclick="toggleConfig()">
+                    <span id="configToggleText">Ẩn</span>
+                </button>
+            </div>
+            <div class="card-body" id="configBody">
+                <div class="config-grid">
+                    <div class="config-section">
+                        <h3>🔐 Đăng nhập LMS</h3>
+                        <div class="form-group">
+                            <label class="form-label">Email MindX</label>
+                            <input type="email" class="form-input" id="email" placeholder="email@mindx.net.vn">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Mật khẩu</label>
+                            <input type="password" class="form-input" id="password" placeholder="••••••••">
+                        </div>
+                        <button class="btn btn-primary btn-block" onclick="login()">
+                            🔓 Đăng nhập
+                        </button>
+                    </div>
+                    <div class="config-section">
+                        <h3>🤖 Cấu hình Auto Comment</h3>
+                        <div class="form-group">
+                            <label class="form-label">OpenRouter API Key</label>
+                            <input type="password" class="form-input" id="openrouterKey" value="{{ openrouter_key }}" placeholder="sk-or-...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Model AI (Thường dùng)</label>
+                            <select class="form-select" id="aiModel" onchange="toggleCustomModel()">
+                                {% for model in ai_models %}
+                                <option value="{{ model.id }}" {% if model.id == ai_model and not custom_model_id %}selected{% endif %}>{{ model.name }}</option>
+                                {% endfor %}
+                                <option value="custom" {% if custom_model_id %}selected{% endif %}>🔧 Mô hình khác...</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="customModelGroup" style="display: {% if custom_model_id %}block{% else %}none{% endif %};">
+                            <label class="form-label">Model tự chọn (Custom Model ID)</label>
+                            <input type="text" class="form-input" id="customModelId" value="{{ custom_model_id }}" placeholder="VD: xiaomi/mimo-v2-flash:free">
+                            <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">
+                                Nhập Model ID từ <a href="https://openrouter.ai/models" target="_blank">OpenRouter Models</a>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Độ dài nhận xét</label>
+                            <select class="form-select" id="commentLength">
+                                <option value="short">Ngắn (2-3 câu)</option>
+                                <option value="medium" selected>Vừa (3-4 câu)</option>
+                                <option value="long">Dài (4-5 câu)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Prompt bổ sung (tùy chọn)</label>
+                            <textarea class="form-input" id="customPrompt" placeholder="VD: Nhấn mạnh về BTVN, khen nhiều hơn..." style="min-height: 60px;"></textarea>
+                        </div>
+                        <button class="btn btn-success btn-block" onclick="saveConfig()">
+                            💾 Lưu cấu hình
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-grid">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>📚 Danh sách lớp</h2>
+                        <button class="btn btn-sm btn-outline" onclick="loadClasses()">🔄</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="loading" id="classLoading">
+                            <div class="spinner"></div>
+                            <div class="loading-text">Đang tải...</div>
+                        </div>
+                        <div class="class-list" id="classList">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📋</div>
+                                <div class="empty-state-text">Đăng nhập để xem danh sách lớp</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>📅 Chọn buổi học</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <select class="form-select" id="slotSelect" onchange="loadSlotStudents()">
+                                <option value="">-- Chọn buổi --</option>
+                            </select>
+                        </div>
+                        <div class="summary-section">
+                            <div class="form-group">
+                                <label class="form-label">📝 Tổng kết buổi học</label>
+                                <textarea class="form-input" id="sessionSummary" placeholder="VD: Hoàn thành Game SpaceShooter, học về vòng lặp..."></textarea>
+                                <button class="btn btn-sm btn-outline" onclick="submitSummary()" id="submitSummaryBtn" style="margin-top: 8px;" disabled>
+                                    💾 Lưu tổng kết
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>👨‍🎓 Danh sách học sinh</h2>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" class="form-input" id="searchStudent" placeholder="🔍 Tìm học sinh..." style="width: 150px; padding: 6px 10px; font-size: 12px;" oninput="filterStudents()">
+                        <select class="form-select" id="filterStatus" style="padding: 6px 10px; font-size: 12px;" onchange="filterStudents()">
+                            <option value="all">Tất cả</option>
+                            <option value="present">Có mặt</option>
+                            <option value="absent">Vắng</option>
+                            <option value="commented">Đã nhận xét</option>
+                            <option value="not_commented">Chưa nhận xét</option>
+                        </select>
+                        <button class="btn btn-sm btn-outline" onclick="refreshClassData()" title="Refresh">🔄</button>
+                        <button class="btn btn-sm btn-outline" onclick="exportToCSV()" title="Export CSV">📥</button>
+                        <span class="badge badge-gray" id="studentCount">0 học sinh</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="stats-bar" id="statsBar" style="display: none;">
+                        <div class="stat-item">
+                            👥 Tổng: <span class="stat-value" id="statTotal">0</span>
+                        </div>
+                        <div class="stat-item">
+                            ✓ Có mặt: <span class="stat-value" id="statPresent">0</span>
+                        </div>
+                        <div class="stat-item">
+                            📝 Đã tạo: <span class="stat-value" id="statGenerated">0</span>
+                        </div>
+                        <div class="stat-item">
+                            ✅ Đã submit: <span class="stat-value" id="statSubmitted">0</span>
+                        </div>
+                    </div>
+                    <div class="loading" id="studentLoading">
+                        <div class="spinner"></div>
+                        <div class="loading-text">Đang tải...</div>
+                    </div>
+                    <div class="student-grid" id="studentList">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">👋</div>
+                            <div class="empty-state-text">Chọn lớp và buổi học để xem học sinh</div>
+                        </div>
+                    </div>
+                    <div class="progress-container" id="progressContainer">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">0%</div>
+                    </div>
+                </div>
+                <div class="action-bar">
+                    <button class="btn btn-primary" onclick="autoCommentAll()" id="autoCommentBtn" disabled>
+                        🤖 Auto nhận xét tất cả
+                    </button>
+                    <button class="btn btn-success" onclick="showConfirmModal()" id="submitAllBtn" disabled>
+                        📤 Submit tất cả
+                    </button>
+                    <button class="btn btn-outline" onclick="copyAllZalo()" id="copyZaloBtn" disabled>
+                        📋 Copy Zalo tất cả
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Confirm Modal -->
+    <div class="confirm-modal hidden" id="confirmModal">
+        <div class="confirm-content">
+            <div class="confirm-title">📤 Xác nhận Submit</div>
+            <p style="margin-bottom: 12px; color: var(--gray-600);">Bạn sắp submit nhận xét cho các học sinh sau:</p>
+            <div class="confirm-preview" id="confirmPreview"></div>
+            <div class="confirm-actions">
+                <button class="btn btn-outline" onclick="hideConfirmModal()">Hủy</button>
+                <button class="btn btn-success" onclick="confirmSubmitAll()">✓ Xác nhận Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Copy Modal for Mobile -->
+    <div class="copy-modal hidden" id="copyModal">
+        <div class="copy-modal-content">
+            <div class="copy-modal-title" id="copyModalTitle">📋 Copy nhận xét</div>
+            <textarea class="copy-modal-textarea" id="copyModalTextarea" readonly></textarea>
+            <div class="copy-modal-actions">
+                <button class="btn btn-outline" onclick="hideCopyModal()">Đóng</button>
+                <button class="btn btn-primary" onclick="doCopyFromModal()">📋 Copy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Past Comments Modal -->
+    <div class="confirm-modal hidden" id="pastCommentsModal">
+        <div class="confirm-content" style="max-width: 600px;">
+            <div class="confirm-title">📜 Lịch sử nhận xét</div>
+            <div id="pastCommentsStudentName" style="font-weight: 600; margin-bottom: 12px; color: var(--primary);"></div>
+            <div class="confirm-preview" id="pastCommentsContent" style="max-height: 400px;"></div>
+            <div class="confirm-actions">
+                <button class="btn btn-outline" onclick="hidePastCommentsModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedClass = null;
+        let selectedSlot = null;
+        let students = [];
+        let generatedComments = {};
+        let classData = null;
+        let classesCache = null;
+        
+        // Note templates
+        const NOTE_TEMPLATES = {
+            good: 'Tập trung, làm bài nhanh, hoàn thành BTVN',
+            normal: 'Học bình thường, cần chú ý hơn',
+            needwork: 'Chưa hoàn thành BTVN, cần cố gắng',
+            naughty: 'Hay nói chuyện riêng, đôi khi mất tập trung'
+        };
+
+        // LocalStorage helpers
+        function getLocalNote(studentId) {
+            const notes = JSON.parse(localStorage.getItem('studentNotes') || '{}');
+            return notes[studentId] || '';
+        }
+
+        function setLocalNote(studentId, note) {
+            const notes = JSON.parse(localStorage.getItem('studentNotes') || '{}');
+            notes[studentId] = note;
+            localStorage.setItem('studentNotes', JSON.stringify(notes));
+        }
+
+        // Filter students
+        let filteredStudents = [];
+        function filterStudents() {
+            const search = document.getElementById('searchStudent').value.toLowerCase();
+            const status = document.getElementById('filterStatus').value;
+            
+            filteredStudents = students.filter(s => {
+                const matchName = s.student.fullName.toLowerCase().includes(search);
+                const isPresent = s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED';
+                const hasComment = s.commentByAreas?.some(a => a.type === 'CONTENT' && a.content);
+                
+                let matchStatus = true;
+                if (status === 'present') matchStatus = isPresent;
+                else if (status === 'absent') matchStatus = !isPresent;
+                else if (status === 'commented') matchStatus = hasComment;
+                else if (status === 'not_commented') matchStatus = !hasComment;
+                
+                return matchName && matchStatus;
+            });
+            
+            renderStudents(filteredStudents);
+        }
+
+        // Refresh class data
+        async function refreshClassData() {
+            if (!classData) return;
+            showToast('Đang refresh...', 'info');
+            const slotIdx = selectedSlot?.index;
+            await selectClass(classData, document.querySelector('.class-item.selected'));
+            if (slotIdx !== undefined) {
+                document.getElementById('slotSelect').value = slotIdx;
+                loadSlotStudents();
+            }
+            showToast('Đã refresh dữ liệu!');
+        }
+
+        // Export to CSV
+        function exportToCSV() {
+            if (students.length === 0) {
+                showToast('Không có dữ liệu để export', 'error');
+                return;
+            }
+            
+            const headers = ['Họ tên', 'Trạng thái', 'Nhận xét hiện tại', 'Nhận xét AI'];
+            const rows = students.map(s => {
+                const existingComment = s.commentByAreas?.find(a => a.type === 'CONTENT')?.content?.replace(/<[^>]*>/g, '') || '';
+                const aiComment = generatedComments[s.student.id]?.replace(/<[^>]*>/g, '') || '';
+                const status = s.status === 'ATTENDED' ? 'Có mặt' : s.status === 'LATE_ARRIVED' ? 'Đi muộn' : 'Vắng';
+                return [s.student.fullName, status, existingComment, aiComment];
+            });
+            
+            const csvContent = [headers, ...rows]
+                .map(row => row.map(cell => `"${(cell || '').replace(/"/g, '""')}"`).join(','))
+                .join('\n');
+            
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `nhanxet_${classData?.name || 'class'}_buoi${(selectedSlot?.index || 0) + 1}.csv`;
+            link.click();
+            showToast('Đã export CSV!');
+        }
+
+        // Play sound
+        function playSound(type = 'success') {
+            const audio = new Audio(type === 'success' 
+                ? 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQsxk9XUl3MIP5fW2ZlsBiiS1NiZbgk1j9HVl2sHPZjW2pltBi6Q0taYbQk4jtDUlmkIP5nW2ppvBimR09iZbQY0kNLWl2oIPpjW2pluBiyP0daXawk3jtDVlmkJPpnW2ppvBiuQ09iYbQY1j9HWl2oJPpjV2pluBy2P0daXawk3jtDVlmkJ'
+                : 'data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTtvAACAgICAgICAgICAf3hxamRfW1lYWFpcX2NpsZ+g');
+            audio.volume = 0.3;
+            audio.play().catch(() => {});
+        }
+
+        // Show past comments modal
+        function showPastComments(studentId, studentName) {
+            const pastSlots = getPastComments(studentId);
+            
+            document.getElementById('pastCommentsStudentName').textContent = studentName;
+            
+            if (pastSlots.length === 0) {
+                document.getElementById('pastCommentsContent').innerHTML = `
+                    <div style="text-align: center; color: var(--gray-500); padding: 20px;">
+                        Chưa có nhận xét nào từ các buổi trước
+                    </div>
+                `;
+            } else {
+                const html = pastSlots.map(slot => {
+                    const content = slot.commentByAreas?.find(a => a.type === 'CONTENT')?.content || '';
+                    const cleanContent = content.replace(/<[^>]*>/g, '');
+                    return `
+                        <div class="confirm-preview-item">
+                            <div class="confirm-preview-name">📅 Buổi ${slot.index}</div>
+                            <div class="confirm-preview-comment">${cleanContent || 'Không có nhận xét'}</div>
+                        </div>
+                    `;
+                }).join('');
+                document.getElementById('pastCommentsContent').innerHTML = html;
+            }
+            
+            document.getElementById('pastCommentsModal').classList.remove('hidden');
+        }
+
+        function hidePastCommentsModal() {
+            document.getElementById('pastCommentsModal').classList.add('hidden');
+        }
+
+        // Auto select latest uncommented slot
+        function autoSelectLatestSlot() {
+            if (!classData || !classData.slots) return;
+            
+            const now = new Date();
+            let latestSlotIdx = -1;
+            
+            for (let i = classData.slots.length - 1; i >= 0; i--) {
+                const slot = classData.slots[i];
+                const slotDate = new Date(slot.date);
+                if (slotDate <= now && slot.studentAttendance?.length > 0) {
+                    const hasUncommented = slot.studentAttendance.some(s => 
+                        (s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED') &&
+                        !s.commentByAreas?.some(a => a.type === 'CONTENT' && a.content)
+                    );
+                    if (hasUncommented) {
+                        latestSlotIdx = i;
+                        break;
+                    }
+                }
+            }
+            
+            if (latestSlotIdx >= 0) {
+                document.getElementById('slotSelect').value = latestSlotIdx;
+                loadSlotStudents();
+            }
+        }
+
+        // Update stats
+        function updateStats() {
+            const total = students.length;
+            const present = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED').length;
+            const generated = Object.keys(generatedComments).length;
+            const submitted = students.filter(s => s.commentByAreas?.some(a => a.type === 'CONTENT' && a.content)).length;
+            
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statPresent').textContent = present;
+            document.getElementById('statGenerated').textContent = generated;
+            document.getElementById('statSubmitted').textContent = submitted;
+            document.getElementById('statsBar').style.display = total > 0 ? 'flex' : 'none';
+        }
+
+        // Delete comment
+        function deleteComment(studentId) {
+            delete generatedComments[studentId];
+            renderStudents();
+            updateStats();
+            showToast('Đã xóa nhận xét');
+        }
+
+        // Update comment from textarea
+        function updateComment(studentId, value) {
+            generatedComments[studentId] = `<p>${value}</p>`;
+        }
+
+        // Apply note template
+        function applyTemplate(studentId, templateKey) {
+            const note = NOTE_TEMPLATES[templateKey];
+            const input = document.getElementById(`note-${studentId}`);
+            if (input) {
+                input.value = note;
+                setLocalNote(studentId, note);
+            }
+        }
+
+        // Confirm modal
+        function showConfirmModal() {
+            const preview = document.getElementById('confirmPreview');
+            const comments = Object.entries(generatedComments);
+            
+            if (comments.length === 0) {
+                showToast('Chưa có nhận xét nào để submit', 'error');
+                return;
+            }
+            
+            preview.innerHTML = comments.map(([studentId, comment]) => {
+                const student = students.find(s => s.student.id === studentId);
+                const cleanComment = comment.replace(/<[^>]*>/g, '').substring(0, 100);
+                return `
+                    <div class="confirm-preview-item">
+                        <div class="confirm-preview-name">${student?.student.fullName || studentId}</div>
+                        <div class="confirm-preview-comment">${cleanComment}...</div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        function hideConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+        }
+
+        // Toast
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+            toast.innerHTML = `<span>${icon}</span> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Toggle config
+        function toggleConfig() {
+            const body = document.getElementById('configBody');
+            const text = document.getElementById('configToggleText');
+            if (body.style.display === 'none') {
+                body.style.display = 'block';
+                text.textContent = 'Ẩn';
+            } else {
+                body.style.display = 'none';
+                text.textContent = 'Hiện';
+            }
+        }
+
+        // Update login status
+        function updateLoginStatus(loggedIn) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            if (loggedIn) {
+                dot.classList.add('online');
+                text.textContent = 'Đã đăng nhập';
+            } else {
+                dot.classList.remove('online');
+                text.textContent = 'Chưa đăng nhập';
+            }
+        }
+
+        // Login
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showToast('Vui lòng nhập email và password', 'error');
+                return;
+            }
+            
+            try {
+                const resp = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email, password})
+                });
+                const data = await resp.json();
+                
+                if (data.success) {
+                    updateLoginStatus(true);
+                    showToast('Đăng nhập thành công!');
+                    loadClasses();
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (e) {
+                showToast('Lỗi kết nối', 'error');
+            }
+        }
+
+        // Toggle custom model input
+        function toggleCustomModel() {
+            const aiModel = document.getElementById('aiModel').value;
+            const customGroup = document.getElementById('customModelGroup');
+            if (aiModel === 'custom') {
+                customGroup.style.display = 'block';
+            } else {
+                customGroup.style.display = 'none';
+                document.getElementById('customModelId').value = '';
+            }
+        }
+
+        // Save config
+        async function saveConfig() {
+            const openrouterKey = document.getElementById('openrouterKey').value;
+            const aiModel = document.getElementById('aiModel').value;
+            const customModelId = document.getElementById('customModelId').value;
+            
+            // Nếu chọn custom thì dùng customModelId, ngược lại dùng aiModel
+            const finalModel = aiModel === 'custom' ? '' : aiModel;
+            
+            await fetch('/api/save_config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    openrouter_key: openrouterKey, 
+                    ai_model: finalModel,
+                    custom_model_id: customModelId
+                })
+            });
+            showToast('Đã lưu cấu hình!');
+        }
+
+        // Load classes
+        async function loadClasses(forceRefresh = false) {
+            const loading = document.getElementById('classLoading');
+            const list = document.getElementById('classList');
+            
+            // Use cache if available
+            if (!forceRefresh && classesCache) {
+                renderClassList(classesCache);
+                return;
+            }
+            
+            loading.classList.add('show');
+            list.innerHTML = '';
+            
+            try {
+                const resp = await fetch('/api/classes');
+                if (!resp.ok) {
+                    showToast('Vui lòng đăng nhập lại', 'error');
+                    return;
+                }
+                const data = await resp.json();
+                classesCache = data.classes;
+                renderClassList(data.classes);
+            } catch (e) {
+                showToast('Lỗi tải danh sách lớp', 'error');
+            } finally {
+                loading.classList.remove('show');
+            }
+        }
+
+        function renderClassList(classes) {
+            const list = document.getElementById('classList');
+            list.innerHTML = '';
+            
+            if (classes.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-text">Không có lớp nào</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            classes.forEach(cls => {
+                const div = document.createElement('div');
+                div.className = 'class-item';
+                div.innerHTML = `
+                    <h3>${cls.name}</h3>
+                    <p>${cls.course?.name || ''} • ${cls.slots?.length || 0} buổi</p>
+                `;
+                div.onclick = () => selectClass(cls, div);
+                list.appendChild(div);
+            });
+        }
+
+        // Select class
+        async function selectClass(cls, element) {
+            document.querySelectorAll('.class-item').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedClass = cls;
+            
+            try {
+                const resp = await fetch(`/api/class/${cls.id}`);
+                const data = await resp.json();
+                classData = data.class;
+                
+                const slotSelect = document.getElementById('slotSelect');
+                slotSelect.innerHTML = '<option value="">-- Chọn buổi --</option>';
+                
+                classData.slots.forEach((slot, idx) => {
+                    const date = new Date(slot.date).toLocaleDateString('vi-VN');
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.textContent = `Buổi ${slot.index + 1} - ${date}`;
+                    slotSelect.appendChild(opt);
+                });
+                
+                // Reset student list
+                document.getElementById('studentList').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📅</div>
+                        <div class="empty-state-text">Chọn buổi học để xem học sinh</div>
+                    </div>
+                `;
+                document.getElementById('studentCount').textContent = '0 học sinh';
+                
+                // Auto select latest uncommented slot
+                autoSelectLatestSlot();
+            } catch (e) {
+                showToast('Lỗi tải thông tin lớp', 'error');
+            }
+        }
+
+        // Load slot students
+        function loadSlotStudents() {
+            const slotIdx = document.getElementById('slotSelect').value;
+            if (!slotIdx || !classData) return;
+            
+            selectedSlot = classData.slots[parseInt(slotIdx)];
+            students = selectedSlot.studentAttendance || [];
+            generatedComments = {};
+            
+            // Set summary if exists
+            if (selectedSlot.summary) {
+                document.getElementById('sessionSummary').value = selectedSlot.summary.replace(/<[^>]*>/g, '');
+            }
+            
+            renderStudents();
+            updateStats();
+            
+            // Check if any present student has existing comment
+            const presentStudents = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+            const hasAnyComment = presentStudents.some(s => {
+                const content = s.commentByAreas?.find(a => a.type === 'CONTENT')?.content;
+                return content && content.trim().length > 0;
+            });
+            
+            document.getElementById('autoCommentBtn').disabled = presentStudents.length === 0;
+            document.getElementById('submitAllBtn').disabled = true;
+            document.getElementById('copyZaloBtn').disabled = !hasAnyComment;
+            document.getElementById('submitSummaryBtn').disabled = false;
+            document.getElementById('studentCount').textContent = `${students.length} học sinh`;
+        }
+
+        // Render students
+        function renderStudents(studentList = null) {
+            const list = document.getElementById('studentList');
+            const toRender = studentList || students;
+            
+            if (toRender.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👤</div>
+                        <div class="empty-state-text">${studentList ? 'Không tìm thấy học sinh' : 'Chưa có học sinh trong buổi này'}</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            list.innerHTML = '';
+            
+            toRender.forEach((att, idx) => {
+                const hasComment = att.commentByAreas?.some(a => a.type === 'CONTENT' && a.content);
+                const existingComment = att.commentByAreas?.find(a => a.type === 'CONTENT')?.content || '';
+                const generatedComment = generatedComments[att.student.id] || '';
+                const initials = att.student.fullName.split(' ').slice(-2).map(n => n[0]).join('');
+                
+                // Check attendance status
+                const isPresent = att.status === 'ATTENDED' || att.status === 'LATE_ARRIVED';
+                const isLate = att.status === 'LATE_ARRIVED';
+                let statusText = '✕ Vắng';
+                let statusClass = 'badge-gray';
+                if (att.status === 'ATTENDED') {
+                    statusText = '✓ Có mặt';
+                    statusClass = 'badge-success';
+                } else if (att.status === 'LATE_ARRIVED') {
+                    statusText = '⏰ Đi muộn';
+                    statusClass = 'badge-warning';
+                } else if (att.status === 'ABSENT_WITH_NOTICE') {
+                    statusText = '📝 Vắng có phép';
+                    statusClass = 'badge-gray';
+                }
+                
+                const div = document.createElement('div');
+                div.className = `student-card ${hasComment ? 'has-comment' : 'no-comment'}`;
+                div.innerHTML = `
+                    <div class="student-header">
+                        <div class="student-info">
+                            <div class="student-avatar">${initials}</div>
+                            <div>
+                                <div class="student-name">${att.student.fullName}</div>
+                                <div class="student-meta">
+                                    <span class="badge ${statusClass}">${statusText}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="badge ${hasComment ? 'badge-success' : 'badge-warning'}">
+                            ${hasComment ? '✓ Đã nhận xét' : '○ Chưa nhận xét'}
+                        </span>
+                    </div>
+                    ${existingComment ? `
+                        <div class="comment-box">
+                            <div class="comment-box-label">Nhận xét hiện tại</div>
+                            ${existingComment}
+                        </div>
+                    ` : ''}
+                    ${generatedComment ? `
+                        <div class="comment-box ai-generated">
+                            <div class="comment-box-label">
+                                🤖 AI tạo
+                                <button class="btn-icon" onclick="deleteComment('${att.student.id}')" title="Xóa nhận xét">✕</button>
+                            </div>
+                            <textarea class="comment-edit" id="comment-${att.student.id}" oninput="updateComment('${att.student.id}', this.value)">${generatedComment.replace(/<[^>]*>/g, '')}</textarea>
+                        </div>
+                    ` : ''}
+                    <div class="note-input">
+                        <input type="text" class="form-input" id="note-${att.student.id}" placeholder="Ghi chú: học tập trung, hay chơi game..." value="${getLocalNote(att.student.id)}">
+                        <button class="btn btn-sm btn-outline" onclick="saveNote('${att.student.id}')">💾</button>
+                    </div>
+                    <div class="template-buttons">
+                        <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'good')">👍 Tốt</button>
+                        <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'normal')">👌 Bình thường</button>
+                        <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'needwork')">📝 Cần cố gắng</button>
+                        <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'naughty')">😅 Hay nghịch</button>
+                        <button class="btn btn-xs btn-template" onclick="showPastComments('${att.student.id}', '${att.student.fullName.replace(/'/g, "\\'")}')">📜 Xem buổi trước</button>
+                    </div>
+                    <div class="student-actions">
+                        <button class="btn btn-sm btn-primary" onclick="generateSingle('${att.student.id}', '${att.student.fullName.replace(/'/g, "\\'")}', ${idx})" id="gen-btn-${att.student.id}">
+                            🤖 Tạo nhận xét
+                        </button>
+                        ${generatedComment ? `
+                            <button class="btn btn-sm btn-success" onclick="submitSingle('${att.student.id}', '${att._id}')">
+                                📤 Submit
+                            </button>
+                            <button class="btn btn-sm btn-outline" onclick="copyZaloComment('${att.student.fullName.replace(/'/g, "\\'")}', '${att.student.id}')">
+                                📋 Zalo
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteComment('${att.student.id}')">
+                                🗑️
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        // Save note
+        async function saveNote(studentId) {
+            const note = document.getElementById(`note-${studentId}`).value;
+            if (!note) return;
+            
+            // Save to localStorage
+            setLocalNote(studentId, note);
+            
+            // Also save to server
+            await fetch(`/api/notes/${studentId}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({note})
+            });
+            
+            showToast('Đã lưu ghi chú!');
+        }
+
+        // Get past comments
+        function getPastComments(studentId) {
+            if (!classData) return [];
+            
+            const pastSlots = [];
+            const currentSlotIdx = selectedSlot.index;
+            
+            classData.slots.forEach(slot => {
+                if (slot.index < currentSlotIdx) {
+                    const att = slot.studentAttendance?.find(a => a.student.id === studentId);
+                    if (att && att.commentByAreas?.length > 0) {
+                        pastSlots.push({
+                            index: slot.index + 1,
+                            commentByAreas: att.commentByAreas
+                        });
+                    }
+                }
+            });
+            
+            return pastSlots;
+        }
+
+        // Generate single
+        async function generateSingle(studentId, studentName, idx) {
+            const summary = document.getElementById('sessionSummary').value;
+            const pastSlots = getPastComments(studentId);
+            const btn = document.getElementById(`gen-btn-${studentId}`);
+            
+            // Show loading
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Đang tạo...';
+            }
+            
+            try {
+                const att = students.find(s => s.student.id === studentId);
+                const isLate = att?.status === 'LATE_ARRIVED';
+                
+                const commentLength = document.getElementById('commentLength')?.value || 'medium';
+                const customPrompt = document.getElementById('customPrompt')?.value || '';
+                
+                const resp = await fetch('/api/generate_comment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        student_id: studentId,
+                        student_name: studentName,
+                        past_slots: pastSlots,
+                        session_summary: summary,
+                        is_late: isLate,
+                        comment_length: commentLength,
+                        custom_prompt: customPrompt
+                    })
+                });
+                
+                const data = await resp.json();
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+                
+                generatedComments[studentId] = data.comment;
+                renderStudents();
+                updateStats();
+                document.getElementById('submitAllBtn').disabled = false;
+                document.getElementById('copyZaloBtn').disabled = false;
+                showToast('Đã tạo nhận xét!');
+            } catch (e) {
+                showToast('Lỗi tạo nhận xét', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '🤖 Tạo nhận xét';
+                }
+            }
+        }
+
+        // Auto comment all
+        async function autoCommentAll() {
+            const summary = document.getElementById('sessionSummary').value;
+            const btn = document.getElementById('autoCommentBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            btn.disabled = true;
+            progressContainer.classList.add('show');
+            
+            // Include both ATTENDED and LATE_ARRIVED students (not ABSENT)
+            const presentStudents = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+            
+            // Batch size for parallel requests
+            const BATCH_SIZE = 3;
+            let completed = 0;
+            const startTime = Date.now();
+            const avgTimePerBatch = 3000; // 3 seconds per batch estimate
+            
+            for (let i = 0; i < presentStudents.length; i += BATCH_SIZE) {
+                const batch = presentStudents.slice(i, i + BATCH_SIZE);
+                
+                // Process batch in parallel
+                const promises = batch.map(async (att) => {
+                    try {
+                        const commentLength = document.getElementById('commentLength')?.value || 'medium';
+                        const customPrompt = document.getElementById('customPrompt')?.value || '';
+                        
+                        const resp = await fetch('/api/generate_comment', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                student_id: att.student.id,
+                                student_name: att.student.fullName,
+                                past_slots: getPastComments(att.student.id),
+                                session_summary: summary,
+                                is_late: att.status === 'LATE_ARRIVED',
+                                comment_length: commentLength,
+                                custom_prompt: customPrompt
+                            })
+                        });
+                        
+                        const data = await resp.json();
+                        if (!data.error) {
+                            generatedComments[att.student.id] = data.comment;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
+                });
+                
+                await Promise.all(promises);
+                completed += batch.length;
+                
+                const progress = Math.round((completed / presentStudents.length) * 100);
+                progressFill.style.width = `${progress}%`;
+                
+                // Estimate remaining time
+                const elapsed = Date.now() - startTime;
+                const avgTimePerStudent = elapsed / completed;
+                const remaining = Math.ceil((presentStudents.length - completed) * avgTimePerStudent / 1000);
+                const timeStr = remaining > 0 ? ` (~${remaining}s còn lại)` : '';
+                
+                progressText.textContent = `${progress}% (${completed}/${presentStudents.length})${timeStr}`;
+                renderStudents();
+                updateStats();
+            }
+            
+            btn.disabled = false;
+            progressContainer.classList.remove('show');
+            document.getElementById('submitAllBtn').disabled = false;
+            document.getElementById('copyZaloBtn').disabled = false;
+            playSound('success');
+            showToast(`Đã tạo ${Object.keys(generatedComments).length} nhận xét!`);
+        }
+
+        // Submit single comment
+        async function submitSingle(studentId, attendanceId) {
+            const summary = document.getElementById('sessionSummary').value;
+            const comment = generatedComments[studentId];
+            
+            if (!comment) {
+                showToast('Chưa có nhận xét để submit', 'error');
+                return;
+            }
+            
+            if (!summary) {
+                showToast('Vui lòng nhập tổng kết buổi học', 'error');
+                return;
+            }
+            
+            try {
+                const payload = {
+                    slot_id: selectedSlot._id,
+                    class_site_id: classData.classSites[0]._id,
+                    session_number: selectedSlot.index + 1,
+                    class_id: classData.id,
+                    course_process_id: classData.courseProcessId,
+                    student_attendance_id: attendanceId,
+                    student_id: studentId,
+                    comment: comment,
+                    summary: `<p>${summary}</p>`
+                };
+                
+                const resp = await fetch('/api/submit_comment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await resp.json();
+                console.log('Submit response:', data);
+                
+                if (data.success || data.result) {
+                    delete generatedComments[studentId];
+                    showToast('Đã submit nhận xét!');
+                    // Reload to get updated status
+                    const slotIdx = selectedSlot.index;
+                    await selectClass(classData.id);
+                    const slotSelect = document.getElementById('slotSelect');
+                    slotSelect.value = slotIdx;
+                    loadSlotStudents();
+                } else {
+                    showToast('Lỗi submit: ' + (data.error || 'Unknown'), 'error');
+                }
+            } catch (e) {
+                showToast('Lỗi submit: ' + e.message, 'error');
+                console.error(e);
+            }
+        }
+
+        // Submit summary only
+        async function submitSummary() {
+            const summary = document.getElementById('sessionSummary').value;
+            if (!summary) {
+                showToast('Vui lòng nhập tổng kết buổi học', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('submitSummaryBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Đang lưu...';
+            
+            try {
+                const payload = {
+                    slot_id: selectedSlot._id,
+                    class_site_id: classData.classSites[0]._id,
+                    session_number: selectedSlot.index + 1,
+                    class_id: classData.id,
+                    course_process_id: classData.courseProcessId,
+                    summary: `<p>${summary}</p>`
+                };
+                
+                const resp = await fetch('/api/submit_summary', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await resp.json();
+                if (data.success || data.result) {
+                    showToast('Đã lưu tổng kết buổi học!');
+                } else {
+                    showToast('Lỗi: ' + (data.error || 'Unknown'), 'error');
+                }
+            } catch (e) {
+                showToast('Lỗi: ' + e.message, 'error');
+                console.error(e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💾 Lưu tổng kết';
+            }
+        }
+
+        // Check if mobile device
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   window.innerWidth <= 768 ||
+                   ('ontouchstart' in window);
+        }
+
+        // Copy Modal functions
+        function showCopyModal(title, text) {
+            document.getElementById('copyModalTitle').textContent = title;
+            document.getElementById('copyModalTextarea').value = text;
+            document.getElementById('copyModal').classList.remove('hidden');
+            
+            // Auto select text for easy copy
+            setTimeout(() => {
+                const textarea = document.getElementById('copyModalTextarea');
+                textarea.focus();
+                textarea.select();
+                textarea.setSelectionRange(0, textarea.value.length);
+            }, 100);
+        }
+
+        function hideCopyModal() {
+            document.getElementById('copyModal').classList.add('hidden');
+        }
+
+        function doCopyFromModal() {
+            const textarea = document.getElementById('copyModalTextarea');
+            const text = textarea.value;
+            
+            // Try modern clipboard API first
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('Đã copy thành công!');
+                    hideCopyModal();
+                }).catch(() => {
+                    fallbackCopy(textarea);
+                });
+            } else {
+                fallbackCopy(textarea);
+            }
+        }
+
+        function fallbackCopy(textarea) {
+            try {
+                textarea.focus();
+                textarea.select();
+                textarea.setSelectionRange(0, textarea.value.length);
+                
+                const success = document.execCommand('copy');
+                if (success) {
+                    showToast('Đã copy thành công!');
+                    hideCopyModal();
+                } else {
+                    showToast('Vui lòng bấm giữ để chọn và copy thủ công', 'info');
+                }
+            } catch (e) {
+                showToast('Vui lòng bấm giữ để chọn và copy thủ công', 'info');
+            }
+        }
+
+        // Smart copy function - works on both desktop and mobile
+        function smartCopy(text, successMsg) {
+            if (isMobileDevice()) {
+                showCopyModal('📋 Copy nhận xét', text);
+            } else {
+                // Desktop - try clipboard API
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showToast(successMsg);
+                    }).catch(() => {
+                        // Fallback: show modal
+                        showCopyModal('📋 Copy nhận xét', text);
+                    });
+                } else {
+                    // Fallback for non-secure context
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.style.position = 'fixed';
+                    textarea.style.left = '-9999px';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        showToast(successMsg);
+                    } catch (e) {
+                        showCopyModal('📋 Copy nhận xét', text);
+                    }
+                    document.body.removeChild(textarea);
+                }
+            }
+        }
+
+        // Copy Zalo comment format
+        function copyZaloComment(studentName, studentId) {
+            const comment = generatedComments[studentId];
+            if (!comment) {
+                showToast('Chưa có nhận xét', 'error');
+                return;
+            }
+            
+            const summary = document.getElementById('sessionSummary').value || 'Thực hành lập trình';
+            const cleanComment = comment.replace(/<[^>]*>/g, '').trim();
+            
+            // Format theo mẫu Zalo
+            const zaloText = `📚 NHẬN XÉT BUỔI HỌC
+
+👤 Học sinh: ${studentName}
+📖 Nội dung: ${summary}
+
+📝 Nhận xét:
+${cleanComment}
+
+---
+MindX Technology School`;
+
+            smartCopy(zaloText, 'Đã copy nhận xét Zalo!');
+        }
+
+        // Copy all Zalo comments
+        function copyAllZalo() {
+            const summary = document.getElementById('sessionSummary').value || 'Thực hành lập trình';
+            
+            // Collect all comments from present students (both AI generated and existing from server)
+            const allComments = [];
+            const presentStudents = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+            
+            presentStudents.forEach(student => {
+                const studentId = student.student.id;
+                const studentName = student.student.fullName;
+                
+                // Priority: AI generated comment > existing server comment
+                let comment = generatedComments[studentId];
+                if (!comment) {
+                    // Check existing comment from server
+                    const existingComment = student.commentByAreas?.find(a => a.type === 'CONTENT')?.content;
+                    if (existingComment && existingComment.trim().length > 0) {
+                        comment = existingComment;
+                    }
+                }
+                
+                if (comment && comment.trim().length > 0) {
+                    allComments.push({
+                        studentId,
+                        studentName,
+                        comment
+                    });
+                }
+            });
+            
+            if (allComments.length === 0) {
+                showToast('Chưa có nhận xét nào', 'error');
+                return;
+            }
+            
+            // Get session number and date
+            const sessionNumber = selectedSlot?.index + 1 || 1;
+            const slotDate = selectedSlot?.date ? new Date(selectedSlot.date) : new Date();
+            const dateStr = slotDate.toLocaleDateString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit', 
+                year: 'numeric'
+            });
+            
+            // Build the message
+            let allText = `Em xin chào quý phụ huynh, em xin phép gửi phần nhận xét sau buổi học số ${sessionNumber} ngày ${dateStr} để các bậc phụ huynh tiện theo dõi và nhắc nhở các bạn học viên ạ:\n\n`;
+            
+            // Section 1: Lesson content
+            allText += `1. Nội dung kiến thức buổi học:\n`;
+            allText += `${summary}\n\n`;
+            
+            // Section 2: Student comments
+            allText += `2. Nhận xét tình hình lớp học:\n`;
+            
+            allComments.forEach(({studentName, comment}) => {
+                const cleanComment = comment.replace(/<[^>]*>/g, '').trim();
+                // Get short name (first name)
+                const shortName = studentName.split(' ').pop();
+                allText += `- ${shortName}: ${cleanComment}\n\n`;
+            });
+            
+            // Section 3: Homework
+            allText += `3. BTVN:\n`;
+            allText += `- Làm bài tập buổi ${sessionNumber} trên Denise.\n\n`;
+            
+            // Closing
+            allText += `Trên đây là một vài lời nhận xét của em về buổi học vừa rồi. Em xin chúc quý phụ huynh có buổi tối vui vẻ ạ. @All`;
+            
+            smartCopy(allText, `Đã copy ${allComments.length} nhận xét Zalo!`);
+        }
+
+        // Confirm and submit all
+        async function confirmSubmitAll() {
+            hideConfirmModal();
+            await submitAll();
+        }
+
+        // Submit all
+        async function submitAll() {
+            const summary = document.getElementById('sessionSummary').value;
+            const btn = document.getElementById('submitAllBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            if (!summary) {
+                showToast('Vui lòng nhập tổng kết buổi học', 'error');
+                return;
+            }
+            
+            btn.disabled = true;
+            progressContainer.classList.add('show');
+            
+            const toSubmit = Object.entries(generatedComments);
+            let successCount = 0;
+            let summarySubmitted = false;
+            
+            for (let i = 0; i < toSubmit.length; i++) {
+                const [studentId, comment] = toSubmit[i];
+                const att = students.find(s => s.student.id === studentId);
+                if (!att) continue;
+                
+                const progress = Math.round(((i + 1) / toSubmit.length) * 100);
+                progressFill.style.width = `${progress}%`;
+                progressText.textContent = `${progress}% (${i + 1}/${toSubmit.length})`;
+                
+                try {
+                    const payload = {
+                        slot_id: selectedSlot._id,
+                        class_site_id: classData.classSites[0]._id,
+                        session_number: selectedSlot.index + 1,
+                        class_id: classData.id,
+                        course_process_id: classData.courseProcessId,
+                        student_attendance_id: att._id,
+                        student_id: studentId,
+                        comment: comment
+                    };
+                    
+                    if (!summarySubmitted) {
+                        payload.summary = `<p>${summary}</p>`;
+                        summarySubmitted = true;
+                    }
+                    
+                    const resp = await fetch('/api/submit_comment', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const data = await resp.json();
+                    if (data.success || data.result) {
+                        successCount++;
+                        delete generatedComments[studentId];
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            
+            btn.disabled = false;
+            progressContainer.classList.remove('show');
+            
+            // Reload class data from server to get updated status
+            if (classData && classData.id) {
+                await selectClass(classData.id);
+                // Re-select the same slot
+                const slotSelect = document.getElementById('slotSelect');
+                if (selectedSlot) {
+                    slotSelect.value = selectedSlot.index;
+                    loadSlotStudents();
+                }
+            }
+            
+            playSound('success');
+            showToast(`Đã submit ${successCount}/${toSubmit.length} nhận xét!`);
+        }
+
+        // Init
+        {% if is_logged_in %}
+        updateLoginStatus(true);
+        loadClasses();
+        {% endif %}
+    </script>
+</body>
+</html>

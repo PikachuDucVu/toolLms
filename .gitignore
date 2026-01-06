@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Environment
+.env
+*.env
+venv/
+.venv/
+
+# Config with secrets
+config.json
+token_cache.json
+student_notes.json
+
+# Logs
+*.log
+*.har
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

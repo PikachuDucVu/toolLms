@@ -1,0 +1,10 @@
+{
+    "operationName": "FindAllWithClass",
+    "variables": {
+        "payload": {
+            "sessionId": "6901bad23b4cfc001202517d",
+            "classId": "6901ba9fb1c78219a23f0c34"
+        }
+    },
+    "query": "query FindAllWithClass($payload: StudentMakeupCommentFilterWithClassInput) {\n  findAllWithClass(payload: $payload) {\n    id\n    classId\n    sessionId\n    classSiteId\n    classMakeupId\n    sessionMakeupId\n    classSiteMakeupId\n    status\n    studentId\n    content\n    sendCommentStatus\n    commentStatus {\n      status\n      version\n      feedback\n    }\n    attendance {\n      attendanceId\n      status\n    }\n    commentByAreas {\n      commentAreaId\n      grade\n      content\n    }\n  }\n}\n"
+}
