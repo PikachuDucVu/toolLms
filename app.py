@@ -212,6 +212,11 @@ CHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG CẦN TIÊU ĐỀ HAY GIẢI TH�
 
 # ============== ROUTES ==============
 
+@app.route('/homework')
+def homework_page():
+    return render_template('homework.html')
+
+
 @app.route('/')
 def index():
     config = load_config()
@@ -389,8 +394,75 @@ def generate_comment():
 @app.route('/api/submit_comment', methods=['POST'])
 def submit_comment():
     data = request.json
-    
-    # Simple payload without byAreas - just content
+
+    # Default byAreas with 7 RATE areas (grade=5) + 1 CONTENT area for AI comment
+    # These are standard MindX COD comment areas
+    by_areas = [
+        {
+            "grade": 5,
+            "content": "- Học viên trình bày ý kiến rõ ràng, chủ động hỏi khi gặp vấn đề, thuyết trình trước lớp mạch lạc, rõ ràng.\n- Học viên nhìn nhận được những ưu - nhược điểm của bản thân sau khi nhận đánh giá từ giáo viên, bạn bè",
+            "commentAreaId": "66f12601cdcebc582a30307f",
+            "type": "RATE"
+        },
+        {
+            "grade": 5,
+            "content": "- Học viên phản biện và phân tích các giải pháp một cách sâu rộng, biết thử đi thử lại nhiều lần đến khi ra kết quả từ đó Học viên có thể tổng quát cho nhiều vấn đề tương tự sau này\n- Học viên đưa sản phẩm cá nhân go live và có tiếp nhận người dùng thật.",
+            "commentAreaId": "66f12569cdcebc582a302bd2",
+            "type": "RATE"
+        },
+        {
+            "grade": 5,
+            "content": "- Tốc độ sử dụng chuột/bàn phím rất thành thạo, có thể sử dụng gõ phím bằng 2 tay không cần nhìn phím.\n- Học viên tận dụng tối ưu các phần mềm máy tính, sử dụng các công cụ hỗ trợ xây dựng sơ đồ tư duy, công cụ quản lý tiến độ dự án, công cụ xây dựng sơ đồ thuật toán.",
+            "commentAreaId": "66f125d3cdcebc582a302f35",
+            "type": "RATE"
+        },
+        {
+            "grade": 5,
+            "content": "- Học viên tập trung lắng nghe bài giảng, tự giác học tập, giáo viên hầu như không phải nhắc nhở con, hiệu quả buổi học cao\n- Học viên tuân thủ tuyệt đối các quy tắc trong lớp học, luôn có mặt đúng giờ, lễ phép khi giao tiếp với giáo viên.\n",
+            "commentAreaId": "66f12637cdcebc582a30321c",
+            "type": "RATE"
+        },
+        {
+            "grade": 5,
+            "content": "- Ngoài việc nắm chắc kiến thức được hướng dẫn trong buổi học,  học viên có sự chủ động đặt câu hỏi với giáo viên để mở rộng/ nâng cao thêm vốn hiểu biết.",
+            "commentAreaId": "66f124bbcdcebc582a302727",
+            "type": "RATE"
+        },
+        {
+            "grade": 5,
+            "content": "- Học viên thành thạo trong việc sử dụng ngôn ngữ lập trình, biết tối ưu hoá đoạn code và sắp xếp chỉnh chu, gọn gàng\n- Học viên có thể tự xây dựng mô hình/sơ đồ tư duy tuần tự các bước lập trình cho dự án cá nhân của mình mà không cần sự hỗ trợ từ giáo viên",
+            "commentAreaId": "66f12525cdcebc582a302a65",
+            "type": "RATE"
+        },
+        {
+            "grade": 5,
+            "content": "- Học viên chủ động trong việc phát hiện ra những ý tưởng sáng tạo cho các tính năng của sản phẩm dựa trên những kiến thức vừa được học và đặt câu hỏi với Giáo viên.\n- Học viên tự mình thiết kế trò chơi, câu chuyện hoặc dự án hoàn toàn mới, có khả năng thu hút sự chú ý và hứng thú của người khác, hoặc tạo ra một trào lưu trong cộng đồng",
+            "commentAreaId": "66f1259bcdcebc582a302cd7",
+            "type": "RATE"
+        },
+        {
+            "content": data['comment'],  # AI generated comment goes here
+            "commentAreaId": "67b54307f79c7bc326e017ff",
+            "type": "CONTENT"
+        }
+    ]
+
+    # Build the full content string from byAreas (for LMS display)
+    content_parts = []
+    area_names = [
+        "Kỹ năng giao tiếp, hợp tác",
+        "Kỹ năng giải quyết vấn đề",
+        "Kỹ năng sử dụng máy tính",
+        "Thái độ học tập trên lớp",
+        "Kiến thức học viên đã được học tại lớp",
+        "Tư duy máy tính, tư duy thuật toán",
+        "Tư duy sáng tạo"
+    ]
+    for i, area in enumerate(by_areas[:7]):
+        content_parts.append(f"- [COD]  {area_names[i]}: {area['content']}")
+    content_parts.append(f"- Đánh giá chung: {data['comment']}")
+    full_content = "<br>".join(content_parts)
+
     payload = {
         "slotId": data['slot_id'],
         "classSiteId": data['class_site_id'],
@@ -403,31 +475,135 @@ def submit_comment():
         "studentComment": {
             "studentAttendanceId": data['student_attendance_id'],
             "studentId": data['student_id'],
-            "content": data['comment']
+            "content": full_content,
+            "byAreas": by_areas
         }
     }
-    
+
     # Add summary if provided
     if data.get('summary'):
         payload['summary'] = data['summary']
-    
+
     query = """mutation UpdateSlotComment($payload: UpdateSlotCommentCommand!) {
         classes {
             updateSlotComment(payload: $payload) {
                 id
                 name
+                slots {
+                    _id
+                    date
+                    startTime
+                    endTime
+                    sessionHour
+                    teachers {
+                        _id
+                        teacher {
+                            id
+                            username
+                            code
+                            fullName
+                            email
+                            phoneNumber
+                            user
+                            imageUrl
+                        }
+                        role {
+                            id
+                            name
+                            shortName
+                        }
+                        isActive
+                    }
+                    teacherAttendance {
+                        _id
+                        teacher {
+                            id
+                            username
+                            fullName
+                            email
+                            phoneNumber
+                            user
+                            imageUrl
+                        }
+                        status
+                        note
+                        createdBy
+                        createdAt
+                        lastModifiedBy
+                        lastModifiedAt
+                    }
+                    studentAttendance {
+                        _id
+                        student {
+                            id
+                            fullName
+                            phoneNumber
+                            email
+                            gender
+                            imageUrl
+                            customer {
+                                email
+                            }
+                        }
+                        comment
+                        sendCommentStatus
+                        status
+                        commentByAreas {
+                            grade
+                            content
+                            commentAreaId
+                            checkpoint {
+                                practiceScore
+                                checkpointScore
+                                checkpointQuestions {
+                                    id
+                                    title
+                                    result
+                                    score
+                                }
+                            }
+                            courseProcessDemoId
+                            courseProcessFinalEvaluationTitle
+                            courseProcessFinalEvaluationId
+                            demoQuestions {
+                                courseProcessDemoDetailId
+                                title
+                                result
+                                score
+                                maxScore
+                            }
+                            type
+                        }
+                        createdBy
+                        createdAt
+                        lastModifiedBy
+                        lastModifiedAt
+                        commentStatus {
+                            feedback
+                            status
+                            version
+                        }
+                    }
+                    summary
+                    homework
+                    createdAt
+                    createdBy
+                    lastModifiedAt
+                    lastModifiedBy
+                    index
+                }
             }
         }
     }"""
-    
+
     result = lms_client.call_api("UpdateSlotComment", query, {"payload": payload})
-    
+
     if "error" in result:
         return jsonify({"error": result["error"]}), 400
-    
+
     if "errors" in result:
         return jsonify({"error": result["errors"][0]["message"]}), 400
-    
+
     return jsonify({"success": True, "result": result})
 
 
@@ -466,6 +642,145 @@ def submit_summary():
         return jsonify({"error": result["errors"][0]["message"]}), 400
     
     return jsonify({"success": True, "result": result})
+
+
+# ============== HOMEWORK GRADING APIs ==============
+
+# Queries for homework
+FIND_SUBMISSIONS_QUERY = """query FindStudentSubmissionByClass($payload: FindStudentSubmissionByClassQuery) {
+  findStudentSubmissionByClass(payload: $payload) {
+    students { id displayName studentUid }
+    lessons { id name type isActive displayOrder }
+    submissions {
+      id type note score status category
+      classId lessonId learningCourseId studentUid
+      markedAt markedBy submittedAt submittedCount
+      content { scratchState type attachments totalQuiz submitQuiz correctAnswer }
+    }
+  }
+}"""
+
+MARK_SUBMISSION_QUERY = """mutation MarkStudentSubmission($payload: MarkStudentSubmissionCommand!) {
+  studentHomework {
+    markStudentSubmission(payload: $payload) {
+      id score status markedAt markedBy
+    }
+  }
+}"""
+
+
+@app.route('/api/homework/<class_id>')
+def get_homework_submissions(class_id):
+    """Lấy danh sách bài tập của lớp"""
+    result = lms_client.call_api('FindStudentSubmissionByClass', FIND_SUBMISSIONS_QUERY, {
+        'payload': {'classId': class_id}
+    })
+
+    if 'error' in result:
+        return jsonify({'error': result['error']}), 401
+
+    if 'errors' in result:
+        return jsonify({'error': result['errors'][0].get('message', 'Unknown error')}), 400
+
+    data = result.get('data', {}).get('findStudentSubmissionByClass', {})
+    return jsonify(data)
+
+
+@app.route('/api/homework/download-url')
+def get_download_url():
+    """Lấy presigned URL để tải file"""
+    from urllib.parse import quote
+    file_key = request.args.get('key', '')
+    if not file_key:
+        return jsonify({'error': 'Missing file key'}), 400
+
+    url = f"https://resources.mindx.edu.vn/api/v1/get-presigned-url?key={quote(file_key, safe='')}"
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get('success'):
+                return jsonify({'url': data.get('url')})
+        return jsonify({'error': 'Failed to get download URL'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/homework/mark', methods=['POST'])
+def mark_homework():
+    """Chấm điểm bài tập"""
+    data = request.json
+    submission_id = data.get('id')
+    score = data.get('score')
+    note = data.get('note', '')
+
+    if not submission_id or score is None:
+        return jsonify({'error': 'Missing id or score'}), 400
+
+    payload = {
+        'id': submission_id,
+        'score': str(score)
+    }
+    if note:
+        payload['note'] = note
+
+    result = lms_client.call_api('MarkStudentSubmission', MARK_SUBMISSION_QUERY, {
+        'payload': payload
+    })
+
+    if 'data' in result:
+        return jsonify({
+            'success': True,
+            'result': result['data']['studentHomework']['markStudentSubmission']
+        })
+    else:
+        error = result.get('errors', [{'message': 'Unknown error'}])[0]['message']
+        return jsonify({'error': error}), 400
+
+
+@app.route('/api/homework/batch-mark', methods=['POST'])
+def batch_mark_homework():
+    """Chấm điểm hàng loạt"""
+    data = request.json
+    submissions = data.get('submissions', [])  # [{id, score, note}]
+
+    if not submissions:
+        return jsonify({'error': 'No submissions to mark'}), 400
+
+    results = []
+    for sub in submissions:
+        payload = {
+            'id': sub['id'],
+            'score': str(sub.get('score', 100))
+        }
+        if sub.get('note'):
+            payload['note'] = sub['note']
+
+        result = lms_client.call_api('MarkStudentSubmission', MARK_SUBMISSION_QUERY, {
+            'payload': payload
+        })
+
+        if 'data' in result:
+            results.append({
+                'id': sub['id'],
+                'success': True,
+                'result': result['data']['studentHomework']['markStudentSubmission']
+            })
+        else:
+            error = result.get('errors', [{'message': 'Unknown error'}])[0]['message']
+            results.append({
+                'id': sub['id'],
+                'success': False,
+                'error': error
+            })
+
+    success_count = sum(1 for r in results if r['success'])
+    return jsonify({
+        'success': True,
+        'total': len(submissions),
+        'success_count': success_count,
+        'results': results
+    })
 
 
 if __name__ == '__main__':
