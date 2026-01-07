@@ -4,39 +4,71 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LMS Auto Comment Tool</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --primary-light: #818cf8;
+            --primary: #2563EB;
+            --primary-dark: #1D4ED8;
+            --primary-light: #3B82F6;
+            --primary-lighter: #DBEAFE;
             --success: #10b981;
             --success-dark: #059669;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
+            --success-light: #D1FAE5;
+            --warning: #F59E0B;
+            --warning-light: #FEF3C7;
+            --danger: #EF4444;
+            --danger-light: #FEE2E2;
+            --gray-50: #F8FAFC;
+            --gray-100: #F1F5F9;
+            --gray-200: #E2E8F0;
+            --gray-300: #CBD5E1;
+            --gray-400: #94A3B8;
+            --gray-500: #64748B;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1E293B;
+            --gray-900: #0F172A;
             --radius: 12px;
-            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            --radius-sm: 8px;
+            --radius-lg: 16px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -1px rgba(0,0,0,0.04);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.03);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 10px 10px -5px rgba(0,0,0,0.03);
+            --transition: 200ms ease;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        body { 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--gray-100);
             min-height: 100vh;
             color: var(--gray-800);
+            line-height: 1.5;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Poppins', 'Inter', sans-serif;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        /* Icon styles */
+        .icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .icon-sm {
+            width: 16px;
+            height: 16px;
+        }
+
+        .icon-lg {
+            width: 24px;
+            height: 24px;
         }
 
         .app-container {
@@ -47,36 +79,36 @@
 
         /* Header */
         .header {
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
+            background: white;
             border-radius: var(--radius);
-            padding: 20px 28px;
+            padding: 16px 24px;
             margin-bottom: 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: var(--shadow-lg);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-200);
         }
 
         .header-left {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 14px;
         }
 
         .logo {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, var(--primary) 0%, #a855f7 100%);
-            border-radius: 12px;
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            color: white;
         }
 
         .header h1 {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 700;
             color: var(--gray-900);
         }
@@ -91,11 +123,13 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 16px;
-            background: var(--gray-100);
+            padding: 8px 14px;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
             border-radius: 20px;
             font-size: 13px;
             font-weight: 500;
+            color: var(--gray-600);
         }
 
         .status-dot {
@@ -103,9 +137,13 @@
             height: 8px;
             border-radius: 50%;
             background: var(--gray-400);
+            transition: background var(--transition);
         }
 
-        .status-dot.online { background: var(--success); }
+        .status-dot.online {
+            background: var(--success);
+            box-shadow: 0 0 0 3px var(--success-light);
+        }
 
         /* Navigation Tabs */
         .nav-tabs {
@@ -113,7 +151,8 @@
             gap: 4px;
             background: var(--gray-100);
             padding: 4px;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--gray-200);
         }
 
         .nav-tabs a {
@@ -123,15 +162,16 @@
             color: var(--gray-600);
             font-size: 13px;
             font-weight: 500;
-            transition: all 0.2s ease;
+            transition: all var(--transition);
             display: flex;
             align-items: center;
             gap: 6px;
+            cursor: pointer;
         }
 
         .nav-tabs a:hover {
             color: var(--gray-800);
-            background: rgba(255,255,255,0.5);
+            background: white;
         }
 
         .nav-tabs a.active {
@@ -142,11 +182,16 @@
 
         /* Cards */
         .card {
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
+            background: white;
             border-radius: var(--radius);
-            box-shadow: var(--shadow-lg);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-200);
             overflow: hidden;
+            transition: box-shadow var(--transition);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
         }
 
         .card-header {
@@ -242,18 +287,23 @@
             gap: 8px;
             padding: 10px 18px;
             border: none;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             font-size: 14px;
             font-weight: 500;
             font-family: inherit;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all var(--transition);
             white-space: nowrap;
         }
 
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+
+        .btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--primary-lighter);
         }
 
         .btn-primary {
@@ -263,7 +313,6 @@
 
         .btn-primary:hover:not(:disabled) {
             background: var(--primary-dark);
-            transform: translateY(-1px);
             box-shadow: var(--shadow-md);
         }
 
@@ -274,7 +323,7 @@
 
         .btn-success:hover:not(:disabled) {
             background: var(--success-dark);
-            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
         }
 
         .btn-outline {
@@ -297,7 +346,7 @@
             width: 36px;
             height: 36px;
             padding: 0;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
         }
 
         .btn-block {
@@ -316,19 +365,19 @@
             border-radius: 10px;
             margin-bottom: 8px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all var(--transition);
             background: white;
         }
 
         .class-item:hover {
             border-color: var(--primary-light);
-            background: rgba(99, 102, 241, 0.02);
+            background: var(--primary-lighter);
         }
 
         .class-item.selected {
             border-color: var(--primary);
-            background: rgba(99, 102, 241, 0.05);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            background: var(--primary-lighter);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
         .class-item h3 {
@@ -357,11 +406,13 @@
             border: 1px solid var(--gray-200);
             border-radius: 10px;
             padding: 16px;
-            transition: all 0.2s;
+            transition: all var(--transition);
+            cursor: default;
         }
 
         .student-card:hover {
-            box-shadow: var(--shadow);
+            box-shadow: var(--shadow-md);
+            border-color: var(--gray-300);
         }
 
         .student-card.has-comment {
@@ -421,33 +472,34 @@
         }
 
         .badge-success {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success);
+            background: var(--success-light);
+            color: var(--success-dark);
         }
 
         .badge-warning {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning);
+            background: var(--warning-light);
+            color: #B45309;
         }
 
         .badge-gray {
-            background: rgba(107, 114, 128, 0.1);
-            color: var(--gray-500);
+            background: var(--gray-100);
+            color: var(--gray-600);
         }
 
         .comment-box {
             background: var(--gray-50);
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             padding: 12px;
             margin-top: 12px;
             font-size: 13px;
             color: var(--gray-700);
-            line-height: 1.5;
+            line-height: 1.6;
+            border: 1px solid var(--gray-200);
         }
 
         .comment-box.ai-generated {
-            background: rgba(16, 185, 129, 0.08);
-            border: 1px solid rgba(16, 185, 129, 0.2);
+            background: var(--success-light);
+            border: 1px solid rgba(16, 185, 129, 0.3);
         }
 
         .comment-box-label {
@@ -465,18 +517,21 @@
         .comment-edit {
             width: 100%;
             min-height: 80px;
-            padding: 8px;
+            padding: 10px 12px;
             border: 1px solid var(--gray-200);
             border-radius: 6px;
             font-size: 13px;
             font-family: inherit;
             resize: vertical;
             background: white;
+            line-height: 1.5;
+            transition: border-color var(--transition), box-shadow var(--transition);
         }
 
         .comment-edit:focus {
             outline: none;
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-lighter);
         }
 
         .btn-icon {
@@ -485,28 +540,32 @@
             cursor: pointer;
             font-size: 14px;
             color: var(--gray-400);
-            padding: 2px 6px;
+            padding: 4px 8px;
             border-radius: 4px;
+            transition: all var(--transition);
         }
 
         .btn-icon:hover {
-            background: var(--gray-100);
+            background: var(--danger-light);
             color: var(--danger);
         }
 
         .btn-xs {
-            padding: 4px 8px;
-            font-size: 11px;
+            padding: 5px 10px;
+            font-size: 12px;
+            border-radius: 6px;
         }
 
         .btn-template {
-            background: var(--gray-100);
-            color: var(--gray-600);
+            background: var(--gray-50);
+            color: var(--gray-700);
             border: 1px solid var(--gray-200);
+            cursor: pointer;
         }
 
         .btn-template:hover {
-            background: var(--gray-200);
+            background: var(--gray-100);
+            border-color: var(--gray-300);
         }
 
         .btn-danger {
@@ -514,8 +573,9 @@
             color: white;
         }
 
-        .btn-danger:hover {
-            background: #dc2626;
+        .btn-danger:hover:not(:disabled) {
+            background: #DC2626;
+            box-shadow: var(--shadow-md);
         }
 
         .template-buttons {
@@ -758,8 +818,8 @@
 
         /* Summary Section */
         .summary-section {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
-            border: 1px solid rgba(99, 102, 241, 0.2);
+            background: var(--primary-lighter);
+            border: 1px solid rgba(37, 99, 235, 0.2);
             border-radius: 10px;
             padding: 16px;
             margin-bottom: 16px;
@@ -1036,22 +1096,32 @@
         <!-- Header -->
         <header class="header">
             <div class="header-left">
-                <div class="logo">🎓</div>
+                <div class="logo" aria-hidden="true">
+                    <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                </div>
                 <div>
                     <h1>LMS Auto Comment</h1>
                     <p>Tự động nhận xét học sinh bằng AI</p>
                 </div>
             </div>
-            <div class="header-status" id="loginStatus">
-                <span class="status-dot" id="statusDot"></span>
+            <div class="header-status" id="loginStatus" role="status" aria-live="polite">
+                <span class="status-dot" id="statusDot" aria-hidden="true"></span>
                 <span id="statusText">Chưa đăng nhập</span>
             </div>
-            <nav class="nav-tabs">
-                <a href="/" class="active">
-                    💬 Nhận xét
+            <nav class="nav-tabs" role="navigation" aria-label="Điều hướng chính">
+                <a href="/" class="active" aria-current="page">
+                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                    Nhận xét
                 </a>
                 <a href="/homework">
-                    📝 Chấm BTVN
+                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                    </svg>
+                    Chấm BTVN
                 </a>
             </nav>
         </header>
@@ -1059,51 +1129,70 @@
         <!-- Config Card -->
         <div class="card" style="margin-bottom: 20px;">
             <div class="card-header">
-                <h2>⚙️ Cấu hình</h2>
-                <button class="btn btn-sm btn-outline" onclick="toggleConfig()">
+                <h2>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    Cấu hình
+                </h2>
+                <button class="btn btn-sm btn-outline" onclick="toggleConfig()" aria-expanded="true" aria-controls="configBody">
                     <span id="configToggleText">Ẩn</span>
                 </button>
             </div>
             <div class="card-body" id="configBody">
                 <div class="config-grid">
                     <div class="config-section">
-                        <h3>🔐 Đăng nhập LMS</h3>
+                        <h3>
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                            Đăng nhập LMS
+                        </h3>
                         <div class="form-group">
-                            <label class="form-label">Email MindX</label>
-                            <input type="email" class="form-input" id="email" placeholder="email@mindx.net.vn">
+                            <label class="form-label" for="email">Email MindX</label>
+                            <input type="email" class="form-input" id="email" placeholder="email@mindx.net.vn" autocomplete="email">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Mật khẩu</label>
-                            <input type="password" class="form-input" id="password" placeholder="••••••••">
+                            <label class="form-label" for="password">Mật khẩu</label>
+                            <input type="password" class="form-input" id="password" placeholder="••••••••" autocomplete="current-password">
                         </div>
                         <button class="btn btn-primary btn-block" onclick="login()">
-                            🔓 Đăng nhập
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+                            </svg>
+                            Đăng nhập
                         </button>
                     </div>
                     <div class="config-section">
-                        <h3>🤖 Cấu hình Auto Comment</h3>
+                        <h3>
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            Cấu hình Auto Comment
+                        </h3>
                         <div class="form-group">
-                            <label class="form-label">OpenRouter API Key</label>
+                            <label class="form-label" for="openrouterKey">OpenRouter API Key</label>
                             <input type="password" class="form-input" id="openrouterKey" value="{{ openrouter_key }}" placeholder="sk-or-...">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Model AI (Thường dùng)</label>
+                            <label class="form-label" for="aiModel">Model AI (Thường dùng)</label>
                             <select class="form-select" id="aiModel" onchange="toggleCustomModel()">
                                 {% for model in ai_models %}
                                 <option value="{{ model.id }}" {% if model.id == ai_model and not custom_model_id %}selected{% endif %}>{{ model.name }}</option>
                                 {% endfor %}
-                                <option value="custom" {% if custom_model_id %}selected{% endif %}>🔧 Mô hình khác...</option>
+                                <option value="custom" {% if custom_model_id %}selected{% endif %}>Mô hình khác...</option>
                             </select>
                         </div>
                         <div class="form-group" id="customModelGroup" style="display: {% if custom_model_id %}block{% else %}none{% endif %};">
-                            <label class="form-label">Model tự chọn (Custom Model ID)</label>
+                            <label class="form-label" for="customModelId">Model tự chọn (Custom Model ID)</label>
                             <input type="text" class="form-input" id="customModelId" value="{{ custom_model_id }}" placeholder="VD: xiaomi/mimo-v2-flash:free">
                             <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">
-                                Nhập Model ID từ <a href="https://openrouter.ai/models" target="_blank">OpenRouter Models</a>
+                                Nhập Model ID từ <a href="https://openrouter.ai/models" target="_blank" rel="noopener">OpenRouter Models</a>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Độ dài nhận xét</label>
+                            <label class="form-label" for="commentLength">Độ dài nhận xét</label>
                             <select class="form-select" id="commentLength">
                                 <option value="short">Ngắn (2-3 câu)</option>
                                 <option value="medium" selected>Vừa (3-4 câu)</option>
@@ -1111,11 +1200,14 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Prompt bổ sung (tùy chọn)</label>
+                            <label class="form-label" for="customPrompt">Prompt bổ sung (tùy chọn)</label>
                             <textarea class="form-input" id="customPrompt" placeholder="VD: Nhấn mạnh về BTVN, khen nhiều hơn..." style="min-height: 60px;"></textarea>
                         </div>
                         <button class="btn btn-success btn-block" onclick="saveConfig()">
-                            💾 Lưu cấu hình
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                            </svg>
+                            Lưu cấu hình
                         </button>
                     </div>
                 </div>
@@ -1128,17 +1220,30 @@
             <div class="sidebar">
                 <div class="card">
                     <div class="card-header">
-                        <h2>📚 Danh sách lớp</h2>
-                        <button class="btn btn-sm btn-outline" onclick="loadClasses()">🔄</button>
+                        <h2>
+                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                            </svg>
+                            Danh sách lớp
+                        </h2>
+                        <button class="btn btn-sm btn-outline" onclick="loadClasses()" aria-label="Tải lại danh sách lớp">
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </button>
                     </div>
                     <div class="card-body">
-                        <div class="loading" id="classLoading">
-                            <div class="spinner"></div>
+                        <div class="loading" id="classLoading" role="status" aria-live="polite">
+                            <div class="spinner" aria-hidden="true"></div>
                             <div class="loading-text">Đang tải...</div>
                         </div>
-                        <div class="class-list" id="classList">
+                        <div class="class-list" id="classList" role="listbox" aria-label="Danh sách lớp học">
                             <div class="empty-state">
-                                <div class="empty-state-icon">📋</div>
+                                <div class="empty-state-icon" aria-hidden="true">
+                                    <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:48px;height:48px;opacity:0.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                    </svg>
+                                </div>
                                 <div class="empty-state-text">Đăng nhập để xem danh sách lớp</div>
                             </div>
                         </div>
@@ -1147,20 +1252,34 @@
 
                 <div class="card">
                     <div class="card-header">
-                        <h2>📅 Chọn buổi học</h2>
+                        <h2>
+                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            Chọn buổi học
+                        </h2>
                     </div>
                     <div class="card-body">
                         <div class="form-group">
+                            <label class="form-label sr-only" for="slotSelect">Chọn buổi học</label>
                             <select class="form-select" id="slotSelect" onchange="loadSlotStudents()">
                                 <option value="">-- Chọn buổi --</option>
                             </select>
                         </div>
                         <div class="summary-section">
                             <div class="form-group">
-                                <label class="form-label">📝 Tổng kết buổi học</label>
+                                <label class="form-label" for="sessionSummary">
+                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:inline;vertical-align:middle;margin-right:4px">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                    Tổng kết buổi học
+                                </label>
                                 <textarea class="form-input" id="sessionSummary" placeholder="VD: Hoàn thành Game SpaceShooter, học về vòng lặp..."></textarea>
                                 <button class="btn btn-sm btn-outline" onclick="submitSummary()" id="submitSummaryBtn" style="margin-top: 8px;" disabled>
-                                    💾 Lưu tổng kết
+                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                                    </svg>
+                                    Lưu tổng kết
                                 </button>
                             </div>
                         </div>
@@ -1171,9 +1290,14 @@
             <!-- Main Content -->
             <div class="card">
                 <div class="card-header">
-                    <h2>👨‍🎓 Danh sách học sinh</h2>
+                    <h2>
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                        Danh sách học sinh
+                    </h2>
                     <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="text" class="form-input" id="searchStudent" placeholder="🔍 Tìm học sinh..." style="width: 150px; padding: 6px 10px; font-size: 12px;" oninput="filterStudents()">
+                        <input type="text" class="form-input" id="searchStudent" placeholder="Tìm học sinh..." style="width: 150px; padding: 6px 10px; font-size: 12px;" oninput="filterStudents()">
                         <select class="form-select" id="filterStatus" style="padding: 6px 10px; font-size: 12px;" onchange="filterStudents()">
                             <option value="all">Tất cả</option>
                             <option value="present">Có mặt</option>
@@ -1181,33 +1305,57 @@
                             <option value="commented">Đã nhận xét</option>
                             <option value="not_commented">Chưa nhận xét</option>
                         </select>
-                        <button class="btn btn-sm btn-outline" onclick="refreshClassData()" title="Refresh">🔄</button>
-                        <button class="btn btn-sm btn-outline" onclick="exportToCSV()" title="Export CSV">📥</button>
+                        <button class="btn btn-sm btn-outline" onclick="refreshClassData()" title="Refresh">
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="exportToCSV()" title="Export CSV">
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                        </button>
                         <span class="badge badge-gray" id="studentCount">0 học sinh</span>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="stats-bar" id="statsBar" style="display: none;">
                         <div class="stat-item">
-                            👥 Tổng: <span class="stat-value" id="statTotal">0</span>
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                            Tổng: <span class="stat-value" id="statTotal">0</span>
                         </div>
                         <div class="stat-item">
-                            ✓ Có mặt: <span class="stat-value" id="statPresent">0</span>
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Có mặt: <span class="stat-value" id="statPresent">0</span>
                         </div>
                         <div class="stat-item">
-                            📝 Đã tạo: <span class="stat-value" id="statGenerated">0</span>
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                            Đã tạo: <span class="stat-value" id="statGenerated">0</span>
                         </div>
                         <div class="stat-item">
-                            ✅ Đã submit: <span class="stat-value" id="statSubmitted">0</span>
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            Đã submit: <span class="stat-value" id="statSubmitted">0</span>
                         </div>
                     </div>
-                    <div class="loading" id="studentLoading">
-                        <div class="spinner"></div>
+                    <div class="loading" id="studentLoading" role="status" aria-live="polite">
+                        <div class="spinner" aria-hidden="true"></div>
                         <div class="loading-text">Đang tải...</div>
                     </div>
-                    <div class="student-grid" id="studentList">
+                    <div class="student-grid" id="studentList" role="list" aria-label="Danh sách học sinh">
                         <div class="empty-state">
-                            <div class="empty-state-icon">👋</div>
+                            <div class="empty-state-icon" aria-hidden="true">
+                                <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:48px;height:48px;opacity:0.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                                </svg>
+                            </div>
                             <div class="empty-state-text">Chọn lớp và buổi học để xem học sinh</div>
                         </div>
                     </div>
@@ -1220,13 +1368,22 @@
                 </div>
                 <div class="action-bar">
                     <button class="btn btn-primary" onclick="autoCommentAll()" id="autoCommentBtn" disabled>
-                        🤖 Auto nhận xét tất cả
+                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                        </svg>
+                        Auto nhận xét tất cả
                     </button>
                     <button class="btn btn-success" onclick="showConfirmModal()" id="submitAllBtn" disabled>
-                        📤 Submit tất cả
+                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                        </svg>
+                        Submit tất cả
                     </button>
                     <button class="btn btn-outline" onclick="copyAllZalo()" id="copyZaloBtn" disabled>
-                        📋 Copy Zalo tất cả
+                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                        </svg>
+                        Copy Zalo tất cả
                     </button>
                 </div>
             </div>
@@ -1631,17 +1788,21 @@
         function renderClassList(classes) {
             const list = document.getElementById('classList');
             list.innerHTML = '';
-            
+
             if (classes.length === 0) {
                 list.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-icon" aria-hidden="true">
+                            <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:48px;height:48px;opacity:0.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                        </div>
                         <div class="empty-state-text">Không có lớp nào</div>
                     </div>
                 `;
                 return;
             }
-            
+
             classes.forEach(cls => {
                 const div = document.createElement('div');
                 div.className = 'class-item';
@@ -1659,15 +1820,15 @@
             document.querySelectorAll('.class-item').forEach(el => el.classList.remove('selected'));
             element.classList.add('selected');
             selectedClass = cls;
-            
+
             try {
                 const resp = await fetch(`/api/class/${cls.id}`);
                 const data = await resp.json();
                 classData = data.class;
-                
+
                 const slotSelect = document.getElementById('slotSelect');
                 slotSelect.innerHTML = '<option value="">-- Chọn buổi --</option>';
-                
+
                 classData.slots.forEach((slot, idx) => {
                     const date = new Date(slot.date).toLocaleDateString('vi-VN');
                     const opt = document.createElement('option');
@@ -1675,16 +1836,20 @@
                     opt.textContent = `Buổi ${slot.index + 1} - ${date}`;
                     slotSelect.appendChild(opt);
                 });
-                
+
                 // Reset student list
                 document.getElementById('studentList').innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon">📅</div>
+                        <div class="empty-state-icon" aria-hidden="true">
+                            <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:48px;height:48px;opacity:0.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
                         <div class="empty-state-text">Chọn buổi học để xem học sinh</div>
                     </div>
                 `;
                 document.getElementById('studentCount').textContent = '0 học sinh';
-                
+
                 // Auto select latest uncommented slot
                 autoSelectLatestSlot();
             } catch (e) {
@@ -1727,25 +1892,29 @@
         function renderStudents(studentList = null) {
             const list = document.getElementById('studentList');
             const toRender = studentList || students;
-            
+
             if (toRender.length === 0) {
                 list.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon">👤</div>
+                        <div class="empty-state-icon" aria-hidden="true">
+                            <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:48px;height:48px;opacity:0.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                            </svg>
+                        </div>
                         <div class="empty-state-text">${studentList ? 'Không tìm thấy học sinh' : 'Chưa có học sinh trong buổi này'}</div>
                     </div>
                 `;
                 return;
             }
-            
+
             list.innerHTML = '';
-            
+
             toRender.forEach((att, idx) => {
                 const hasComment = att.commentByAreas?.some(a => a.type === 'CONTENT' && a.content);
                 const existingComment = att.commentByAreas?.find(a => a.type === 'CONTENT')?.content || '';
                 const generatedComment = generatedComments[att.student.id] || '';
                 const initials = att.student.fullName.split(' ').slice(-2).map(n => n[0]).join('');
-                
+
                 // Check attendance status
                 const isPresent = att.status === 'ATTENDED' || att.status === 'LATE_ARRIVED';
                 const isLate = att.status === 'LATE_ARRIVED';
@@ -1761,7 +1930,7 @@
                     statusText = '📝 Vắng có phép';
                     statusClass = 'badge-gray';
                 }
-                
+
                 const div = document.createElement('div');
                 div.className = `student-card ${hasComment ? 'has-comment' : 'no-comment'}`;
                 div.innerHTML = `
@@ -1788,15 +1957,23 @@
                     ${generatedComment ? `
                         <div class="comment-box ai-generated">
                             <div class="comment-box-label">
-                                🤖 AI tạo
-                                <button class="btn-icon" onclick="deleteComment('${att.student.id}')" title="Xóa nhận xét">✕</button>
+                                <span>🤖 AI tạo</span>
+                                <button class="btn-icon" onclick="deleteComment('${att.student.id}')" title="Xóa nhận xét">
+                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
                             </div>
                             <textarea class="comment-edit" id="comment-${att.student.id}" oninput="updateComment('${att.student.id}', this.value)">${generatedComment.replace(/<[^>]*>/g, '')}</textarea>
                         </div>
                     ` : ''}
                     <div class="note-input">
                         <input type="text" class="form-input" id="note-${att.student.id}" placeholder="Ghi chú: học tập trung, hay chơi game..." value="${getLocalNote(att.student.id)}">
-                        <button class="btn btn-sm btn-outline" onclick="saveNote('${att.student.id}')">💾</button>
+                        <button class="btn btn-sm btn-outline" onclick="saveNote('${att.student.id}')">
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                            </svg>
+                        </button>
                     </div>
                     <div class="template-buttons">
                         <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'good')">👍 Tốt</button>
@@ -1807,17 +1984,28 @@
                     </div>
                     <div class="student-actions">
                         <button class="btn btn-sm btn-primary" onclick="generateSingle('${att.student.id}', '${att.student.fullName.replace(/'/g, "\\'")}', ${idx})" id="gen-btn-${att.student.id}">
-                            🤖 Tạo nhận xét
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                            </svg>
+                            Tạo nhận xét
                         </button>
                         ${generatedComment ? `
                             <button class="btn btn-sm btn-success" onclick="submitSingle('${att.student.id}', '${att._id}')">
-                                📤 Submit
+                                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                </svg>
+                                Submit
                             </button>
                             <button class="btn btn-sm btn-outline" onclick="copyZaloComment('${att.student.fullName.replace(/'/g, "\\'")}', '${att.student.id}')">
-                                📋 Zalo
+                                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                                </svg>
+                                Zalo
                             </button>
                             <button class="btn btn-sm btn-danger" onclick="deleteComment('${att.student.id}')">
-                                🗑️
+                                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
                             </button>
                         ` : ''}
                     </div>
