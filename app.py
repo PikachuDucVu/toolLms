@@ -83,7 +83,7 @@ AI_MODELS = [
     {"id": "x-ai/grok-code-fast-1", "name": "Grok Code Fast (OpenRouter)", "provider": "openrouter"},
 ]
 
-ANTIGRAVITY_API_URL = "http://54.255.235.117:8317/v1/chat/completions"
+ANTIGRAVITY_API_URL = "http://13.250.104.165:8317/v1/chat/completions"
 
 def call_antigravity_api(prompt, model_id):
     """Call Antigravity/CLI-Proxy API"""
