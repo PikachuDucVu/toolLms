@@ -71,14 +71,12 @@ AI_MODELS = [
     {"id": "gemini-2.5-flash-lite", "name": "Gemini 2.5 Flash Lite", "provider": "antigravity"},
     {"id": "gemini-3-flash-preview", "name": "Gemini 3 Flash Preview", "provider": "antigravity"},
     {"id": "gemini-3-pro-preview", "name": "Gemini 3 Pro Preview", "provider": "antigravity"},
-    {"id": "gemini-3-pro-image-preview", "name": "Gemini 3 Pro Image Preview", "provider": "antigravity"},
     {"id": "gemini-claude-sonnet-4-5", "name": "Claude Sonnet 4.5 (via Gemini)", "provider": "antigravity"},
     {"id": "gemini-claude-sonnet-4-5-thinking", "name": "Claude Sonnet 4.5 Thinking (via Gemini)", "provider": "antigravity"},
     {"id": "gemini-claude-opus-4-5-thinking", "name": "Claude Opus 4.5 Thinking (via Gemini)", "provider": "antigravity"},
     {"id": "gpt-oss-120b-medium", "name": "GPT OSS 120B Medium", "provider": "antigravity"},
     # OpenRouter Models
     {"id": "google/gemini-2.0-flash-001", "name": "Gemini 2.0 Flash (OpenRouter)", "provider": "openrouter"},
-    {"id": "google/gemini-3-flash-preview", "name": "Gemini 3 Flash Preview (OpenRouter)", "provider": "openrouter"},
     {"id": "deepseek/deepseek-v3.2", "name": "DeepSeek V3.2 (OpenRouter)", "provider": "openrouter"},
     {"id": "x-ai/grok-code-fast-1", "name": "Grok Code Fast (OpenRouter)", "provider": "openrouter"},
 ]
@@ -148,7 +146,7 @@ def generate_comment_with_ai(api_key, student_name, past_comments, notes, sessio
     
     config = load_config()
     # Prioritize passed model_id, then custom_model_id from config, then selected ai_model
-    model = model_id or config.get('custom_model_id') or config.get('ai_model', 'gemini-3-flash')
+    model = model_id or config.get('custom_model_id') or config.get('ai_model', 'gemini-3-flash-preview')
     
     # Lấy tên gọi ngắn (tên cuối)
     short_name = student_name.split()[-1] if student_name else "em"
@@ -222,7 +220,7 @@ def index():
     config = load_config()
     return render_template('index.html', 
                          openrouter_key=config.get('openrouter_key', ''),
-                         ai_model=config.get('ai_model', 'gemini-3-flash'),
+                         ai_model=config.get('ai_model', 'gemini-3-flash-preview'),
                          custom_model_id=config.get('custom_model_id', ''),
                          ai_models=AI_MODELS,
                          is_logged_in=lms_client.lms_token is not None)
@@ -355,7 +353,7 @@ def generate_comment():
     api_key = config.get('openrouter_key', '')
     
     # Check provider - Antigravity doesn't need API key
-    model_id = config.get('ai_model', 'gemini-3-flash')
+    model_id = config.get('ai_model', 'gemini-3-flash-preview')
     provider = get_model_provider(model_id)
     
     if provider != 'antigravity' and not api_key:

@@ -1171,7 +1171,7 @@
                             </svg>
                             Cấu hình Auto Comment
                         </h3>
-                        <div class="form-group">
+                        <div class="form-group" id="openrouterKeyGroup">
                             <label class="form-label" for="openrouterKey">OpenRouter API Key</label>
                             <input type="password" class="form-input" id="openrouterKey" value="{{ openrouter_key }}" placeholder="sk-or-...">
                         </div>
@@ -1179,9 +1179,9 @@
                             <label class="form-label" for="aiModel">Model AI (Thường dùng)</label>
                             <select class="form-select" id="aiModel" onchange="toggleCustomModel()">
                                 {% for model in ai_models %}
-                                <option value="{{ model.id }}" {% if model.id == ai_model and not custom_model_id %}selected{% endif %}>{{ model.name }}</option>
+                                <option value="{{ model.id }}" data-provider="{{ model.provider }}" {% if model.id == ai_model and not custom_model_id %}selected{% endif %}>{{ model.name }}</option>
                                 {% endfor %}
-                                <option value="custom" {% if custom_model_id %}selected{% endif %}>Mô hình khác...</option>
+                                <option value="custom" data-provider="openrouter" {% if custom_model_id %}selected{% endif %}>Mô hình khác...</option>
                             </select>
                         </div>
                         <div class="form-group" id="customModelGroup" style="display: {% if custom_model_id %}block{% else %}none{% endif %};">
@@ -1722,17 +1722,36 @@
             }
         }
 
-        // Toggle custom model input
+        // Toggle custom model input and OpenRouter API key visibility
         function toggleCustomModel() {
-            const aiModel = document.getElementById('aiModel').value;
+            const aiModelSelect = document.getElementById('aiModel');
+            const aiModel = aiModelSelect.value;
+            const selectedOption = aiModelSelect.options[aiModelSelect.selectedIndex];
+            const provider = selectedOption.getAttribute('data-provider');
+
             const customGroup = document.getElementById('customModelGroup');
+            const openrouterKeyGroup = document.getElementById('openrouterKeyGroup');
+
+            // Toggle custom model input
             if (aiModel === 'custom') {
                 customGroup.style.display = 'block';
             } else {
                 customGroup.style.display = 'none';
                 document.getElementById('customModelId').value = '';
             }
+
+            // Toggle OpenRouter API key visibility based on provider
+            if (provider === 'antigravity') {
+                openrouterKeyGroup.style.display = 'none';
+            } else {
+                openrouterKeyGroup.style.display = 'block';
+            }
         }
+
+        // Initialize visibility on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleCustomModel();
+        });
 
         // Save config
         async function saveConfig() {
