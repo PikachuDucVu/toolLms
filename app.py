@@ -158,34 +158,61 @@ def generate_comment_with_ai(api_key, student_name, past_comments, notes, sessio
         'long': '4-5 câu chi tiết'
     }.get(comment_length, '3-4 câu')
     
-    prompt = f"""Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét cho học sinh gửi phụ huynh.
+    prompt = f"""Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét ngắn gọn cho học sinh gửi phụ huynh.
 
-Tên học sinh: {student_name} (gọi tắt: {short_name})
+HỌC SINH: {student_name} (gọi: {short_name})
+NỘI DUNG BUỔI HỌC: {session_summary or 'Thực hành lập trình'}
+NHẬN XÉT BUỔI TRƯỚC: {past_comments if past_comments else 'Buổi đầu tiên'}
+GHI CHÚ BUỔI NÀY: {notes if notes else 'Học bình thường, không có gì đặc biệt'}
 
-Nội dung buổi học hôm nay: {session_summary or 'Thực hành lập trình'}
+HƯỚNG DẪN VIẾT:
+1. Viết {length_guide}, mỗi câu nối tiếp tự nhiên
+2. CẤU TRÚC BẮT BUỘC theo thứ tự:
+   - Câu 1: Đi học đúng giờ/muộn + tuân thủ nội quy (nếu có)
+   - Câu 2-3: Tập trung nghe giảng + thao tác lập trình (nhanh/chậm/có vướng mắc)
+   - Câu cuối: BTVN (đầy đủ/chưa làm) + động viên hoặc nhắc nhở
 
-Nhận xét các buổi trước:
-{past_comments if past_comments else 'Buổi đầu tiên'}
+3. CÁCH DIỄN ĐẠT:
+   - Dùng "em" hoặc "{short_name}" để gọi học sinh
+   - Dùng "con" khi nói về học sinh với phụ huynh
+   - Nối câu bằng: "Trong lớp...", "Quá trình học...", "Tuy nhiên...", "Cần chú ý..."
+   - Kết thúc: "Cố gắng tiếp tục phát huy!" hoặc "Cần cố gắng hơn"
 
-Ghi chú của thầy về học sinh buổi này:
-{notes if notes else 'Không có ghi chú đặc biệt'}
+4. NẾU CÓ VẤN ĐỀ (từ ghi chú):
+   - Nói chuyện riêng → "đôi lúc em còn nói chuyện riêng trong giờ, cần chú ý khắc phục"
+   - Chơi game → "thầy hay phải nhắc nhở em tập trung, hạn chế làm việc riêng"
+   - Trầm/ít tương tác → "em hơi trầm, cần chú ý tương tác với lớp nhiều hơn"
+   - Code chậm → "tốc độ code còn chậm, cần luyện tập thêm"
+   - Thiếu BTVN → "em chưa hoàn thành BTVN, nhờ phụ huynh nhắc nhở con"
 
-YÊU CẦU VIẾT NHẬN XÉT:
-1. Viết {length_guide}, tự nhiên như giáo viên thật sự viết
-2. Đề cập các khía cạnh: đi học đúng giờ/muộn, tập trung trong lớp, thao tác lập trình, hoàn thành BTVN
-3. Nếu có ghi chú tiêu cực (hay chơi game, nói chuyện riêng...) thì nhắc nhở nhẹ nhàng
-4. Nếu có ghi chú tích cực (tập trung, làm bài nhanh...) thì khen ngợi
-5. Kết thúc bằng lời động viên hoặc nhắc nhở phù hợp
-6. Dùng "em" hoặc tên ngắn ({short_name}) để gọi học sinh
-7. Giọng văn thân thiện, chuyên nghiệp, không sáo rỗng
-{f"8. YÊU CẦU BỔ SUNG: {custom_prompt}" if custom_prompt else ""}
+5. BUỔI HỌC LÀM SẢN PHẨM CUỐI KHÓA (SPCK) - Từ buổi 9-10 trở đi:
+   Nếu nội dung buổi học có liên quan đến "sản phẩm cuối khóa", "SPCK", "thiết kế app", "tích hợp giao diện":
+   - Thay phần "thao tác lập trình" bằng nhận xét về TIẾN ĐỘ SẢN PHẨM
+   - Các mức tiến độ:
+     + Tốt: "nghiêm túc thực hiện làm SPCK, đạt kết quả đúng tiến độ đề ra"
+     + Khá: "hoàn thiện khá tốt phần thiết kế giao diện"
+     + Chậm: "tiến độ sản phẩm còn chậm, cần đẩy nhanh tiến độ"
+   - Mô tả cụ thể tiến độ (nếu có trong ghi chú):
+     + "em hoàn thành tốt các khâu thiết kế app"
+     + "đang áp dụng các giao diện vào phần code Python"
+     + "đã lập trình được đăng ký/đăng nhập, tích hợp giao diện màn hình Home"
+     + "chưa tích hợp được vào code"
+     + "các tính năng app chưa hoạt động"
+   - Kết thúc: "Cố gắng tiếp tục hoàn thiện thêm ở nhà" hoặc "Chú ý hoàn thiện tại nhà, tích hợp giao diện vào Python"
+   - KHÔNG đề cập BTVN trong các buổi làm SPCK (thay bằng "tiếp tục hoàn thiện sản phẩm ở nhà")
+{f"6. YÊU CẦU THÊM: {custom_prompt}" if custom_prompt else ""}
 
-VÍ DỤ NHẬN XÉT TỐT:
-- "Buổi hôm nay {short_name} đến lớp đúng giờ, tuân thủ tốt nội quy lớp học. Quá trình học em luôn tập trung nghe giảng, thao tác lập trình nhanh chóng, không gặp vướng mắc gì. Cố gắng tiếp tục phát huy ở các buổi học tới!"
-- "Buổi hôm nay em đi học hơi muộn so với giờ học. Trong lớp em luôn tập trung nghe giảng, thực hành bài tập khá tốt. Tuy nhiên em cần chú ý hoàn thành BTVN đầy đủ trước khi lên lớp."
-- "Trong buổi học này, em luôn tập trung nghe giảng, nắm vững kiến thức. Các thao tác thực hành em thực hiện nhanh chóng. Tuy nhiên đôi lúc em còn nói chuyện riêng trong giờ, cần chú ý khắc phục."
+VÍ DỤ NHẬN XÉT THÔNG THƯỜNG:
+- "Buổi hôm nay {short_name} đến lớp rất đúng giờ, tuân thủ tốt nội quy lớp học. Trong lớp em luôn tập trung nghe giảng, thao tác lập trình nhanh chóng, không gặp vướng mắc gì. Em hoàn thành BTVN đầy đủ. Cố gắng tiếp tục phát huy ở các buổi học tới!"
+- "Buổi hôm nay em đi học hơi muộn so với giờ học, cần chú ý. Trong lớp em luôn tập trung nghe giảng, thực hành bài tập khá tốt. Tuy nhiên em chưa hoàn thành BTVN đầy đủ, nhờ phụ huynh nhắc nhở con."
+- "Buổi học hôm nay em đến lớp đúng giờ. Quá trình học em luôn tập trung, thao tác lập trình rất tốt và có được điểm từ thầy. Tuy nhiên đôi lúc em còn nói chuyện riêng với bạn, cần chú ý khắc phục. Em hoàn thành BTVN đầy đủ."
 
-CHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG CẦN TIÊU ĐỀ HAY GIẢI THÍCH."""
+VÍ DỤ NHẬN XÉT BUỔI LÀM SPCK:
+- "Buổi hôm nay em vào lớp rất đúng giờ, thực hiện tốt nội quy lớp học. Trong lớp em rất nghiêm túc thực hiện làm SPCK, đạt kết quả đúng tiến độ, em hoàn thành tốt các khâu thiết kế app và đang áp dụng các giao diện vào phần code Python. Cố gắng tiếp tục hoàn thiện phần tích hợp ở nhà."
+- "Buổi hôm nay {short_name} đến lớp đúng giờ. Con hoàn thiện khá tốt phần thiết kế giao diện, tuy nhiên chưa tích hợp được vào code, tiến độ còn chậm so với lớp. Cần chú ý đẩy nhanh tiến độ và hoàn thiện tại nhà."
+- "Buổi hôm nay em đến lớp đúng giờ, tuân thủ tốt nội quy. Trong lớp em rất nghiêm túc thực hiện làm SPCK, em đã hoàn thiện được sản phẩm và đang xây dựng slide thuyết trình, tiến độ đạt với đề ra của lớp. Cố gắng tiếp tục hoàn thiện Slide tại nhà."
+
+CHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH."""
 
     # Call API based on provider
     provider = get_model_provider(model)
