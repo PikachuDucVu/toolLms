@@ -15,6 +15,12 @@ from lms_api import LMSClient
 # Initialize Flask app
 app = Flask(__name__)
 
+@app.after_request
+def add_no_cache(response):
+    if response.content_type and 'text/html' in response.content_type:
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return response
+
 # Initialize LMS client
 lms_client = LMSClient()
 
@@ -81,7 +87,7 @@ AI_MODELS = [
     {"id": "x-ai/grok-code-fast-1", "name": "Grok Code Fast (OpenRouter)", "provider": "openrouter"},
 ]
 
-ANTIGRAVITY_API_URL = "http://13.250.104.165:8317/v1/chat/completions"
+ANTIGRAVITY_API_URL = "https://ai.ducvu.io.vn/v1/chat/completions"
 
 def call_antigravity_api(prompt, model_id):
     """Call Antigravity/CLI-Proxy API"""

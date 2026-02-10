@@ -1484,13 +1484,40 @@
         async function refreshClassData() {
             if (!classData) return;
             showToast('Đang refresh...', 'info');
-            const slotIdx = selectedSlot?.index;
-            await selectClass(classData, document.querySelector('.class-item.selected'));
-            if (slotIdx !== undefined) {
-                document.getElementById('slotSelect').value = slotIdx;
-                loadSlotStudents();
+            const slotId = selectedSlot?._id;
+
+            try {
+                const resp = await fetch(`/api/class/${classData.id}`);
+                const data = await resp.json();
+                if (data.error) {
+                    showToast('Lỗi refresh: ' + data.error, 'error');
+                    return;
+                }
+                classData = data.class;
+
+                // Rebuild slot dropdown
+                const slotSelect = document.getElementById('slotSelect');
+                slotSelect.innerHTML = '<option value="">-- Chọn buổi --</option>';
+                classData.slots.forEach((slot, idx) => {
+                    const date = new Date(slot.date).toLocaleDateString('vi-VN');
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.textContent = `Buổi ${slot.index + 1} - ${date}`;
+                    slotSelect.appendChild(opt);
+                });
+
+                // Re-select the same slot
+                if (slotId) {
+                    const newIdx = classData.slots.findIndex(s => s._id === slotId);
+                    if (newIdx >= 0) {
+                        slotSelect.value = newIdx;
+                        loadSlotStudents();
+                    }
+                }
+                showToast('Đã refresh dữ liệu!');
+            } catch (e) {
+                showToast('Lỗi refresh dữ liệu', 'error');
             }
-            showToast('Đã refresh dữ liệu!');
         }
 
         // Export to CSV
@@ -1565,28 +1592,52 @@
         // Auto select latest uncommented slot
         function autoSelectLatestSlot() {
             if (!classData || !classData.slots) return;
-            
+
             const now = new Date();
-            let latestSlotIdx = -1;
-            
+
+            // Find the latest slot that has happened (closest to today)
+            let latestIdx = -1;
             for (let i = classData.slots.length - 1; i >= 0; i--) {
-                const slot = classData.slots[i];
-                const slotDate = new Date(slot.date);
-                if (slotDate <= now && slot.studentAttendance?.length > 0) {
-                    const hasUncommented = slot.studentAttendance.some(s => 
-                        (s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED') &&
-                        !s.commentByAreas?.some(a => a.type === 'CONTENT' && a.content)
-                    );
-                    if (hasUncommented) {
-                        latestSlotIdx = i;
-                        break;
-                    }
+                const slotDate = new Date(classData.slots[i].date);
+                if (slotDate <= now && classData.slots[i].studentAttendance?.length > 0) {
+                    latestIdx = i;
+                    break;
                 }
             }
-            
-            if (latestSlotIdx >= 0) {
-                document.getElementById('slotSelect').value = latestSlotIdx;
+
+            if (latestIdx < 0) return;
+
+            const latestSlot = classData.slots[latestIdx];
+            const latestNum = latestSlot.index + 1;
+
+            // Find the earliest uncommented slot (from latest backwards)
+            let uncommentedIdx = -1;
+            for (let i = latestIdx; i >= 0; i--) {
+                const slot = classData.slots[i];
+                if (!slot.studentAttendance?.length) continue;
+                const hasUncommented = slot.studentAttendance.some(s =>
+                    (s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED') &&
+                    !s.commentByAreas?.some(a => a.type === 'CONTENT' && a.content)
+                );
+                if (hasUncommented) {
+                    uncommentedIdx = i;
+                }
+            }
+
+            if (uncommentedIdx >= 0) {
+                const uncommentedNum = classData.slots[uncommentedIdx].index + 1;
+                document.getElementById('slotSelect').value = uncommentedIdx;
                 loadSlotStudents();
+                if (uncommentedIdx === latestIdx) {
+                    showToast(`Buổi gần nhất: ${latestNum} - chưa nhận xét`, 'info');
+                } else {
+                    showToast(`Buổi gần nhất: ${latestNum} ✓ | Buổi chưa nhận xét: ${uncommentedNum}`, 'warning');
+                }
+            } else {
+                // All slots are fully commented, select the latest
+                document.getElementById('slotSelect').value = latestIdx;
+                loadSlotStudents();
+                showToast(`Buổi gần nhất: ${latestNum} - Đã nhận xét đầy đủ!`, 'success');
             }
         }
 
