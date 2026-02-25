@@ -7,6 +7,7 @@ echo "=== Deploying to $SERVER ==="
 # Upload files
 echo "[1/3] Uploading files..."
 scp app.py "$SERVER:$REMOTE_DIR/app.py"
+scp lms_api.py "$SERVER:$REMOTE_DIR/lms_api.py"
 scp templates/index.html "$SERVER:$REMOTE_DIR/templates/index.html"
 scp templates/homework.html "$SERVER:$REMOTE_DIR/templates/homework.html"
 echo "  Done."

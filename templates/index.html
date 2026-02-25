@@ -1157,6 +1157,11 @@
                             <label class="form-label" for="password">Mật khẩu</label>
                             <input type="password" class="form-input" id="password" placeholder="••••••••" autocomplete="current-password">
                         </div>
+                        <div class="form-group">
+                            <label style="font-size: 12px; color: var(--gray-500); cursor: pointer;">
+                                <input type="checkbox" id="rememberLogin" checked> Ghi nhớ đăng nhập
+                            </label>
+                        </div>
                         <button class="btn btn-primary btn-block" onclick="login()">
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
@@ -1732,15 +1737,46 @@
         }
 
         // Login
+        // Auto-relogin wrapper
+        let _isRelogging = false;
+        async function apiFetch(url, options = {}) {
+            let resp = await fetch(url, options);
+            if (resp.status === 401 && !_isRelogging) {
+                const email = localStorage.getItem('lms_email');
+                const password = localStorage.getItem('lms_password');
+                if (email && password) {
+                    _isRelogging = true;
+                    showToast('Token hết hạn, đang đăng nhập lại...', 'error');
+                    try {
+                        const loginResp = await fetch('/api/login', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({email, password})
+                        });
+                        const loginData = await loginResp.json();
+                        if (loginData.success) {
+                            showToast('Đăng nhập lại thành công!');
+                            resp = await fetch(url, options);
+                        } else {
+                            showToast('Đăng nhập lại thất bại, vui lòng đăng nhập thủ công', 'error');
+                        }
+                    } finally {
+                        _isRelogging = false;
+                    }
+                }
+            }
+            return resp;
+        }
+
         async function login() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            
+
             if (!email || !password) {
                 showToast('Vui lòng nhập email và password', 'error');
                 return;
             }
-            
+
             try {
                 const resp = await fetch('/api/login', {
                     method: 'POST',
@@ -1748,8 +1784,12 @@
                     body: JSON.stringify({email, password})
                 });
                 const data = await resp.json();
-                
+
                 if (data.success) {
+                    if (document.getElementById('rememberLogin').checked) {
+                        localStorage.setItem('lms_email', email);
+                        localStorage.setItem('lms_password', password);
+                    }
                     updateLoginStatus(true);
                     showToast('Đăng nhập thành công!');
                     loadClasses();
@@ -1791,9 +1831,11 @@
             list.innerHTML = '';
             
             try {
-                const resp = await fetch('/api/classes');
+                const resp = await apiFetch('/api/classes');
                 if (!resp.ok) {
-                    showToast('Vui lòng đăng nhập lại', 'error');
+                    const errData = await resp.json().catch(() => null);
+                    const msg = errData?.error || 'Vui lòng đăng nhập lại';
+                    showToast(msg, 'error');
                     return;
                 }
                 const data = await resp.json();
@@ -2235,7 +2277,7 @@
                     summary: `<p>${summary}</p>`
                 };
                 
-                const resp = await fetch('/api/submit_comment', {
+                const resp = await apiFetch('/api/submit_comment', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
@@ -2284,7 +2326,7 @@
                     summary: `<p>${summary}</p>`
                 };
                 
-                const resp = await fetch('/api/submit_summary', {
+                const resp = await apiFetch('/api/submit_summary', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
@@ -2548,7 +2590,7 @@ MindX Technology School`;
                         summarySubmitted = true;
                     }
                     
-                    const resp = await fetch('/api/submit_comment', {
+                    const resp = await apiFetch('/api/submit_comment', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify(payload)
@@ -2583,6 +2625,12 @@ MindX Technology School`;
         }
 
         // Init
+        // Pre-fill login form from localStorage
+        const savedEmail = localStorage.getItem('lms_email');
+        const savedPassword = localStorage.getItem('lms_password');
+        if (savedEmail) document.getElementById('email').value = savedEmail;
+        if (savedPassword) document.getElementById('password').value = savedPassword;
+
         {% if is_logged_in %}
         updateLoginStatus(true);
         loadClasses();

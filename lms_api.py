@@ -16,7 +16,7 @@ PASSWORD = "Mindx@2019"
 FIREBASE_AUTH_URL = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
 FIREBASE_CUSTOM_TOKEN_URL = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key={FIREBASE_API_KEY}"
 BASE_API_URL = "https://base-api.mindx.edu.vn/"
-LMS_API_URL = "https://lms-api.mindx.vn/"
+LMS_API_URL = "https://lms-api.mindx.edu.vn/"
 
 # Token cache file
 TOKEN_CACHE_FILE = "token_cache.json"

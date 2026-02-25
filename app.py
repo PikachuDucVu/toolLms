@@ -307,9 +307,9 @@ def get_classes():
     }
     
     result = lms_client.call_api("GetClasses", query, variables)
-    
+
     if "error" in result:
-        return jsonify({"error": result["error"]}), 401
+        return jsonify({"error": result["error"]}), result.get("status", 401)
     
     if "errors" in result:
         return jsonify({"error": result["errors"][0].get("message", "Unknown error")}), 400
