@@ -235,7 +235,10 @@ CHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH."""
 
 @app.route('/homework')
 def homework_page():
-    return render_template('homework.html')
+    config = load_config()
+    return render_template('homework.html',
+                         ai_models=AI_MODELS,
+                         ai_model=config.get('ai_model', 'claude-sonnet-4-6'))
 
 
 @app.route('/')
@@ -279,6 +282,8 @@ def save_config_api():
 
 @app.route('/api/classes', methods=['GET'])
 def get_classes():
+    from datetime import datetime, timedelta, timezone
+
     query = """query GetClasses($pageIndex: Int!, $itemsPerPage: Int!, $statusIn: [String]) {
         classes(payload: {
             pageIndex: $pageIndex,
@@ -299,23 +304,38 @@ def get_classes():
             pagination { total }
         }
     }"""
-    
+
     variables = {
         "pageIndex": 0,
         "itemsPerPage": 50,
-        "statusIn": ["RUNNING"]
+        "statusIn": ["RUNNING", "FINISHED"]
     }
-    
+
     result = lms_client.call_api("GetClasses", query, variables)
 
     if "error" in result:
         return jsonify({"error": result["error"]}), result.get("status", 401)
-    
+
     if "errors" in result:
         return jsonify({"error": result["errors"][0].get("message", "Unknown error")}), 400
-    
+
     classes = result.get("data", {}).get("classes", {}).get("data", [])
-    return jsonify({"classes": classes})
+
+    # Filter: keep RUNNING + FINISHED within last 7 days
+    one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    filtered = []
+    for cls in classes:
+        if cls.get("status") == "RUNNING":
+            filtered.append(cls)
+        elif cls.get("status") == "FINISHED" and cls.get("endDate"):
+            try:
+                end = datetime.fromisoformat(cls["endDate"].replace("Z", "+00:00"))
+                if end >= one_week_ago:
+                    filtered.append(cls)
+            except:
+                pass
+
+    return jsonify({"classes": filtered})
 
 
 @app.route('/api/class/<class_id>', methods=['GET'])
@@ -802,6 +822,101 @@ def batch_mark_homework():
         'success_count': success_count,
         'results': results
     })
+
+
+@app.route('/api/homework/ai-grade', methods=['POST'])
+def ai_grade_homework():
+    """Chấm bài tập bằng AI - phân tích hình ảnh bài nộp"""
+    from urllib.parse import quote
+    import re
+
+    data = request.json
+    attachments = data.get('attachments', [])
+    lesson_name = data.get('lesson_name', '')
+    student_name = data.get('student_name', '')
+    model_id = data.get('model_id', '')
+
+    config = load_config()
+    model = model_id or config.get('ai_model', 'claude-sonnet-4-6')
+
+    # Get presigned URLs for image attachments
+    image_urls = []
+    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'}
+
+    for att in attachments:
+        ext = ''
+        if '.' in att:
+            ext = '.' + att.rsplit('.', 1)[-1].lower()
+        if ext in image_extensions:
+            url = f"https://resources.mindx.edu.vn/api/v1/get-presigned-url?key={quote(att, safe='')}"
+            try:
+                resp = requests.get(url, timeout=10)
+                if resp.status_code == 200:
+                    presigned_data = resp.json()
+                    if presigned_data.get('success'):
+                        image_urls.append(presigned_data.get('url'))
+            except:
+                pass
+
+    if not image_urls and not attachments:
+        return jsonify({'error': 'Không có tệp đính kèm để chấm'}), 400
+
+    # Build prompt
+    file_list = ', '.join(att.split('/')[-1] for att in attachments)
+    prompt_text = f"""Bạn là giáo viên chấm bài tập lập trình cho học sinh tại MindX Technology School.
+
+Bài học: {lesson_name}
+Học sinh: {student_name}
+Tệp nộp: {file_list}
+
+Hãy đánh giá bài làm của học sinh dựa trên hình ảnh đính kèm.
+Tiêu chí chấm:
+- Hoàn thành yêu cầu bài tập (có làm đúng theo đề bài không)
+- Chất lượng code/project (gọn gàng, logic)
+- Sáng tạo (có thêm tính năng, trang trí riêng không)
+
+Cho điểm từ 0 đến 100 và nhận xét ngắn gọn bằng tiếng Việt (2-3 câu).
+
+Trả về kết quả CHÍNH XÁC theo định dạng JSON:
+{{"score": <điểm_số>, "note": "<nhận_xét>"}}
+Chỉ trả về JSON, không thêm gì khác."""
+
+    # Build multimodal content
+    if image_urls:
+        content = [{"type": "text", "text": prompt_text}]
+        for url in image_urls:
+            content.append({"type": "image_url", "image_url": {"url": url}})
+    else:
+        content = prompt_text
+
+    try:
+        resp = requests.post(
+            ANTIGRAVITY_API_URL,
+            headers={"Content-Type": "application/json"},
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": content}]
+            },
+            timeout=120
+        )
+
+        if resp.status_code == 200:
+            ai_response = resp.json()["choices"][0]["message"]["content"]
+            # Parse JSON from response
+            json_match = re.search(r'\{[^{}]*"score"\s*:\s*\d+[^{}]*\}', ai_response)
+            if json_match:
+                result = json.loads(json_match.group())
+                return jsonify({
+                    'success': True,
+                    'score': min(100, max(0, int(result.get('score', 100)))),
+                    'note': result.get('note', '')
+                })
+            else:
+                return jsonify({'error': 'AI không trả về kết quả hợp lệ', 'raw': ai_response}), 400
+        else:
+            return jsonify({'error': f'AI lỗi: {resp.text[:200]}'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

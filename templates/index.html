@@ -1870,7 +1870,7 @@
                 const div = document.createElement('div');
                 div.className = 'class-item';
                 div.innerHTML = `
-                    <h3>${cls.name}</h3>
+                    <h3>${cls.name}${cls.status === 'FINISHED' ? ' <span style="font-size:11px;color:var(--gray-400);font-weight:400;">(Đã kết thúc)</span>' : ''}</h3>
                     <p>${cls.course?.name || ''} • ${cls.slots?.length || 0} buổi</p>
                 `;
                 div.onclick = () => selectClass(cls, div);

@@ -717,6 +717,11 @@
                         <option value="MARKED">Đã chấm</option>
                         <option value="">Tất cả</option>
                     </select>
+                    <select class="form-select" id="aiModel">
+                        {% for model in ai_models %}
+                        <option value="{{ model.id }}" {% if model.id == ai_model %}selected{% endif %}>{{ model.name }}</option>
+                        {% endfor %}
+                    </select>
                     <button class="btn btn-ghost btn-sm" onclick="loadHomework()">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                         Làm mới
@@ -741,6 +746,14 @@
                     <button class="btn btn-warning btn-sm" onclick="markAllPending()">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                         Chấm tất cả 100
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="aiGradeSelected()" id="aiGradeSelectedBtn" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                        AI Chấm đã chọn (<span id="aiSelectedCount">0</span>)
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="aiGradeAllPending()">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                        AI Chấm tất cả
                     </button>
                 </div>
             </div>
@@ -820,7 +833,7 @@
                 data.classes.forEach(cls => {
                     const opt = document.createElement('option');
                     opt.value = cls.id;
-                    opt.textContent = cls.name;
+                    opt.textContent = cls.name + (cls.status === 'FINISHED' ? ' (Đã kết thúc)' : '');
                     select.appendChild(opt);
                 });
             } catch (e) {
@@ -934,24 +947,27 @@
                     <tr data-id="${sub.id}">
                         <td class="checkbox-cell">
                             <input type="checkbox" class="select-checkbox row-checkbox"
-                                   value="${sub.id}" onchange="toggleSelect('${sub.id}')"
-                                   ${isMarked ? 'disabled' : ''}>
+                                   value="${sub.id}" onchange="toggleSelect('${sub.id}')">
                         </td>
                         <td class="student-name">${student.displayName || 'Unknown'}</td>
                         <td class="lesson-name">${lesson.name || 'Unknown'}</td>
                         <td>${filesHtml || '<span style="color: var(--gray-400);">Không có tệp</span>'}</td>
                         <td><span class="badge ${statusClass}">${statusText}</span></td>
                         <td>
-                            ${isMarked ? `<span class="score-display">${sub.score}</span>` :
-                                `<input type="number" class="score-input" id="score-${sub.id}" value="100" min="0" max="100">`}
+                            <input type="number" class="score-input" id="score-${sub.id}" value="${isMarked ? sub.score : 100}" min="0" max="100">
                         </td>
                         <td>
-                            ${!isMarked ? `
+                            <div style="display: flex; gap: 6px;">
                                 <button class="btn btn-success btn-sm" onclick="markSingle('${sub.id}')">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
                                     Chấm
                                 </button>
-                            ` : '<span style="color: var(--gray-400);">-</span>'}
+                                <button class="btn btn-primary btn-sm" id="ai-btn-${sub.id}" onclick="aiGradeSingle('${sub.id}')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                                    AI
+                                </button>
+                            </div>
+                        </td>
                         </td>
                     </tr>
                 `;
@@ -1011,9 +1027,13 @@
 
         function updateSelectedCount() {
             const btn = document.getElementById('markSelectedBtn');
+            const aiBtn = document.getElementById('aiGradeSelectedBtn');
             const countSpan = document.getElementById('selectedCount');
+            const aiCountSpan = document.getElementById('aiSelectedCount');
             btn.disabled = selectedIds.size === 0;
+            aiBtn.disabled = selectedIds.size === 0;
             countSpan.textContent = selectedIds.size;
+            aiCountSpan.textContent = selectedIds.size;
         }
 
         // Mark single
@@ -1121,6 +1141,114 @@
             } catch (e) {
                 showToast('Lỗi: ' + e.message, 'error');
             }
+        }
+
+        // AI Grade single submission
+        async function aiGradeSingle(id) {
+            const sub = allSubmissions.find(s => s.id === id);
+            if (!sub) return;
+
+            const student = students[sub.studentUid] || {};
+            const lesson = lessons[sub.lessonId] || {};
+            const attachments = sub.content?.attachments || [];
+            const modelId = document.getElementById('aiModel').value;
+
+            const btn = document.getElementById(`ai-btn-${id}`);
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;margin:0;"></div>';
+
+            try {
+                // Step 1: AI analyze
+                const aiResp = await fetch('/api/homework/ai-grade', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        attachments,
+                        lesson_name: lesson.name || '',
+                        student_name: student.displayName || '',
+                        model_id: modelId
+                    })
+                });
+                const aiData = await aiResp.json();
+
+                if (!aiData.success) {
+                    showToast(aiData.error || 'AI lỗi', 'error');
+                    return;
+                }
+
+                // Step 2: Mark with AI result
+                const markResp = await fetch('/api/homework/mark', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        id: id,
+                        score: aiData.score,
+                        note: aiData.note
+                    })
+                });
+                const markData = await markResp.json();
+
+                if (markData.success) {
+                    sub.status = 'MARKED';
+                    sub.score = aiData.score;
+                    showToast(`${student.displayName}: ${aiData.score} điểm - ${aiData.note}`);
+                    filterSubmissions();
+                    updateStats();
+                } else {
+                    showToast(markData.error || 'Lỗi chấm điểm', 'error');
+                }
+            } catch (e) {
+                showToast('Lỗi: ' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        // AI Grade selected submissions
+        async function aiGradeSelected() {
+            if (selectedIds.size === 0) {
+                showToast('Chưa chọn bài nào', 'error');
+                return;
+            }
+
+            const pending = Array.from(selectedIds);
+            if (!confirm(`AI sẽ chấm ${pending.length} bài đã chọn. Tiếp tục?`)) return;
+
+            showToast(`Đang AI chấm ${pending.length} bài...`, 'info');
+
+            let successCount = 0;
+            for (const id of pending) {
+                await aiGradeSingle(id);
+                const sub = allSubmissions.find(s => s.id === id);
+                if (sub && sub.status === 'MARKED') successCount++;
+            }
+
+            showToast(`AI đã chấm ${successCount}/${pending.length} bài!`);
+            selectedIds.clear();
+            updateSelectedCount();
+        }
+
+        // AI Grade all pending
+        async function aiGradeAllPending() {
+            const pending = allSubmissions.filter(s => s.status === 'SUBMITTED');
+            if (pending.length === 0) {
+                showToast('Không có bài chờ chấm', 'error');
+                return;
+            }
+
+            if (!confirm(`AI sẽ chấm ${pending.length} bài chờ. Tiếp tục?`)) return;
+
+            showToast(`Đang AI chấm ${pending.length} bài...`, 'info');
+
+            let successCount = 0;
+            for (const sub of pending) {
+                await aiGradeSingle(sub.id);
+                if (sub.status === 'MARKED') successCount++;
+            }
+
+            showToast(`AI đã chấm ${successCount}/${pending.length} bài!`);
         }
 
         // Init
