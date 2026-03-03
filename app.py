@@ -355,7 +355,22 @@ def get_class_detail(class_id):
                     _id
                     student { id fullName }
                     status
-                    commentByAreas { grade content commentAreaId type }
+                    commentByAreas {
+                        grade
+                        content
+                        commentAreaId
+                        type
+                        courseProcessDemoId
+                        courseProcessFinalEvaluationTitle
+                        courseProcessFinalEvaluationId
+                        demoQuestions {
+                            courseProcessDemoDetailId
+                            title
+                            result
+                            score
+                            maxScore
+                        }
+                    }
                 }
             }
         }
@@ -432,10 +447,360 @@ def generate_comment():
     return jsonify({"comment": comment})
 
 
+def random_score_above_75(max_score, step=0.25):
+    """Random a score above 75% of max_score with given step increments"""
+    import random
+    min_score = max_score * 0.75
+    # Round up to nearest step
+    min_score = (int(min_score / step) + 1) * step
+    if min_score > max_score:
+        min_score = max_score
+    # Generate possible scores
+    possible = []
+    current = min_score
+    while current <= max_score + 0.001:  # small epsilon for float comparison
+        possible.append(round(current, 2))
+        current += step
+    if not possible:
+        possible = [max_score]
+    return random.choice(possible)
+
+
+def build_final_demo_payload(data):
+    """Build payload for Final/Demo session (buổi 14) with randomized scores above 75%"""
+    import random
+
+    # Demo questions config with maxScore
+    demo_config = [
+        {"courseProcessDemoDetailId": "67074eb655bde44038504415", "title": " Tư duy máy tính, tư duy thuật toán", "maxScore": 1.5},
+        {"courseProcessDemoDetailId": "67074eb655bde44038504416", "title": " Tư duy sáng tạo", "maxScore": 1},
+        {"courseProcessDemoDetailId": "67074eb655bde44038504417", "title": " Kỹ năng giao tiếp, hợp tác", "maxScore": 0.5},
+        {"courseProcessDemoDetailId": "67074eb655bde44038504418", "title": " Giải quyết vấn đề", "maxScore": 1},
+        {"courseProcessDemoDetailId": "67074eb655bde44038504419", "title": " Kỹ năng sử dụng máy tính", "maxScore": 1},
+    ]
+
+    # Get custom scores from frontend (if provided)
+    custom_scores = data.get('custom_scores', None)  # list of {id, score}
+
+    # Randomize or use custom scores
+    demo_questions = []
+    for i, q in enumerate(demo_config):
+        if custom_scores and i < len(custom_scores):
+            score = float(custom_scores[i].get('score', 0))
+            # Clamp score to valid range
+            score = max(0, min(score, q["maxScore"]))
+        else:
+            score = random_score_above_75(q["maxScore"])
+        demo_questions.append({
+            "courseProcessDemoDetailId": q["courseProcessDemoDetailId"],
+            "score": score,
+            "title": q["title"],
+            "result": False,
+            "maxScore": q["maxScore"]
+        })
+
+    total_demo_score = round(sum(q["score"] for q in demo_questions), 2)
+
+    # Build demo content HTML
+    demo_items = "".join(
+        f"<li>{q['title']}: {q['score']} điểm</li>" for q in demo_questions
+    )
+    demo_content = f"""<div>
+                <p>
+                  <strong>Demo2024 | PTA:</strong>
+                  <strong style='color: rgb(226, 80, 65)'> {total_demo_score} điểm</strong>
+                </p>
+                <ul>
+                  {demo_items}
+                </ul>
+            </div>"""
+
+    # RATE areas config (all grade 5 for >75%)
+    rate_areas = [
+        {
+            "grade": 5,
+            "content": "- Học viên chủ động liên hệ giáo viên tìm thêm nguồn/ sách để ôn tập và học kiến thức mới tại nhà ngoài những tài liệu đã được cung cấp mà không cần yêu cầu từ giáo viên",
+            "commentAreaId": "665e7d33181e0e47f6c63768",
+            "type": "RATE",
+            "courseProcessFinalEvaluationId": "67075d4b55bde440385073af",
+            "courseProcessFinalEvaluationTitle": "KIẾN THỨC"
+        },
+        {
+            "grade": 5,
+            "content": "- Ngoài việc nắm vững các kiến thức được giảng dạy, học viên còn có sự chủ động, đặt câu hỏi mở rộng trực tiếp tại lớp từ những kiến thức vừa được cung cấp",
+            "commentAreaId": "668d69d8e71f90e7630ce16c",
+            "type": "RATE",
+            "courseProcessFinalEvaluationId": "67075d4b55bde440385073af",
+            "courseProcessFinalEvaluationTitle": "KIẾN THỨC"
+        },
+        {
+            "grade": 5,
+            "content": "- Học viên trình bày ý kiến rõ ràng, chủ động hỏi khi gặp vấn đề, thuyết trình trước lớp mạch lạc, rõ ràng\n- Học viên nhìn nhận được những ưu - nhược điểm của bản thân sau khi nhận đánh giá từ giáo viên, bạn bè",
+            "commentAreaId": "668e2e7de71f90e7630d4316",
+            "type": "RATE",
+            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b0",
+            "courseProcessFinalEvaluationTitle": "KỸ NĂNG"
+        },
+        {
+            "grade": 5,
+            "content": "- Học viên phản biện và phân tích các giải pháp một cách sâu rộng, biết thử đi thử lại nhiều lần đến khi ra kết quả từ đó Học viên có thể tổng quát cho nhiều vấn đề tương tự sau này\n- Học viên đưa sản phẩm cá nhân go live và có tiếp nhận người dùng thật",
+            "commentAreaId": "668e0f48e71f90e7630d2db6",
+            "type": "RATE",
+            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b0",
+            "courseProcessFinalEvaluationTitle": "KỸ NĂNG"
+        },
+        {
+            "grade": 5,
+            "content": "- Tốc độ sử dụng chuột/bàn phím rất thành thạo, có thể sử dụng gõ phím bằng 2 tay không cần nhìn phím.\n- Học viên tận dụng tối ưu các phần mềm máy tính, sử dụng các công cụ hỗ trợ xây dựng sơ đồ tư duy, công cụ quản lý tiến độ dự án, công cụ xây dựng sơ đồ thuật toán",
+            "commentAreaId": "668e2ce1e71f90e7630d406f",
+            "type": "RATE",
+            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b0",
+            "courseProcessFinalEvaluationTitle": "KỸ NĂNG"
+        },
+        {
+            "grade": 5,
+            "content": "- Học viên chủ động trong việc phát hiện ra những ý tưởng sáng tạo cho các tính năng của sản phẩm dựa trên những kiến thức vừa được học và đặt câu hỏi với Giáo viên.\n- Học viên tự mình thiết kế trò chơi, câu chuyện hoặc dự án hoàn toàn mới, có khả năng thu hút sự chú ý và hứng thú của người khác, hoặc tạo ra một trào lưu trong cộng đồng",
+            "commentAreaId": "668d6a69e71f90e7630ce198",
+            "type": "RATE",
+            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b0",
+            "courseProcessFinalEvaluationTitle": "KỸ NĂNG"
+        },
+        {
+            "grade": 5,
+            "content": "- Học viên thành thạo trong việc sử dụng ngôn ngữ lập trình\n- Học viên có thể tự xây dựng mô hình/sơ đồ tư duy tuần tự các bước lập trình cho dự án cá nhân của mình mà không cần sự hỗ trợ từ Giáo viên",
+            "commentAreaId": "668d6a25e71f90e7630ce187",
+            "type": "RATE",
+            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b0",
+            "courseProcessFinalEvaluationTitle": "KỸ NĂNG"
+        },
+        {
+            "grade": 5,
+            "content": "- Học viên tập trung lắng nghe bài giảng, tự giác học tập, mentor hầu như không phải nhắc nhở con, hiệu quả buổi học cao\n- Học viên tuân thủ tuyệt đối các quy tắc trong lớp học, luôn có mặt đúng giờ, lễ phép khi giao tiếp với giáo viên",
+            "commentAreaId": "668e2eaee71f90e7630d434f",
+            "type": "RATE",
+            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b1",
+            "courseProcessFinalEvaluationTitle": "THÁI ĐỘ"
+        },
+        {
+            "grade": 5,
+            "content": "- Học viên chủ động tìm kiếm thêm các bài tập, dự án để luyện tập và đặt các câu hỏi luyện tập với giáo viên",
+            "commentAreaId": "668e2f5be71f90e7630d44c1",
+            "type": "RATE",
+            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b1",
+            "courseProcessFinalEvaluationTitle": "THÁI ĐỘ"
+        }
+    ]
+
+    # Build byAreas: DEMO area first, then RATE areas
+    by_areas = [
+        {
+            "demoQuestions": demo_questions,
+            "content": demo_content,
+            "commentAreaId": "67074eb655bde4403850441a",
+            "type": "DEMO",
+            "courseProcessDemoId": "67075d4b55bde440385073ae"
+        }
+    ] + rate_areas
+
+    # Build KIẾN THỨC sub-items
+    kien_thuc_items = ""
+    for area in rate_areas:
+        if area["courseProcessFinalEvaluationTitle"] == "KIẾN THỨC":
+            kien_thuc_items += f"""<ul><span style="color:rgb(0, 0, 0)"><li data-list='bullet' className='ql-indent-2'>
+                        <span className='ql-ui'></span>{area['content'].replace('- ', '')}</li></span></ul>"""
+
+    # Build KỸ NĂNG sub-items
+    ky_nang_items = ""
+    ky_nang_areas = [a for a in rate_areas if a["courseProcessFinalEvaluationTitle"] == "KỸ NĂNG"]
+    for area in ky_nang_areas:
+        lines = area['content'].split('\n')
+        items = ""
+        for line in lines:
+            line = line.strip()
+            if line.startswith('- '):
+                line = line[2:]
+            if line:
+                items += f"""<li data-list='bullet' className='ql-indent-2'>
+                        <span className='ql-ui'></span>{line}</li>"""
+        ky_nang_items += f"""<ul><span style="color:rgb(0, 0, 0)">{items}</span></ul>"""
+
+    # Build THÁI ĐỘ sub-items
+    thai_do_items = ""
+    thai_do_areas = [a for a in rate_areas if a["courseProcessFinalEvaluationTitle"] == "THÁI ĐỘ"]
+    for area in thai_do_areas:
+        lines = area['content'].split('\n')
+        items = ""
+        for line in lines:
+            line = line.strip()
+            if line.startswith('- '):
+                line = line[2:]
+            if line:
+                items += f"""<li data-list='bullet' className='ql-indent-2'>
+                        <span className='ql-ui'></span>{line}</li>"""
+        thai_do_items += f"""<ul><span style="color:rgb(0, 0, 0)">{items}</span></ul>"""
+
+    # Build full content HTML
+    full_content = f"""<div style="list-style-type:circle"><p><strong style="color:rgb(0, 0, 0)">Điểm Demo</strong><span style="color:rgb(0, 0, 0)">: </span><strong style="color:rgb(226, 80, 65)">{total_demo_score} điểm</strong></p><ul><li data-list="bullet"><span class="ql-ui"></span><span style="color:rgb(0, 0, 0)">{demo_content}</span></li></ul><p><strong style="color:rgb(0, 0, 0)">Điểm năng lực: </strong><strong style="color:rgb(226, 80, 65)">5 điểm</strong></p><ul><li data-list="bullet" style="list-style-type:circle"><span class="ql-ui"></span><strong style="color:rgb(226, 80, 65)"></strong><strong style="color:rgb(0, 0, 0)">KIẾN THỨC: </strong>{kien_thuc_items}</li><li data-list="bullet" style="list-style-type:circle"><span class="ql-ui"></span><strong style="color:rgb(226, 80, 65)"></strong><strong style="color:rgb(0, 0, 0)">KỸ NĂNG: </strong>{ky_nang_items}</li><li data-list="bullet" style="list-style-type:circle"><span class="ql-ui"></span><strong style="color:rgb(226, 80, 65)"></strong><strong style="color:rgb(0, 0, 0)">THÁI ĐỘ: </strong>{thai_do_items}</li></ul></div>"""
+
+    payload = {
+        "slotId": data['slot_id'],
+        "classSiteId": data['class_site_id'],
+        "sessionNumber": data['session_number'],
+        "classId": data['class_id'],
+        "courseProcessId": data['course_process_id'],
+        "slotType": "Final",
+        "totalScore": total_demo_score,
+        "rank": "A",
+        "studentComment": {
+            "studentAttendanceId": data['student_attendance_id'],
+            "studentId": data['student_id'],
+            "content": full_content,
+            "byAreas": by_areas
+        }
+    }
+
+    return payload, total_demo_score, demo_questions
+
+
 @app.route('/api/submit_comment', methods=['POST'])
 def submit_comment():
     data = request.json
+    slot_type = data.get('slot_type', 'Default')
 
+    # ===== FINAL/DEMO SLOT (buổi 14) =====
+    if slot_type == 'Final':
+        payload, total_demo_score, demo_questions = build_final_demo_payload(data)
+
+        query = """mutation UpdateSlotComment($payload: UpdateSlotCommentCommand!) {
+            classes {
+                updateSlotComment(payload: $payload) {
+                    id
+                    name
+                    slots {
+                        _id
+                        date
+                        startTime
+                        endTime
+                        sessionHour
+                        teachers {
+                            _id
+                            teacher {
+                                id
+                                username
+                                code
+                                fullName
+                                email
+                                phoneNumber
+                                user
+                                imageUrl
+                            }
+                            role {
+                                id
+                                name
+                                shortName
+                            }
+                            isActive
+                        }
+                        teacherAttendance {
+                            _id
+                            teacher {
+                                id
+                                username
+                                fullName
+                                email
+                                phoneNumber
+                                user
+                                imageUrl
+                            }
+                            status
+                            note
+                            createdBy
+                            createdAt
+                            lastModifiedBy
+                            lastModifiedAt
+                        }
+                        studentAttendance {
+                            _id
+                            student {
+                                id
+                                fullName
+                                phoneNumber
+                                email
+                                gender
+                                imageUrl
+                                customer {
+                                    email
+                                }
+                            }
+                            comment
+                            sendCommentStatus
+                            status
+                            commentByAreas {
+                                grade
+                                content
+                                commentAreaId
+                                checkpoint {
+                                    practiceScore
+                                    checkpointScore
+                                    checkpointQuestions {
+                                        id
+                                        title
+                                        result
+                                        score
+                                    }
+                                }
+                                courseProcessDemoId
+                                courseProcessFinalEvaluationTitle
+                                courseProcessFinalEvaluationId
+                                demoQuestions {
+                                    courseProcessDemoDetailId
+                                    title
+                                    result
+                                    score
+                                    maxScore
+                                }
+                                type
+                            }
+                            createdBy
+                            createdAt
+                            lastModifiedBy
+                            lastModifiedAt
+                            commentStatus {
+                                feedback
+                                status
+                                version
+                            }
+                        }
+                        summary
+                        homework
+                        createdAt
+                        createdBy
+                        lastModifiedAt
+                        lastModifiedBy
+                        index
+                    }
+                }
+            }
+        }"""
+
+        result = lms_client.call_api("UpdateSlotComment", query, {"payload": payload})
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        if "errors" in result:
+            return jsonify({"error": result["errors"][0]["message"]}), 400
+
+        # Return with score info for UI display
+        scores_info = {q["title"].strip(): q["score"] for q in demo_questions}
+        return jsonify({
+            "success": True,
+            "result": result,
+            "demo_scores": scores_info,
+            "total_demo_score": total_demo_score
+        })
+
+    # ===== DEFAULT SLOT (buổi thường) =====
     # Default byAreas with 7 RATE areas (grade=5) + 1 CONTENT area for AI comment
     # These are standard MindX COD comment areas
     by_areas = [

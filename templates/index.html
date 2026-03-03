@@ -1089,6 +1089,162 @@
             gap: 12px;
             align-items: end;
         }
+
+        /* Demo Session 14 Styles */
+        .demo-banner {
+            background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%);
+            color: white;
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .demo-banner-icon { font-size: 28px; }
+        .demo-banner h3 { font-size: 16px; font-weight: 700; color: white; }
+        .demo-banner p { font-size: 13px; opacity: 0.9; margin-top: 2px; }
+
+        .demo-score-card {
+            background: #F5F3FF;
+            border: 1px solid #DDD6FE;
+            border-radius: 10px;
+            padding: 14px;
+            margin-top: 10px;
+        }
+        .demo-score-card.submitted {
+            background: var(--success-light);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        .demo-score-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #5B21B6;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .demo-score-card.submitted .demo-score-title {
+            color: var(--success-dark);
+        }
+        .demo-score-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .demo-score-table th {
+            text-align: left;
+            font-weight: 500;
+            color: var(--gray-500);
+            padding: 6px 8px;
+            border-bottom: 1px solid #E5E7EB;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .demo-score-table td {
+            padding: 8px;
+            border-bottom: 1px solid #F3F4F6;
+        }
+        .demo-score-table tr:last-child td {
+            border-bottom: none;
+        }
+        .demo-score-name {
+            color: var(--gray-700);
+            font-weight: 500;
+        }
+        .demo-score-value {
+            font-weight: 700;
+            color: #7C3AED;
+            text-align: center;
+        }
+        .demo-score-card.submitted .demo-score-value {
+            color: var(--success-dark);
+        }
+        .demo-score-max {
+            color: var(--gray-400);
+            text-align: center;
+            font-size: 12px;
+        }
+        .demo-score-bar {
+            width: 80px;
+            height: 6px;
+            background: #E5E7EB;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .demo-score-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7C3AED, #2563EB);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+        .demo-score-card.submitted .demo-score-bar-fill {
+            background: linear-gradient(90deg, #10b981, #059669);
+        }
+        .demo-total-row {
+            background: #EDE9FE;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+        }
+        .demo-score-card.submitted .demo-total-row {
+            background: #D1FAE5;
+        }
+        .demo-total-score {
+            font-size: 20px;
+            color: #7C3AED;
+            font-weight: 700;
+        }
+        .demo-score-card.submitted .demo-total-score {
+            color: var(--success-dark);
+        }
+        .demo-total-label {
+            font-size: 13px;
+            color: var(--gray-600);
+        }
+        .badge-demo {
+            background: #EDE9FE;
+            color: #5B21B6;
+        }
+        .badge-demo-done {
+            background: var(--success-light);
+            color: var(--success-dark);
+        }
+        .btn-demo {
+            background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%);
+            color: white;
+            border: none;
+        }
+        .btn-demo:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+            transform: translateY(-1px);
+        }
+        .demo-rate-section {
+            margin-top: 8px;
+            padding: 10px 12px;
+            background: #FAFAF9;
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--gray-500);
+        }
+        .demo-rate-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #FEF3C7;
+            color: #92400E;
+            margin-right: 4px;
+        }
     </style>
 </head>
 <body>
@@ -1359,7 +1515,7 @@
                         <div class="progress-text" id="progressText">0%</div>
                     </div>
                 </div>
-                <div class="action-bar">
+                <div class="action-bar" id="defaultActionBar">
                     <button class="btn btn-primary" onclick="autoCommentAll()" id="autoCommentBtn" disabled>
                         <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
@@ -1377,6 +1533,14 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
                         </svg>
                         Copy Zalo tất cả
+                    </button>
+                </div>
+                <div class="action-bar" id="demoActionBar" style="display:none;">
+                    <button class="btn btn-demo" onclick="submitDemoAll()" id="submitDemoAllBtn" disabled>
+                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        🎯 Submit Demo tất cả (Điểm random >75%)
                     </button>
                 </div>
             </div>
@@ -1920,6 +2084,33 @@
             }
         }
 
+        // Reload class data without needing DOM element (used after submit)
+        async function reloadClassData() {
+            if (!selectedClass) return;
+            try {
+                const resp = await fetch(`/api/class/${selectedClass.id}`);
+                const data = await resp.json();
+                classData = data.class;
+
+                const slotSelect = document.getElementById('slotSelect');
+                slotSelect.innerHTML = '<option value="">-- Chọn buổi --</option>';
+                classData.slots.forEach((slot, idx) => {
+                    const date = new Date(slot.date).toLocaleDateString('vi-VN');
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.textContent = `Buổi ${slot.index + 1} - ${date}`;
+                    slotSelect.appendChild(opt);
+                });
+            } catch (e) {
+                showToast('Lỗi tải thông tin lớp', 'error');
+            }
+        }
+
+        // Check if current session is Final Demo (session 14)
+        function isFinalSession() {
+            return selectedSlot && (selectedSlot.index + 1) === 14;
+        }
+
         // Load slot students
         function loadSlotStudents() {
             const slotIdx = document.getElementById('slotSelect').value;
@@ -1934,19 +2125,31 @@
                 document.getElementById('sessionSummary').value = selectedSlot.summary.replace(/<[^>]*>/g, '');
             }
             
+            const isFinal = isFinalSession();
+            
+            // Toggle action bars based on session type
+            document.getElementById('defaultActionBar').style.display = isFinal ? 'none' : 'flex';
+            document.getElementById('demoActionBar').style.display = isFinal ? 'flex' : 'none';
+            
             renderStudents();
             updateStats();
             
-            // Check if any present student has existing comment
             const presentStudents = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
-            const hasAnyComment = presentStudents.some(s => {
-                const content = s.commentByAreas?.find(a => a.type === 'CONTENT')?.content;
-                return content && content.trim().length > 0;
-            });
             
-            document.getElementById('autoCommentBtn').disabled = presentStudents.length === 0;
-            document.getElementById('submitAllBtn').disabled = true;
-            document.getElementById('copyZaloBtn').disabled = !hasAnyComment;
+            if (isFinal) {
+                // Enable demo submit for all present students (allows re-submit)
+                document.getElementById('submitDemoAllBtn').disabled = presentStudents.length === 0;
+            } else {
+                // Check if any present student has existing comment
+                const hasAnyComment = presentStudents.some(s => {
+                    const content = s.commentByAreas?.find(a => a.type === 'CONTENT')?.content;
+                    return content && content.trim().length > 0;
+                });
+                
+                document.getElementById('autoCommentBtn').disabled = presentStudents.length === 0;
+                document.getElementById('submitAllBtn').disabled = true;
+                document.getElementById('copyZaloBtn').disabled = !hasAnyComment;
+            }
             document.getElementById('submitSummaryBtn').disabled = false;
             document.getElementById('studentCount').textContent = `${students.length} học sinh`;
         }
@@ -1970,31 +2173,132 @@
                 return;
             }
 
-            list.innerHTML = '';
+            const isFinal = isFinalSession();
+
+            // Show demo banner for session 14
+            if (isFinal) {
+                list.innerHTML = `
+                    <div class="demo-banner">
+                        <div class="demo-banner-icon">🎯</div>
+                        <div>
+                            <h3>Buổi 14 — Demo Sản phẩm cuối khóa</h3>
+                            <p>Điểm demo sẽ được random trên 75% cho từng tiêu chí. Nhấn Submit để tự động chấm điểm.</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                list.innerHTML = '';
+            }
 
             toRender.forEach((att, idx) => {
+                const initials = att.student.fullName.split(' ').slice(-2).map(n => n[0]).join('');
+                const isPresent = att.status === 'ATTENDED' || att.status === 'LATE_ARRIVED';
+                let statusText = '✕ Vắng';
+                let statusClass = 'badge-gray';
+                if (att.status === 'ATTENDED') { statusText = '✓ Có mặt'; statusClass = 'badge-success'; }
+                else if (att.status === 'LATE_ARRIVED') { statusText = '⏰ Đi muộn'; statusClass = 'badge-warning'; }
+                else if (att.status === 'ABSENT_WITH_NOTICE') { statusText = '📝 Vắng có phép'; statusClass = 'badge-gray'; }
+
+                const div = document.createElement('div');
+
+                // ===== FINAL DEMO UI (session 14) =====
+                if (isFinal) {
+                    const demoArea = att.commentByAreas?.find(a => a.type === 'DEMO');
+                    const hasDemoScore = !!demoArea;
+                    const demoQuestions = demoArea?.demoQuestions || [];
+
+                    // Demo criteria config
+                    const demoConfig = [
+                        {id: '67074eb655bde44038504415', title: 'Tư duy máy tính, thuật toán', maxScore: 1.5},
+                        {id: '67074eb655bde44038504416', title: 'Tư duy sáng tạo', maxScore: 1},
+                        {id: '67074eb655bde44038504417', title: 'Kỹ năng giao tiếp, hợp tác', maxScore: 0.5},
+                        {id: '67074eb655bde44038504418', title: 'Giải quyết vấn đề', maxScore: 1},
+                        {id: '67074eb655bde44038504419', title: 'Kỹ năng sử dụng máy tính', maxScore: 1},
+                    ];
+
+                    // Get existing scores or defaults
+                    const studentScoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
+                    const scores = demoConfig.map(cfg => {
+                        const existing = demoQuestions.find(q => q.courseProcessDemoDetailId === cfg.id);
+                        return {
+                            ...cfg,
+                            score: existing ? existing.score : ''
+                        };
+                    });
+
+                    const totalExisting = scores.reduce((s, q) => s + (parseFloat(q.score) || 0), 0);
+
+                    div.className = `student-card ${hasDemoScore ? 'has-comment' : 'no-comment'}`;
+                    div.innerHTML = `
+                        <div class="student-header">
+                            <div class="student-info">
+                                <div class="student-avatar">${initials}</div>
+                                <div>
+                                    <div class="student-name">${att.student.fullName}</div>
+                                    <div class="student-meta">
+                                        <span class="badge ${statusClass}">${statusText}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="badge ${hasDemoScore ? 'badge-demo-done' : 'badge-demo'}">
+                                ${hasDemoScore ? '✓ Đã chấm Demo' : '🎯 Chưa chấm'}
+                            </span>
+                        </div>
+                        ${isPresent ? `
+                            <div class="demo-score-card ${hasDemoScore ? 'submitted' : ''}">
+                                <div class="demo-score-title">${hasDemoScore ? '✅ Điểm Demo (có thể sửa)' : '🎯 Chấm điểm Demo'}</div>
+                                <table class="demo-score-table">
+                                    <thead>
+                                        <tr><th>Tiêu chí</th><th style="text-align:center">Điểm</th><th style="text-align:center">Max</th><th></th></tr>
+                                    </thead>
+                                    <tbody>
+                                        ${scores.map((q, qi) => `
+                                            <tr>
+                                                <td class="demo-score-name">${q.title}</td>
+                                                <td style="text-align:center">
+                                                    <input type="number" 
+                                                        id="dscore-${studentScoreId}-${qi}" 
+                                                        class="form-input" 
+                                                        style="width:70px;text-align:center;padding:6px 4px;font-weight:700;color:#7C3AED;font-size:14px"
+                                                        value="${q.score}" 
+                                                        min="0" max="${q.maxScore}" step="0.25"
+                                                        oninput="updateDemoTotal('${studentScoreId}')"
+                                                    >
+                                                </td>
+                                                <td class="demo-score-max">/ ${q.maxScore}</td>
+                                                <td><div class="demo-score-bar"><div class="demo-score-bar-fill" id="dbar-${studentScoreId}-${qi}" style="width:${q.score ? (q.score/q.maxScore*100).toFixed(0) : 0}%"></div></div></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                                <div class="demo-total-row">
+                                    <span class="demo-total-label">Tổng điểm</span>
+                                    <span class="demo-total-score" id="dtotal-${studentScoreId}">${totalExisting ? totalExisting.toFixed(1) : '?'} / 5</span>
+                                </div>
+                            </div>
+                            <div class="student-actions" style="margin-top:10px">
+                                <button class="btn btn-sm btn-outline" onclick="randomDemoScores('${studentScoreId}')">
+                                    🎲 Random >75%
+                                </button>
+                                <button class="btn btn-sm btn-demo" onclick="submitDemoSingle('${att.student.id}', '${att._id}', '${studentScoreId}')" id="demo-btn-${studentScoreId}">
+                                    ${hasDemoScore ? '📝 Re-submit Demo' : '🎯 Submit Demo'}
+                                </button>
+                            </div>
+                        ` : `
+                            <div class="demo-score-card" style="opacity:0.5">
+                                <div class="demo-score-title">Học sinh vắng — không chấm Demo</div>
+                            </div>
+                        `}
+                    `;
+                    list.appendChild(div);
+                    return;
+                }
+
+                // ===== DEFAULT UI (regular sessions) =====
                 const hasComment = att.commentByAreas?.some(a => a.type === 'CONTENT' && a.content);
                 const existingComment = att.commentByAreas?.find(a => a.type === 'CONTENT')?.content || '';
                 const generatedComment = generatedComments[att.student.id] || '';
-                const initials = att.student.fullName.split(' ').slice(-2).map(n => n[0]).join('');
 
-                // Check attendance status
-                const isPresent = att.status === 'ATTENDED' || att.status === 'LATE_ARRIVED';
-                const isLate = att.status === 'LATE_ARRIVED';
-                let statusText = '✕ Vắng';
-                let statusClass = 'badge-gray';
-                if (att.status === 'ATTENDED') {
-                    statusText = '✓ Có mặt';
-                    statusClass = 'badge-success';
-                } else if (att.status === 'LATE_ARRIVED') {
-                    statusText = '⏰ Đi muộn';
-                    statusClass = 'badge-warning';
-                } else if (att.status === 'ABSENT_WITH_NOTICE') {
-                    statusText = '📝 Vắng có phép';
-                    statusClass = 'badge-gray';
-                }
-
-                const div = document.createElement('div');
                 div.className = `student-card ${hasComment ? 'has-comment' : 'no-comment'}`;
                 div.innerHTML = `
                     <div class="student-header">
@@ -2059,7 +2363,7 @@
                                 </svg>
                                 Submit
                             </button>
-                            <button class="btn btn-sm btn-outline" onclick="copyZaloComment('${att.student.fullName.replace(/'/g, "\\'")}', '${att.student.id}')">
+                            <button class="btn btn-sm btn-outline" onclick="copyZaloComment('${att.student.fullName.replace(/'/g, "\\'")}',' ${att.student.id}')">
                                 <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
                                 </svg>
@@ -2249,12 +2553,224 @@
             showToast(`Đã tạo ${Object.keys(generatedComments).length} nhận xét!`);
         }
 
+        // Demo config (must match IDs in backend)
+        const DEMO_CONFIG = [
+            {id: '67074eb655bde44038504415', title: 'Tư duy máy tính, thuật toán', maxScore: 1.5},
+            {id: '67074eb655bde44038504416', title: 'Tư duy sáng tạo', maxScore: 1},
+            {id: '67074eb655bde44038504417', title: 'Kỹ năng giao tiếp, hợp tác', maxScore: 0.5},
+            {id: '67074eb655bde44038504418', title: 'Giải quyết vấn đề', maxScore: 1},
+            {id: '67074eb655bde44038504419', title: 'Kỹ năng sử dụng máy tính', maxScore: 1},
+        ];
+
+        // Random score above 75% of maxScore with step 0.25
+        function randomScore75(maxScore) {
+            const minScore = Math.ceil(maxScore * 0.75 / 0.25) * 0.25;
+            const steps = Math.round((maxScore - minScore) / 0.25) + 1;
+            return Math.round((minScore + Math.floor(Math.random() * steps) * 0.25) * 100) / 100;
+        }
+
+        // Fill random scores for a student
+        function randomDemoScores(scoreId) {
+            DEMO_CONFIG.forEach((cfg, i) => {
+                const input = document.getElementById(`dscore-${scoreId}-${i}`);
+                if (input) input.value = randomScore75(cfg.maxScore);
+            });
+            updateDemoTotal(scoreId);
+        }
+
+        // Update total score display and progress bars
+        function updateDemoTotal(scoreId) {
+            let total = 0;
+            DEMO_CONFIG.forEach((cfg, i) => {
+                const input = document.getElementById(`dscore-${scoreId}-${i}`);
+                const val = parseFloat(input?.value) || 0;
+                total += val;
+                // Update progress bar
+                const bar = document.getElementById(`dbar-${scoreId}-${i}`);
+                if (bar) bar.style.width = `${Math.min((val / cfg.maxScore * 100), 100).toFixed(0)}%`;
+            });
+            const totalEl = document.getElementById(`dtotal-${scoreId}`);
+            if (totalEl) totalEl.textContent = `${total.toFixed(1)} / 5`;
+        }
+
+        // Read scores from input fields for a student
+        function getDemoScores(scoreId) {
+            return DEMO_CONFIG.map((cfg, i) => {
+                const input = document.getElementById(`dscore-${scoreId}-${i}`);
+                return {
+                    id: cfg.id,
+                    score: parseFloat(input?.value) || 0
+                };
+            });
+        }
+
+        // Submit single demo (session 14)
+        async function submitDemoSingle(studentId, attendanceId, scoreId) {
+            const summary = document.getElementById('sessionSummary').value;
+            if (!summary) {
+                showToast('Vui lòng nhập tổng kết buổi học', 'error');
+                return;
+            }
+
+            // Read scores from inputs
+            const customScores = getDemoScores(scoreId);
+            const hasScores = customScores.some(s => s.score > 0);
+            if (!hasScores) {
+                showToast('Vui lòng nhấn "Random >75%" hoặc nhập điểm trước khi submit', 'error');
+                return;
+            }
+
+            const btn = document.getElementById(`demo-btn-${scoreId}`);
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Đang submit...';
+            }
+
+            try {
+                const payload = {
+                    slot_id: selectedSlot._id,
+                    class_site_id: classData.classSites[0]._id,
+                    session_number: 14,
+                    class_id: classData.id,
+                    course_process_id: classData.courseProcessId,
+                    student_attendance_id: attendanceId,
+                    student_id: studentId,
+                    comment: '',
+                    slot_type: 'Final',
+                    custom_scores: customScores,
+                    summary: `<p>${summary}</p>`
+                };
+
+                const resp = await apiFetch('/api/submit_comment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await resp.json();
+                if (data.success || data.result) {
+                    showToast(`✅ Demo submitted! Tổng: ${data.total_demo_score || '?'} điểm`);
+                    // Reload
+                    const slotIdx = selectedSlot.index;
+                    await reloadClassData();
+                    const slotSelect = document.getElementById('slotSelect');
+                    slotSelect.value = slotIdx;
+                    loadSlotStudents();
+                } else {
+                    showToast('Lỗi: ' + (data.error || 'Unknown'), 'error');
+                    if (btn) { btn.disabled = false; btn.innerHTML = '🎯 Submit Demo'; }
+                }
+            } catch (e) {
+                showToast('Lỗi: ' + e.message, 'error');
+                if (btn) { btn.disabled = false; btn.innerHTML = '🎯 Submit Demo'; }
+            }
+        }
+
+        // Submit all demos (session 14) - random scores + submit for each present student
+        async function submitDemoAll() {
+            const summary = document.getElementById('sessionSummary').value;
+            if (!summary) {
+                showToast('Vui lòng nhập tổng kết buổi học', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('submitDemoAllBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+
+            // Get all present students
+            const toSubmit = students.filter(s => {
+                return s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED';
+            });
+
+            if (toSubmit.length === 0) {
+                showToast('Không có học sinh có mặt!', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Đang submit...';
+            progressContainer.classList.add('show');
+            let successCount = 0;
+            let summarySubmitted = false;
+
+            for (let i = 0; i < toSubmit.length; i++) {
+                const att = toSubmit[i];
+                const scoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
+                const progress = Math.round(((i + 1) / toSubmit.length) * 100);
+                progressFill.style.width = `${progress}%`;
+                progressText.textContent = `🎯 Demo ${i + 1}/${toSubmit.length} - ${att.student.fullName}`;
+
+                // Read scores from inputs, or generate random if empty
+                let customScores = getDemoScores(scoreId);
+                const hasScores = customScores.some(s => s.score > 0);
+                if (!hasScores) {
+                    // Auto random for this student
+                    randomDemoScores(scoreId);
+                    customScores = getDemoScores(scoreId);
+                }
+
+                try {
+                    const payload = {
+                        slot_id: selectedSlot._id,
+                        class_site_id: classData.classSites[0]._id,
+                        session_number: 14,
+                        class_id: classData.id,
+                        course_process_id: classData.courseProcessId,
+                        student_attendance_id: att._id,
+                        student_id: att.student.id,
+                        comment: '',
+                        slot_type: 'Final',
+                        custom_scores: customScores
+                    };
+
+                    if (!summarySubmitted) {
+                        payload.summary = `<p>${summary}</p>`;
+                        summarySubmitted = true;
+                    }
+
+                    const resp = await apiFetch('/api/submit_comment', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await resp.json();
+                    if (data.success || data.result) {
+                        successCount++;
+                    }
+                } catch (e) {
+                    console.error('Demo submit error:', e);
+                }
+            }
+
+            progressContainer.classList.remove('show');
+            btn.innerHTML = '🎯 Submit Demo tất cả (Điểm random >75%)';
+            btn.disabled = false;
+
+            // Reload
+            if (classData && classData.id) {
+                await reloadClassData();
+                const slotSelect = document.getElementById('slotSelect');
+                if (selectedSlot) {
+                    slotSelect.value = selectedSlot.index;
+                    loadSlotStudents();
+                }
+            }
+
+            playSound('success');
+            showToast(`✅ Đã submit Demo ${successCount}/${toSubmit.length} học sinh!`);
+        }
+
         // Submit single comment
         async function submitSingle(studentId, attendanceId) {
             const summary = document.getElementById('sessionSummary').value;
             const comment = generatedComments[studentId];
+            const sessionNumber = selectedSlot.index + 1;
+            const isFinal = sessionNumber === 14;
             
-            if (!comment) {
+            if (!isFinal && !comment) {
                 showToast('Chưa có nhận xét để submit', 'error');
                 return;
             }
@@ -2268,14 +2784,19 @@
                 const payload = {
                     slot_id: selectedSlot._id,
                     class_site_id: classData.classSites[0]._id,
-                    session_number: selectedSlot.index + 1,
+                    session_number: sessionNumber,
                     class_id: classData.id,
                     course_process_id: classData.courseProcessId,
                     student_attendance_id: attendanceId,
                     student_id: studentId,
-                    comment: comment,
+                    comment: isFinal ? '' : comment,
                     summary: `<p>${summary}</p>`
                 };
+                
+                // Add slot_type for Final/Demo session (buổi 14)
+                if (isFinal) {
+                    payload.slot_type = 'Final';
+                }
                 
                 const resp = await apiFetch('/api/submit_comment', {
                     method: 'POST',
@@ -2288,10 +2809,15 @@
                 
                 if (data.success || data.result) {
                     delete generatedComments[studentId];
-                    showToast('Đã submit nhận xét!');
+                    if (isFinal && data.demo_scores) {
+                        const scores = Object.entries(data.demo_scores).map(([k,v]) => `${k}: ${v}`).join(', ');
+                        showToast(`Đã submit Demo! Tổng: ${data.total_demo_score} điểm (${scores})`);
+                    } else {
+                        showToast('Đã submit nhận xét!');
+                    }
                     // Reload to get updated status
                     const slotIdx = selectedSlot.index;
-                    await selectClass(classData.id);
+                    await reloadClassData();
                     const slotSelect = document.getElementById('slotSelect');
                     slotSelect.value = slotIdx;
                     loadSlotStudents();
@@ -2574,16 +3100,23 @@ MindX Technology School`;
                 progressText.textContent = `${progress}% (${i + 1}/${toSubmit.length})`;
                 
                 try {
+                    const sessionNumber = selectedSlot.index + 1;
+                    const isFinal = sessionNumber === 14;
                     const payload = {
                         slot_id: selectedSlot._id,
                         class_site_id: classData.classSites[0]._id,
-                        session_number: selectedSlot.index + 1,
+                        session_number: sessionNumber,
                         class_id: classData.id,
                         course_process_id: classData.courseProcessId,
                         student_attendance_id: att._id,
                         student_id: studentId,
-                        comment: comment
+                        comment: isFinal ? '' : comment
                     };
+                    
+                    // Add slot_type for Final/Demo session (buổi 14)
+                    if (isFinal) {
+                        payload.slot_type = 'Final';
+                    }
                     
                     if (!summarySubmitted) {
                         payload.summary = `<p>${summary}</p>`;
@@ -2611,7 +3144,7 @@ MindX Technology School`;
             
             // Reload class data from server to get updated status
             if (classData && classData.id) {
-                await selectClass(classData.id);
+                await reloadClassData();
                 // Re-select the same slot
                 const slotSelect = document.getElementById('slotSelect');
                 if (selectedSlot) {
