@@ -4,50 +4,77 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chấm Bài Tập - LMS Tool</title>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #4f46e5;
-            --primary-dark: #4338ca;
-            --primary-light: #818cf8;
-            --primary-bg: #eef2ff;
-            --success: #10b981;
-            --success-dark: #059669;
-            --success-light: #d1fae5;
-            --warning: #f59e0b;
-            --warning-light: #fef3c7;
-            --danger: #ef4444;
-            --danger-light: #fee2e2;
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
-            --radius: 16px;
+            --primary: #0891B2;
+            --primary-dark: #0E7490;
+            --primary-light: #22D3EE;
+            --primary-bg: #ECFEFF;
+            --accent: #0D9488;
+            --accent-light: #CCFBF1;
+            --success: #22C55E;
+            --success-dark: #16A34A;
+            --success-light: #DCFCE7;
+            --warning: #F59E0B;
+            --warning-dark: #D97706;
+            --warning-light: #FEF3C7;
+            --danger: #EF4444;
+            --danger-dark: #DC2626;
+            --danger-light: #FEE2E2;
+            --gray-50: #F8FAFC;
+            --gray-100: #F1F5F9;
+            --gray-200: #E2E8F0;
+            --gray-300: #CBD5E1;
+            --gray-400: #94A3B8;
+            --gray-500: #64748B;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1E293B;
+            --gray-900: #0F172A;
+            --radius: 14px;
             --radius-sm: 10px;
             --radius-xs: 6px;
+            --radius-lg: 18px;
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -1px rgba(0,0,0,0.04);
-            --shadow-lg: 0 10px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.03);
+            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+            --shadow-lg: 0 12px 24px -4px rgba(0,0,0,0.08), 0 4px 8px -2px rgba(0,0,0,0.03);
+            --shadow-xl: 0 20px 40px -8px rgba(0,0,0,0.1), 0 8px 16px -4px rgba(0,0,0,0.04);
+            --transition: 200ms ease;
+            --transition-fast: 150ms ease;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
-            font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--gray-50);
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #F0FDFA 0%, #F1F5F9 50%, #ECFEFF 100%);
+            background-attachment: fixed;
             min-height: 100vh;
             color: var(--gray-800);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         h1, h2, h3, h4, h5, h6 {
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            letter-spacing: -0.01em;
         }
 
         .app-container {
@@ -59,14 +86,26 @@
         /* Header */
         .header {
             background: white;
-            border-radius: var(--radius);
-            padding: 16px 24px;
+            border-radius: var(--radius-lg);
+            padding: 16px 28px;
             margin-bottom: 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(8, 145, 178, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light), var(--accent));
         }
 
         .header-left {
@@ -78,12 +117,17 @@
         .logo {
             width: 44px;
             height: 44px;
-            background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
+            transition: transform var(--transition);
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
         }
 
         .logo svg {
@@ -93,7 +137,7 @@
 
         .header h1 {
             font-size: 20px;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--gray-900);
             letter-spacing: -0.02em;
         }
@@ -111,24 +155,26 @@
             background: var(--gray-100);
             padding: 4px;
             border-radius: var(--radius-sm);
+            border: 1px solid var(--gray-200);
         }
 
         .nav-tabs a {
-            padding: 8px 16px;
+            padding: 9px 18px;
             border-radius: var(--radius-xs);
             text-decoration: none;
             color: var(--gray-600);
             font-size: 13px;
-            font-weight: 500;
-            transition: all 0.2s ease;
+            font-weight: 600;
+            transition: all var(--transition);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
+            cursor: pointer;
         }
 
         .nav-tabs a:hover {
             color: var(--gray-800);
-            background: rgba(255,255,255,0.5);
+            background: rgba(255,255,255,0.7);
         }
 
         .nav-tabs a.active {
@@ -150,6 +196,12 @@
             border: 1px solid var(--gray-200);
             overflow: hidden;
             margin-bottom: 24px;
+            transition: box-shadow var(--transition), border-color var(--transition);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: rgba(8, 145, 178, 0.12);
         }
 
         .card-header {
@@ -165,7 +217,7 @@
 
         .card-header h2 {
             font-size: 14px;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--gray-800);
             display: flex;
             align-items: center;
@@ -185,20 +237,46 @@
         /* Forms */
         .form-select {
             padding: 10px 14px;
-            border: 1px solid var(--gray-300);
+            border: 1.5px solid var(--gray-300);
             border-radius: var(--radius-xs);
             font-size: 14px;
             font-family: inherit;
-            transition: all 0.15s ease;
+            transition: all var(--transition);
             background: white;
             color: var(--gray-800);
             min-width: 160px;
+            cursor: pointer;
         }
 
         .form-select:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+            box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+        }
+
+        .form-select:hover {
+            border-color: var(--gray-400);
+        }
+
+        .form-input {
+            padding: 10px 14px;
+            border: 1.5px solid var(--gray-300);
+            border-radius: var(--radius-xs);
+            font-size: 14px;
+            font-family: inherit;
+            transition: all var(--transition);
+            background: white;
+            color: var(--gray-800);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+        }
+
+        .form-input:hover {
+            border-color: var(--gray-400);
         }
 
         /* Buttons */
@@ -211,10 +289,10 @@
             border: none;
             border-radius: var(--radius-xs);
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;
             font-family: inherit;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all var(--transition);
             white-space: nowrap;
         }
 
@@ -228,6 +306,11 @@
             cursor: not-allowed;
         }
 
+        .btn:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
         .btn-primary {
             background: var(--primary);
             color: white;
@@ -235,7 +318,12 @@
 
         .btn-primary:hover:not(:disabled) {
             background: var(--primary-dark);
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
         }
 
         .btn-success {
@@ -245,6 +333,12 @@
 
         .btn-success:hover:not(:disabled) {
             background: var(--success-dark);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-success:active:not(:disabled) {
+            transform: translateY(0);
         }
 
         .btn-warning {
@@ -253,18 +347,25 @@
         }
 
         .btn-warning:hover:not(:disabled) {
-            background: #d97706;
+            background: var(--warning-dark);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-warning:active:not(:disabled) {
+            transform: translateY(0);
         }
 
         .btn-outline {
             background: white;
-            border: 1px solid var(--gray-300);
+            border: 1.5px solid var(--gray-300);
             color: var(--gray-700);
         }
 
         .btn-outline:hover:not(:disabled) {
             background: var(--gray-50);
-            border-color: var(--gray-400);
+            border-color: var(--primary);
+            color: var(--primary);
         }
 
         .btn-ghost {
@@ -295,7 +396,8 @@
             padding: 4px 10px;
             border-radius: 100px;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 700;
+            letter-spacing: 0.02em;
         }
 
         .badge svg {
@@ -327,7 +429,7 @@
         .stats-bar {
             display: flex;
             gap: 32px;
-            padding: 20px 24px;
+            padding: 22px 28px;
             background: white;
             border-radius: var(--radius);
             margin-bottom: 24px;
@@ -351,9 +453,9 @@
 
         .stat-value {
             font-size: 28px;
-            font-weight: 700;
+            font-weight: 800;
             color: var(--gray-800);
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
         }
 
         .stat-value.warning { color: var(--warning); }
@@ -398,11 +500,11 @@
         }
 
         tbody tr {
-            transition: background 0.15s ease;
+            transition: background var(--transition);
         }
 
         tbody tr:hover {
-            background: var(--gray-50);
+            background: var(--primary-bg);
         }
 
         .student-name {
@@ -437,18 +539,19 @@
         .score-input {
             width: 70px;
             padding: 8px 10px;
-            border: 1px solid var(--gray-300);
+            border: 1.5px solid var(--gray-300);
             border-radius: var(--radius-xs);
             font-size: 14px;
             text-align: center;
             font-family: inherit;
-            font-weight: 600;
+            font-weight: 700;
+            transition: border-color var(--transition), box-shadow var(--transition);
         }
 
         .score-input:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+            box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
         }
 
         .score-display {
@@ -468,6 +571,7 @@
             height: 18px;
             cursor: pointer;
             accent-color: var(--primary);
+            border-radius: 4px;
         }
 
         /* Toast */
@@ -485,13 +589,14 @@
             padding: 14px 18px;
             border-radius: var(--radius-sm);
             color: white;
-            font-weight: 500;
+            font-weight: 600;
             font-size: 14px;
-            box-shadow: var(--shadow-lg);
+            box-shadow: var(--shadow-xl);
             animation: slideIn 0.3s ease;
             display: flex;
             align-items: center;
             gap: 10px;
+            backdrop-filter: blur(8px);
         }
 
         .toast svg {
@@ -499,9 +604,9 @@
             height: 18px;
         }
 
-        .toast.success { background: var(--success); }
-        .toast.error { background: var(--danger); }
-        .toast.info { background: var(--primary); }
+        .toast.success { background: rgba(34, 197, 94, 0.95); }
+        .toast.error { background: rgba(239, 68, 68, 0.95); }
+        .toast.info { background: rgba(8, 145, 178, 0.95); }
 
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
@@ -561,7 +666,7 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: var(--gray-100);
+            background: transparent;
             border-radius: 100px;
         }
 
@@ -717,11 +822,12 @@
                         <option value="MARKED">Đã chấm</option>
                         <option value="">Tất cả</option>
                     </select>
-                    <select class="form-select" id="aiModel">
+                    <select class="form-select" id="aiModel" onchange="toggleHomeworkCustomModelInput()">
                         {% for model in ai_models %}
                         <option value="{{ model.id }}" {% if model.id == ai_model %}selected{% endif %}>{{ model.name }}</option>
                         {% endfor %}
                     </select>
+                    <input class="form-input" id="customModelId" value="{{ custom_model_id or '' }}" placeholder="Tự nhập model" style="display: {{ 'block' if ai_model == '__custom__' else 'none' }}; min-width: 220px;">
                     <button class="btn btn-ghost btn-sm" onclick="loadHomework()">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                         Làm mới
@@ -802,6 +908,39 @@
         let lessons = {};
         let selectedIds = new Set();
 
+        // ============== UTILITY HELPERS ==============
+
+        /** Escape HTML entities to prevent XSS */
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = String(str);
+            return div.innerHTML;
+        }
+
+        /** Escape string for use inside inline event handler attributes */
+        function escapeAttr(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\/g,'\\\\');
+        }
+
+        /** Helper: POST JSON to API endpoint with error handling */
+        async function apiCall(url, body = null, method = 'POST') {
+            const opts = { method, headers: {'Content-Type': 'application/json'} };
+            if (body) opts.body = JSON.stringify(body);
+            const resp = await fetch(url, method === 'GET' ? {} : opts);
+            if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
+            return resp.json();
+        }
+
+        /** Update a single submission in local state */
+        function updateSubmissionLocally(id, score, status = 'MARKED') {
+            const sub = allSubmissions.find(s => s.id === id);
+            if (sub) { sub.status = status; sub.score = score; }
+            filterSubmissions();
+            updateStats();
+        }
+
         // Toast
         function showToast(message, type = 'success') {
             const container = document.getElementById('toastContainer');
@@ -814,9 +953,24 @@
                 info: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
             };
 
-            toast.innerHTML = `${icons[type] || icons.info} ${message}`;
+            toast.innerHTML = `${icons[type] || icons.info} `;
+            toast.appendChild(document.createTextNode(message));
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
+        }
+
+        function toggleHomeworkCustomModelInput() {
+            const aiModel = document.getElementById('aiModel')?.value;
+            const input = document.getElementById('customModelId');
+            if (input) {
+                input.style.display = aiModel === '__custom__' ? 'block' : 'none';
+            }
+        }
+
+        function getHomeworkSelectedModel() {
+            const aiModel = document.getElementById('aiModel')?.value || 'claude-sonnet-4-6';
+            const customModelId = document.getElementById('customModelId')?.value?.trim() || '';
+            return { aiModel, customModelId };
         }
 
         // Load classes
@@ -830,12 +984,29 @@
                 const data = await resp.json();
                 const select = document.getElementById('classSelect');
                 select.innerHTML = '<option value="">-- Chọn lớp --</option>';
-                data.classes.forEach(cls => {
+
+                const activeClasses = data.classes.filter(c => !c.recentlyEnded);
+                const endedClasses = data.classes.filter(c => c.recentlyEnded);
+
+                activeClasses.forEach(cls => {
                     const opt = document.createElement('option');
                     opt.value = cls.id;
-                    opt.textContent = cls.name + (cls.status === 'FINISHED' ? ' (Đã kết thúc)' : '');
+                    opt.textContent = cls.name;
                     select.appendChild(opt);
                 });
+
+                if (endedClasses.length > 0) {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = '── Đã kết thúc gần đây ──';
+                    endedClasses.forEach(cls => {
+                        const opt = document.createElement('option');
+                        opt.value = cls.id;
+                        const endDate = cls.endDate ? new Date(cls.endDate).toLocaleDateString('vi-VN') : '';
+                        opt.textContent = cls.name + ' (Kết thúc' + (endDate ? ': ' + endDate : '') + ')';
+                        optgroup.appendChild(opt);
+                    });
+                    select.appendChild(optgroup);
+                }
             } catch (e) {
                 showToast('Lỗi tải danh sách lớp', 'error');
             }
@@ -854,6 +1025,7 @@
 
             try {
                 const resp = await fetch(`/api/homework/${classId}`);
+                if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
                 const data = await resp.json();
 
                 if (data.error) {
@@ -937,9 +1109,9 @@
                 const filesHtml = attachments.map(att => {
                     const filename = att.split('/').pop();
                     const shortName = filename.length > 25 ? filename.substring(0, 22) + '...' : filename;
-                    return `<a href="#" class="file-link" onclick="downloadFile('${att}'); return false;" title="${filename}">
+                    return `<a href="#" class="file-link" onclick="downloadFile('${escapeAttr(att)}'); return false;" title="${escapeAttr(filename)}">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        ${shortName}
+                        ${escapeHtml(shortName)}
                     </a>`;
                 }).join('<br>');
 
@@ -949,8 +1121,8 @@
                             <input type="checkbox" class="select-checkbox row-checkbox"
                                    value="${sub.id}" onchange="toggleSelect('${sub.id}')">
                         </td>
-                        <td class="student-name">${student.displayName || 'Unknown'}</td>
-                        <td class="lesson-name">${lesson.name || 'Unknown'}</td>
+                        <td class="student-name">${escapeHtml(student.displayName || 'Unknown')}</td>
+                        <td class="lesson-name">${escapeHtml(lesson.name || 'Unknown')}</td>
                         <td>${filesHtml || '<span style="color: var(--gray-400);">Không có tệp</span>'}</td>
                         <td><span class="badge ${statusClass}">${statusText}</span></td>
                         <td>
@@ -968,17 +1140,19 @@
                                 </button>
                             </div>
                         </td>
-                        </td>
                     </tr>
                 `;
             }).join('');
         }
 
-        // Update stats
+        // Update stats (single pass)
         function updateStats() {
+            let pending = 0, marked = 0;
+            for (const s of allSubmissions) {
+                if (s.status === 'SUBMITTED') pending++;
+                else if (s.status === 'MARKED') marked++;
+            }
             const total = allSubmissions.length;
-            const pending = allSubmissions.filter(s => s.status === 'SUBMITTED').length;
-            const marked = allSubmissions.filter(s => s.status === 'MARKED').length;
 
             document.getElementById('statTotal').textContent = total;
             document.getElementById('statPending').textContent = pending;
@@ -1039,26 +1213,17 @@
         // Mark single
         async function markSingle(id) {
             const scoreInput = document.getElementById(`score-${id}`);
-            const score = parseInt(scoreInput?.value || 100);
+            const score = parseInt(scoreInput?.value);
+            if (isNaN(score) || score < 0 || score > 100) {
+                showToast('Điểm phải từ 0 đến 100', 'error');
+                return;
+            }
 
             try {
-                const resp = await fetch('/api/homework/mark', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ id, score })
-                });
-
-                const data = await resp.json();
+                const data = await apiCall('/api/homework/mark', { id, score });
                 if (data.success) {
                     showToast(`Đã chấm ${score} điểm!`);
-                    // Update local data
-                    const sub = allSubmissions.find(s => s.id === id);
-                    if (sub) {
-                        sub.status = 'MARKED';
-                        sub.score = score;
-                    }
-                    filterSubmissions();
-                    updateStats();
+                    updateSubmissionLocally(id, score);
                 } else {
                     showToast(data.error || 'Lỗi chấm điểm', 'error');
                 }
@@ -1074,17 +1239,17 @@
                 return;
             }
 
-            const score = parseInt(document.getElementById('batchScore').value || 100);
+            const score = parseInt(document.getElementById('batchScore').value);
+            if (isNaN(score) || score < 0 || score > 100) {
+                showToast('Điểm phải từ 0 đến 100', 'error');
+                return;
+            }
             const submissions = Array.from(selectedIds).map(id => ({ id, score }));
 
+            const btn = document.getElementById('markSelectedBtn');
+            btn.disabled = true;
             try {
-                const resp = await fetch('/api/homework/batch-mark', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ submissions })
-                });
-
-                const data = await resp.json();
+                const data = await apiCall('/api/homework/batch-mark', { submissions });
                 if (data.success) {
                     showToast(`Đã chấm ${data.success_count}/${data.total} bài!`);
 
@@ -1107,6 +1272,8 @@
                 }
             } catch (e) {
                 showToast('Lỗi: ' + e.message, 'error');
+            } finally {
+                btn.disabled = selectedIds.size === 0;
             }
         }
 
@@ -1125,13 +1292,7 @@
             const submissions = pending.map(s => ({ id: s.id, score: 100 }));
 
             try {
-                const resp = await fetch('/api/homework/batch-mark', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ submissions })
-                });
-
-                const data = await resp.json();
+                const data = await apiCall('/api/homework/batch-mark', { submissions });
                 if (data.success) {
                     showToast(`Đã chấm ${data.success_count}/${data.total} bài!`);
                     loadHomework(); // Reload all
@@ -1146,12 +1307,15 @@
         // AI Grade single submission
         async function aiGradeSingle(id) {
             const sub = allSubmissions.find(s => s.id === id);
-            if (!sub) return;
+            if (!sub) {
+                showToast('Không tìm thấy bài nộp', 'error');
+                return;
+            }
 
             const student = students[sub.studentUid] || {};
             const lesson = lessons[sub.lessonId] || {};
             const attachments = sub.content?.attachments || [];
-            const modelId = document.getElementById('aiModel').value;
+            const { aiModel, customModelId } = getHomeworkSelectedModel();
 
             const btn = document.getElementById(`ai-btn-${id}`);
             const originalText = btn.innerHTML;
@@ -1167,7 +1331,8 @@
                         attachments,
                         lesson_name: lesson.name || '',
                         student_name: student.displayName || '',
-                        model_id: modelId
+                        model_id: aiModel,
+                        custom_model_id: customModelId
                     })
                 });
                 const aiData = await aiResp.json();
@@ -1206,7 +1371,7 @@
             }
         }
 
-        // AI Grade selected submissions
+        // AI Grade selected submissions (concurrent batches of 3)
         async function aiGradeSelected() {
             if (selectedIds.size === 0) {
                 showToast('Chưa chọn bài nào', 'error');
@@ -1216,21 +1381,28 @@
             const pending = Array.from(selectedIds);
             if (!confirm(`AI sẽ chấm ${pending.length} bài đã chọn. Tiếp tục?`)) return;
 
+            const btn = document.getElementById('aiGradeSelectedBtn');
+            btn.disabled = true;
             showToast(`Đang AI chấm ${pending.length} bài...`, 'info');
 
             let successCount = 0;
-            for (const id of pending) {
-                await aiGradeSingle(id);
-                const sub = allSubmissions.find(s => s.id === id);
-                if (sub && sub.status === 'MARKED') successCount++;
+            const BATCH_SIZE = 3;
+            for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+                const batch = pending.slice(i, i + BATCH_SIZE);
+                const results = await Promise.allSettled(batch.map(id => aiGradeSingle(id)));
+                for (let j = 0; j < batch.length; j++) {
+                    const sub = allSubmissions.find(s => s.id === batch[j]);
+                    if (sub && sub.status === 'MARKED') successCount++;
+                }
             }
 
             showToast(`AI đã chấm ${successCount}/${pending.length} bài!`);
             selectedIds.clear();
             updateSelectedCount();
+            btn.disabled = false;
         }
 
-        // AI Grade all pending
+        // AI Grade all pending (concurrent batches of 3)
         async function aiGradeAllPending() {
             const pending = allSubmissions.filter(s => s.status === 'SUBMITTED');
             if (pending.length === 0) {
@@ -1243,15 +1415,18 @@
             showToast(`Đang AI chấm ${pending.length} bài...`, 'info');
 
             let successCount = 0;
-            for (const sub of pending) {
-                await aiGradeSingle(sub.id);
-                if (sub.status === 'MARKED') successCount++;
+            const BATCH_SIZE = 3;
+            for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+                const batch = pending.slice(i, i + BATCH_SIZE);
+                await Promise.allSettled(batch.map(sub => aiGradeSingle(sub.id)));
+                batch.forEach(sub => { if (sub.status === 'MARKED') successCount++; });
             }
 
             showToast(`AI đã chấm ${successCount}/${pending.length} bài!`);
         }
 
         // Init
+        toggleHomeworkCustomModelInput();
         loadClasses();
     </script>
 </body>

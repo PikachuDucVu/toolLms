@@ -4,19 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LMS Auto Comment Tool</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #2563EB;
-            --primary-dark: #1D4ED8;
-            --primary-light: #3B82F6;
-            --primary-lighter: #DBEAFE;
-            --success: #10b981;
-            --success-dark: #059669;
-            --success-light: #D1FAE5;
+            --primary: #0891B2;
+            --primary-dark: #0E7490;
+            --primary-light: #22D3EE;
+            --primary-lighter: #ECFEFF;
+            --primary-bg: #F0FDFA;
+            --accent: #0D9488;
+            --accent-light: #CCFBF1;
+            --success: #22C55E;
+            --success-dark: #16A34A;
+            --success-light: #DCFCE7;
             --warning: #F59E0B;
+            --warning-dark: #D97706;
             --warning-light: #FEF3C7;
             --danger: #EF4444;
+            --danger-dark: #DC2626;
             --danger-light: #FEE2E2;
             --gray-50: #F8FAFC;
             --gray-100: #F1F5F9;
@@ -28,30 +33,49 @@
             --gray-700: #334155;
             --gray-800: #1E293B;
             --gray-900: #0F172A;
-            --radius: 12px;
-            --radius-sm: 8px;
-            --radius-lg: 16px;
-            --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -1px rgba(0,0,0,0.04);
-            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.03);
-            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 10px 10px -5px rgba(0,0,0,0.03);
+            --radius: 14px;
+            --radius-sm: 10px;
+            --radius-lg: 18px;
+            --radius-xs: 6px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+            --shadow-lg: 0 12px 24px -4px rgba(0,0,0,0.08), 0 4px 8px -2px rgba(0,0,0,0.03);
+            --shadow-xl: 0 20px 40px -8px rgba(0,0,0,0.1), 0 8px 16px -4px rgba(0,0,0,0.04);
             --transition: 200ms ease;
+            --transition-fast: 150ms ease;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--gray-100);
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #F0FDFA 0%, #F1F5F9 50%, #ECFEFF 100%);
+            background-attachment: fixed;
             min-height: 100vh;
             color: var(--gray-800);
-            line-height: 1.5;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         h1, h2, h3, h4, h5, h6 {
-            font-family: 'Poppins', 'Inter', sans-serif;
-            font-weight: 600;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
             line-height: 1.3;
+            letter-spacing: -0.01em;
         }
 
         /* Icon styles */
@@ -74,20 +98,32 @@
         .app-container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 24px;
         }
 
         /* Header */
         .header {
             background: white;
-            border-radius: var(--radius);
-            padding: 16px 24px;
-            margin-bottom: 20px;
+            border-radius: var(--radius-lg);
+            padding: 16px 28px;
+            margin-bottom: 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(8, 145, 178, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light), var(--accent));
         }
 
         .header-left {
@@ -99,12 +135,17 @@
         .logo {
             width: 44px;
             height: 44px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            border-radius: 10px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
+            transition: transform var(--transition);
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
         }
 
         .header h1 {
@@ -156,16 +197,16 @@
         }
 
         .nav-tabs a {
-            padding: 8px 16px;
-            border-radius: 6px;
+            padding: 9px 18px;
+            border-radius: var(--radius-xs);
             text-decoration: none;
             color: var(--gray-600);
             font-size: 13px;
-            font-weight: 500;
+            font-weight: 600;
             transition: all var(--transition);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
             cursor: pointer;
         }
 
@@ -187,28 +228,34 @@
             box-shadow: var(--shadow);
             border: 1px solid var(--gray-200);
             overflow: hidden;
-            transition: box-shadow var(--transition);
+            transition: box-shadow var(--transition), border-color var(--transition);
         }
 
         .card:hover {
             box-shadow: var(--shadow-md);
+            border-color: rgba(8, 145, 178, 0.12);
         }
 
         .card-header {
             padding: 16px 20px;
-            border-bottom: 1px solid var(--gray-200);
+            border-bottom: 1px solid var(--gray-100);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            background: var(--gray-50);
         }
 
         .card-header h2 {
             font-size: 15px;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--gray-800);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+        }
+
+        .card-header h2 svg {
+            color: var(--primary);
         }
 
         .card-body {
@@ -218,14 +265,14 @@
         /* Layout */
         .main-grid {
             display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 20px;
+            grid-template-columns: 340px 1fr;
+            gap: 24px;
         }
 
         .sidebar {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 24px;
         }
 
         @media (max-width: 1024px) {
@@ -244,7 +291,7 @@
         .form-label {
             display: block;
             font-size: 13px;
-            font-weight: 500;
+            font-weight: 600;
             color: var(--gray-700);
             margin-bottom: 6px;
         }
@@ -252,18 +299,28 @@
         .form-input, .form-select {
             width: 100%;
             padding: 10px 14px;
-            border: 1px solid var(--gray-300);
-            border-radius: 8px;
+            border: 1.5px solid var(--gray-300);
+            border-radius: var(--radius-sm);
             font-size: 14px;
             font-family: inherit;
-            transition: all 0.2s;
+            transition: all var(--transition);
             background: white;
+            color: var(--gray-800);
         }
 
         .form-input:focus, .form-select:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+        }
+
+        .form-input:focus-visible, .form-select:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 1px;
+        }
+
+        .form-input:hover, .form-select:hover {
+            border-color: var(--gray-400);
         }
 
         .form-input::placeholder {
@@ -289,11 +346,13 @@
             border: none;
             border-radius: var(--radius-sm);
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;
             font-family: inherit;
             cursor: pointer;
             transition: all var(--transition);
             white-space: nowrap;
+            position: relative;
+            overflow: hidden;
         }
 
         .btn:disabled {
@@ -301,9 +360,9 @@
             cursor: not-allowed;
         }
 
-        .btn:focus {
-            outline: none;
-            box-shadow: 0 0 0 3px var(--primary-lighter);
+        .btn:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
         }
 
         .btn-primary {
@@ -313,7 +372,12 @@
 
         .btn-primary:hover:not(:disabled) {
             background: var(--primary-dark);
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
         }
 
         .btn-success {
@@ -323,18 +387,24 @@
 
         .btn-success:hover:not(:disabled) {
             background: var(--success-dark);
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-success:active:not(:disabled) {
+            transform: translateY(0);
         }
 
         .btn-outline {
             background: white;
-            border: 1px solid var(--gray-300);
+            border: 1.5px solid var(--gray-300);
             color: var(--gray-700);
         }
 
         .btn-outline:hover:not(:disabled) {
             background: var(--gray-50);
-            border-color: var(--gray-400);
+            border-color: var(--primary);
+            color: var(--primary);
         }
 
         .btn-sm {
@@ -361,8 +431,8 @@
 
         .class-item {
             padding: 14px 16px;
-            border: 1px solid var(--gray-200);
-            border-radius: 10px;
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius-sm);
             margin-bottom: 8px;
             cursor: pointer;
             transition: all var(--transition);
@@ -372,12 +442,13 @@
         .class-item:hover {
             border-color: var(--primary-light);
             background: var(--primary-lighter);
+            transform: translateX(3px);
         }
 
         .class-item.selected {
             border-color: var(--primary);
             background: var(--primary-lighter);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
         }
 
         .class-item h3 {
@@ -395,7 +466,7 @@
         /* Student Cards */
         .student-grid {
             display: grid;
-            gap: 12px;
+            gap: 14px;
             max-height: 500px;
             overflow-y: auto;
             padding-right: 4px;
@@ -403,24 +474,24 @@
 
         .student-card {
             background: white;
-            border: 1px solid var(--gray-200);
-            border-radius: 10px;
-            padding: 16px;
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius);
+            padding: 18px;
             transition: all var(--transition);
             cursor: default;
         }
 
         .student-card:hover {
             box-shadow: var(--shadow-md);
-            border-color: var(--gray-300);
+            border-color: rgba(8, 145, 178, 0.15);
         }
 
         .student-card.has-comment {
-            border-left: 3px solid var(--success);
+            border-left: 4px solid var(--success);
         }
 
         .student-card.no-comment {
-            border-left: 3px solid var(--warning);
+            border-left: 4px solid var(--warning);
         }
 
         .student-header {
@@ -437,16 +508,17 @@
         }
 
         .student-avatar {
-            width: 40px;
-            height: 40px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 14px;
+            flex-shrink: 0;
         }
 
         .student-name {
@@ -468,7 +540,8 @@
             padding: 4px 10px;
             border-radius: 20px;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 700;
+            letter-spacing: 0.02em;
         }
 
         .badge-success {
@@ -489,17 +562,17 @@
         .comment-box {
             background: var(--gray-50);
             border-radius: var(--radius-sm);
-            padding: 12px;
+            padding: 14px;
             margin-top: 12px;
             font-size: 13px;
             color: var(--gray-700);
-            line-height: 1.6;
+            line-height: 1.7;
             border: 1px solid var(--gray-200);
         }
 
         .comment-box.ai-generated {
             background: var(--success-light);
-            border: 1px solid rgba(16, 185, 129, 0.3);
+            border: 1px solid rgba(34, 197, 94, 0.25);
         }
 
         .comment-box-label {
@@ -531,7 +604,7 @@
         .comment-edit:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--primary-lighter);
+            box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
         }
 
         .btn-icon {
@@ -574,8 +647,13 @@
         }
 
         .btn-danger:hover:not(:disabled) {
-            background: #DC2626;
-            box-shadow: var(--shadow-md);
+            background: var(--danger-dark);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-danger:active:not(:disabled) {
+            transform: translateY(0);
         }
 
         .template-buttons {
@@ -631,7 +709,8 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.5);
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(4px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -644,12 +723,13 @@
 
         .confirm-content {
             background: white;
-            border-radius: 12px;
-            padding: 24px;
+            border-radius: var(--radius-lg);
+            padding: 28px;
             max-width: 500px;
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
+            box-shadow: var(--shadow-xl);
         }
 
         .confirm-title {
@@ -727,7 +807,7 @@
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
-            transition: width 0.3s ease;
+            transition: width 0.4s ease;
             border-radius: 3px;
         }
 
@@ -751,20 +831,21 @@
 
         .toast {
             padding: 14px 20px;
-            border-radius: 10px;
+            border-radius: var(--radius-sm);
             color: white;
-            font-weight: 500;
+            font-weight: 600;
             font-size: 14px;
-            box-shadow: var(--shadow-lg);
+            box-shadow: var(--shadow-xl);
             animation: slideIn 0.3s ease;
             display: flex;
             align-items: center;
             gap: 10px;
+            backdrop-filter: blur(8px);
         }
 
-        .toast.success { background: var(--success); }
-        .toast.error { background: var(--danger); }
-        .toast.info { background: var(--primary); }
+        .toast.success { background: rgba(34, 197, 94, 0.95); }
+        .toast.error { background: rgba(239, 68, 68, 0.95); }
+        .toast.info { background: rgba(8, 145, 178, 0.95); }
 
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
@@ -807,9 +888,11 @@
         }
 
         .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-            opacity: 0.5;
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 16px;
+            color: var(--gray-300);
+            opacity: 0.7;
         }
 
         .empty-state-text {
@@ -819,8 +902,8 @@
         /* Summary Section */
         .summary-section {
             background: var(--primary-lighter);
-            border: 1px solid rgba(37, 99, 235, 0.2);
-            border-radius: 10px;
+            border: 1px solid rgba(8, 145, 178, 0.15);
+            border-radius: var(--radius-sm);
             padding: 16px;
             margin-bottom: 16px;
         }
@@ -840,7 +923,7 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: var(--gray-100);
+            background: transparent;
             border-radius: 3px;
         }
 
@@ -1012,7 +1095,8 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.7);
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1026,13 +1110,14 @@
         
         .copy-modal-content {
             background: white;
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: var(--radius-lg);
+            padding: 24px;
             width: 100%;
             max-width: 500px;
             max-height: 80vh;
             display: flex;
             flex-direction: column;
+            box-shadow: var(--shadow-xl);
         }
         
         .copy-modal-title {
@@ -1067,9 +1152,10 @@
         }
 
         .config-section {
-            padding: 16px;
+            padding: 18px;
             background: var(--gray-50);
-            border-radius: 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--gray-200);
         }
 
         .config-section h3 {
@@ -1092,10 +1178,10 @@
 
         /* Demo Session 14 Styles */
         .demo-banner {
-            background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%);
+            background: linear-gradient(135deg, #7C3AED 0%, var(--primary) 100%);
             color: white;
-            padding: 16px 20px;
-            border-radius: 10px;
+            padding: 18px 22px;
+            border-radius: var(--radius);
             margin-bottom: 16px;
             display: flex;
             align-items: center;
@@ -1217,7 +1303,7 @@
             color: var(--success-dark);
         }
         .btn-demo {
-            background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%);
+            background: linear-gradient(135deg, #7C3AED 0%, var(--primary) 100%);
             color: white;
             border: none;
         }
@@ -1244,6 +1330,158 @@
             background: #FEF3C7;
             color: #92400E;
             margin-right: 4px;
+        }
+
+        /* Checkpoint Session Styles */
+        .checkpoint-banner {
+            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+            color: white;
+            padding: 18px 22px;
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .checkpoint-banner-icon { font-size: 28px; }
+        .checkpoint-banner h3 { font-size: 16px; font-weight: 700; color: white; }
+        .checkpoint-banner p { font-size: 13px; opacity: 0.9; margin-top: 2px; }
+
+        .checkpoint-score-card {
+            background: #FFFBEB;
+            border: 1px solid #FDE68A;
+            border-radius: 10px;
+            padding: 14px;
+            margin-top: 10px;
+        }
+        .checkpoint-score-card.submitted {
+            background: var(--success-light);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        .checkpoint-score-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #92400E;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .checkpoint-score-card.submitted .checkpoint-score-title {
+            color: var(--success-dark);
+        }
+        .checkpoint-score-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .checkpoint-score-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .checkpoint-score-input-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gray-600);
+        }
+        .checkpoint-score-input {
+            width: 100%;
+            text-align: center;
+            padding: 8px;
+            font-weight: 700;
+            color: #D97706;
+            font-size: 16px;
+            border: 2px solid #FDE68A;
+            border-radius: 8px;
+            background: white;
+            transition: border-color 0.2s;
+        }
+        .checkpoint-score-input:focus {
+            outline: none;
+            border-color: #F59E0B;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+        }
+        .checkpoint-comment-section {
+            background: #FEF3C7;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+        }
+        .checkpoint-comment-section label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #92400E;
+            margin-bottom: 6px;
+            display: block;
+        }
+        .checkpoint-comment-section textarea {
+            width: 100%;
+            min-height: 60px;
+            padding: 8px;
+            border: 1px solid #FDE68A;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            resize: vertical;
+        }
+        .checkpoint-comment-section textarea:focus {
+            outline: none;
+            border-color: #F59E0B;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
+        }
+        .checkpoint-ai-comment {
+            background: #ECFDF5;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+        }
+        .checkpoint-total-row {
+            background: #FEF3C7;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+        }
+        .checkpoint-total-score {
+            font-size: 20px;
+            color: #D97706;
+            font-weight: 700;
+        }
+        .checkpoint-total-label {
+            font-size: 13px;
+            color: var(--gray-600);
+        }
+        .checkpoint-rank {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 16px;
+            margin-left: 8px;
+        }
+        .checkpoint-rank.A { background: #D1FAE5; color: #059669; }
+        .checkpoint-rank.B { background: #DBEAFE; color: #2563EB; }
+        .checkpoint-rank.C { background: #FEF3C7; color: #D97706; }
+        .checkpoint-rank.D { background: #FEE2E2; color: #DC2626; }
+        .badge-checkpoint { background: #FEF3C7; color: #92400E; }
+        .badge-checkpoint-done { background: var(--success-light); color: var(--success-dark); }
+        .btn-checkpoint {
+            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+            color: white;
+            border: none;
+        }
+        .btn-checkpoint:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+            transform: translateY(-1px);
         }
     </style>
 </head>
@@ -1334,11 +1572,15 @@
                         </h3>
                         <div class="form-group">
                             <label class="form-label" for="aiModel">Model AI</label>
-                            <select class="form-select" id="aiModel">
+                            <select class="form-select" id="aiModel" onchange="toggleCustomModelInput()">
                                 {% for model in ai_models %}
                                 <option value="{{ model.id }}" data-provider="{{ model.provider }}" {% if model.id == ai_model %}selected{% endif %}>{{ model.name }}</option>
                                 {% endfor %}
                             </select>
+                        </div>
+                        <div class="form-group" id="customModelGroup" style="display: {{ 'block' if ai_model == '__custom__' else 'none' }};">
+                            <label class="form-label" for="customModelId">Tên model custom</label>
+                            <input class="form-input" id="customModelId" value="{{ custom_model_id }}" placeholder="VD: gpt-5.4, gemini-2.5-pro, claude-sonnet-4-6">
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="commentLength">Độ dài nhận xét</label>
@@ -1351,6 +1593,10 @@
                         <div class="form-group">
                             <label class="form-label" for="customPrompt">Prompt bổ sung (tùy chọn)</label>
                             <textarea class="form-input" id="customPrompt" placeholder="VD: Nhấn mạnh về BTVN, khen nhiều hơn..." style="min-height: 60px;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="proxyApiKey">API Key</label>
+                            <input type="password" class="form-input" id="proxyApiKey" placeholder="Nhập API key cho AI" autocomplete="off">
                         </div>
                         <button class="btn btn-success btn-block" onclick="saveConfig()">
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1446,7 +1692,7 @@
                         Danh sách học sinh
                     </h2>
                     <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="text" class="form-input" id="searchStudent" placeholder="Tìm học sinh..." style="width: 150px; padding: 6px 10px; font-size: 12px;" oninput="filterStudents()">
+                        <input type="text" class="form-input" id="searchStudent" placeholder="Tìm học sinh..." style="width: 150px; padding: 6px 10px; font-size: 12px;" oninput="debouncedFilterStudents()">
                         <select class="form-select" id="filterStatus" style="padding: 6px 10px; font-size: 12px;" onchange="filterStudents()">
                             <option value="all">Tất cả</option>
                             <option value="present">Có mặt</option>
@@ -1543,6 +1789,20 @@
                         🎯 Submit Demo tất cả (Điểm random >75%)
                     </button>
                 </div>
+                <div class="action-bar" id="checkpointActionBar" style="display:none;">
+                    <button class="btn btn-checkpoint" onclick="submitCheckpointAll()" id="submitCheckpointAllBtn" disabled>
+                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        📝 Submit Checkpoint tất cả (Auto điểm 4-5)
+                    </button>
+                    <button class="btn btn-primary" onclick="autoCheckpointCommentAll()" id="autoCheckpointCommentBtn" disabled>
+                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                        </svg>
+                        🤖 AI nhận xét tất cả
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1593,7 +1853,468 @@
         let generatedComments = {};
         let classData = null;
         let classesCache = null;
-        
+
+        // ============== UTILITY HELPERS ==============
+
+        /** Escape HTML entities to prevent XSS */
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = String(str);
+            return div.innerHTML;
+        }
+
+        /** Escape string for use inside inline event handler attributes */
+        function escapeAttr(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\/g,'\\\\');
+        }
+
+        /** Sanitize an ID for use as a DOM element id */
+        function sanitizeId(id) {
+            return String(id).replace(/[^a-zA-Z0-9]/g, '_');
+        }
+
+        /** Debounce function */
+        function debounce(fn, delay = 300) {
+            let timer;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn(...args), delay);
+            };
+        }
+
+        /** Fetch JSON from backend with error handling */
+        async function fetchJSON(url, body) {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            const text = await resp.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch {
+                throw new Error(`Server trả về lỗi ${resp.status}`);
+            }
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            return data;
+        }
+
+        /** Get list of present students (ATTENDED or LATE_ARRIVED) */
+        function getPresentStudents() {
+            return students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+        }
+
+        /** Cached Audio objects */
+        const _audioCache = {};
+        function playSound(type = 'success') {
+            const urls = {
+                success: 'https://cdn.pixabay.com/audio/2022/07/26/audio_124bfae50c.mp3',
+                error: 'https://cdn.pixabay.com/audio/2022/10/30/audio_3c6b29072d.mp3'
+            };
+            const url = urls[type] || urls.success;
+            if (!_audioCache[url]) {
+                _audioCache[url] = new Audio(url);
+            }
+            _audioCache[url].currentTime = 0;
+            _audioCache[url].play().catch(() => {});
+        }
+
+        // DOM element cache (populated after DOMContentLoaded)
+        const DOM = {};
+
+        // ============== FIREBASE & MINDX API CONFIG ==============
+        const FIREBASE_API_KEY = "AIzaSyAh2Au-mk5ci-hN83RUBqj1fsAmCMdvJx4";
+        const LMS_API_URL = "/_mx/lms-api/";
+
+        // Token state (stored in localStorage)
+        let lmsToken = localStorage.getItem('lms_token') || null;
+        let tokenExpiry = parseInt(localStorage.getItem('lms_token_expiry') || '0');
+        let firebaseToken = localStorage.getItem('lms_firebase_token') || null;
+
+        function saveTokens() {
+            localStorage.setItem('lms_token', lmsToken || '');
+            localStorage.setItem('lms_token_expiry', String(tokenExpiry));
+            localStorage.setItem('lms_firebase_token', firebaseToken || '');
+        }
+
+        function clearTokens() {
+            lmsToken = null;
+            tokenExpiry = 0;
+            firebaseToken = null;
+            localStorage.removeItem('lms_token');
+            localStorage.removeItem('lms_token_expiry');
+            localStorage.removeItem('lms_firebase_token');
+        }
+
+        function isTokenValid() {
+            if (!lmsToken) return false;
+            return Date.now() / 1000 < tokenExpiry - 60;
+        }
+
+        // ============== AUTH (server-side, returns token to frontend) ==============
+
+        async function firebaseLogin(email, password) {
+            /**
+             * Auth flow runs server-side (needs session cookies between steps).
+             * Server returns the final LMS token which we store in localStorage.
+             */
+            const resp = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email, password})
+            });
+            const text = await resp.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    throw new Error(`Server trả về lỗi ${resp.status}`);
+                }
+            if (!data.success) {
+                throw new Error(data.error || 'Login failed');
+            }
+            lmsToken = data.lms_token;
+            tokenExpiry = data.token_expiry;
+            saveTokens();
+            return true;
+        }
+
+        // ============== LMS GraphQL API (direct from frontend via nginx proxy) ==============
+
+        async function lmsApiCall(operationName, query, variables = {}) {
+            /**
+             * Call MindX LMS GraphQL API via nginx same-origin proxy.
+             * Auto-refreshes token on 403 or INVALID_TOKEN.
+             */
+            if (!isTokenValid()) {
+                throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+            }
+
+            const headers = {
+                "Content-Type": "application/json",
+                "Authorization": lmsToken,  // NO "Bearer " prefix for LMS API
+            };
+
+            const body = {
+                operationName: operationName,
+                variables: variables,
+                query: query
+            };
+
+            let resp = await fetch(LMS_API_URL, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body)
+            });
+            let data;
+            try {
+                data = await resp.json();
+            } catch(e) {
+                throw new Error(`API error: ${resp.status}`);
+            }
+
+            // Check if token was rejected
+            const shouldRetry = (
+                resp.status === 403 ||
+                (data.errors && JSON.stringify(data.errors).match(/INVALID_TOKEN|Authentication failed|Failed to build auth user/))
+            );
+
+            if (shouldRetry) {
+                clearTokens();
+                throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+            }
+
+            return data;
+        }
+
+        // ============== COMMENT PAYLOAD BUILDERS (moved from backend) ==============
+
+        // Cutoff date: classes starting from this date use the new simplified payload
+        const NEW_CLASS_CUTOFF_DATE = '2026-04-05';
+
+        // Check if the currently selected class uses the new payload format
+        function isNewFormatClass() {
+            if (!selectedClass || !selectedClass.startDate) return false;
+            try {
+                return new Date(selectedClass.startDate) >= new Date(NEW_CLASS_CUTOFF_DATE);
+            } catch(e) { return false; }
+        }
+
+        // Default byAreas (7 RATE + 1 CONTENT) for normal sessions (old format)
+        const DEFAULT_RATE_AREAS = [
+            {grade: 5, content: "- Học viên trình bày ý kiến rõ ràng, chủ động hỏi khi gặp vấn đề, thuyết trình trước lớp mạch lạc, rõ ràng.\n- Học viên nhìn nhận được những ưu - nhược điểm của bản thân sau khi nhận đánh giá từ giáo viên, bạn bè", commentAreaId: "66f12601cdcebc582a30307f", type: "RATE"},
+            {grade: 5, content: "- Học viên phản biện và phân tích các giải pháp một cách sâu rộng, biết thử đi thử lại nhiều lần đến khi ra kết quả từ đó Học viên có thể tổng quát cho nhiều vấn đề tương tự sau này\n- Học viên đưa sản phẩm cá nhân go live và có tiếp nhận người dùng thật.", commentAreaId: "66f12569cdcebc582a302bd2", type: "RATE"},
+            {grade: 5, content: "- Tốc độ sử dụng chuột/bàn phím rất thành thạo, có thể sử dụng gõ phím bằng 2 tay không cần nhìn phím.\n- Học viên tận dụng tối ưu các phần mềm máy tính, sử dụng các công cụ hỗ trợ xây dựng sơ đồ tư duy, công cụ quản lý tiến độ dự án, công cụ xây dựng sơ đồ thuật toán.", commentAreaId: "66f125d3cdcebc582a302f35", type: "RATE"},
+            {grade: 5, content: "- Học viên tập trung lắng nghe bài giảng, tự giác học tập, giáo viên hầu như không phải nhắc nhở con, hiệu quả buổi học cao\n- Học viên tuân thủ tuyệt đối các quy tắc trong lớp học, luôn có mặt đúng giờ, lễ phép khi giao tiếp với giáo viên.\n", commentAreaId: "66f12637cdcebc582a30321c", type: "RATE"},
+            {grade: 5, content: "- Ngoài việc nắm chắc kiến thức được hướng dẫn trong buổi học,  học viên có sự chủ động đặt câu hỏi với giáo viên để mở rộng/ nâng cao thêm vốn hiểu biết.", commentAreaId: "66f124bbcdcebc582a302727", type: "RATE"},
+            {grade: 5, content: "- Học viên thành thạo trong việc sử dụng ngôn ngữ lập trình, biết tối ưu hoá đoạn code và sắp xếp chỉnh chu, gọn gàng\n- Học viên có thể tự xây dựng mô hình/sơ đồ tư duy tuần tự các bước lập trình cho dự án cá nhân của mình mà không cần sự hỗ trợ từ giáo viên", commentAreaId: "66f12525cdcebc582a302a65", type: "RATE"},
+            {grade: 5, content: "- Học viên chủ động trong việc phát hiện ra những ý tưởng sáng tạo cho các tính năng của sản phẩm dựa trên những kiến thức vừa được học và đặt câu hỏi với Giáo viên.\n- Học viên tự mình thiết kế trò chơi, câu chuyện hoặc dự án hoàn toàn mới, có khả năng thu hút sự chú ý và hứng thú của người khác, hoặc tạo ra một trào lưu trong cộng đồng", commentAreaId: "66f1259bcdcebc582a302cd7", type: "RATE"}
+        ];
+
+        const AREA_NAMES = [
+            "Kỹ năng giao tiếp, hợp tác", "Kỹ năng giải quyết vấn đề", "Kỹ năng sử dụng máy tính",
+            "Thái độ học tập trên lớp", "Kiến thức học viên đã được học tại lớp",
+            "Tư duy máy tính, tư duy thuật toán", "Tư duy sáng tạo"
+        ];
+
+        function buildDefaultPayload(data) {
+            // New format for classes starting from 05/04/2026: only CONTENT area, no RATE areas
+            if (isNewFormatClass()) {
+                const byAreas = [
+                    {content: data.comment, commentAreaId: "67b54307f79c7bc326e017ff", type: "CONTENT"}
+                ];
+                const fullContent = `- Đánh giá chung: ${data.comment}`;
+
+                return {
+                    slotId: data.slot_id,
+                    classSiteId: data.class_site_id,
+                    sessionNumber: data.session_number,
+                    classId: data.class_id,
+                    courseProcessId: data.course_process_id,
+                    slotType: "Default",
+                    rank: "N/A",
+                    totalScore: null,
+                    ...(data.summary ? {summary: data.summary} : {}),
+                    studentComment: {
+                        studentAttendanceId: data.student_attendance_id,
+                        studentId: data.student_id,
+                        content: fullContent,
+                        byAreas: byAreas
+                    }
+                };
+            }
+
+            // Old format: 7 RATE areas + 1 CONTENT area
+            const byAreas = [
+                ...DEFAULT_RATE_AREAS,
+                {content: data.comment, commentAreaId: "67b54307f79c7bc326e017ff", type: "CONTENT"}
+            ];
+
+            const contentParts = [];
+            for (let i = 0; i < DEFAULT_RATE_AREAS.length; i++) {
+                contentParts.push(`- [COD]  ${AREA_NAMES[i]}: ${DEFAULT_RATE_AREAS[i].content}`);
+            }
+            contentParts.push(`- Đánh giá chung: ${data.comment}`);
+            const fullContent = contentParts.join('<br>');
+
+            return {
+                slotId: data.slot_id,
+                classSiteId: data.class_site_id,
+                sessionNumber: data.session_number,
+                classId: data.class_id,
+                courseProcessId: data.course_process_id,
+                slotType: "Default",
+                rank: "N/A",
+                totalScore: null,
+                ...(data.summary ? {summary: data.summary} : {}),
+                studentComment: {
+                    studentAttendanceId: data.student_attendance_id,
+                    studentId: data.student_id,
+                    content: fullContent,
+                    byAreas: byAreas
+                }
+            };
+        }
+
+        // Checkpoint payload builder
+        const CHECKPOINT_QUESTION_IDS = [
+            "668e2f99e71f90e7630d4594","668e2f99e71f90e7630d4595","668e2f99e71f90e7630d4596",
+            "668e2f99e71f90e7630d4597","668e2f99e71f90e7630d4598","668e2f99e71f90e7630d4599",
+            "668e2f99e71f90e7630d459a","668e2f99e71f90e7630d459b","668e2f99e71f90e7630d459c",
+            "668e2f99e71f90e7630d459d"
+        ];
+
+        const CHECKPOINT_RATE_AREAS = [
+            {grade:5,content:"- Học viên chủ động liên hệ giáo viên tìm thêm nguồn/ sách để ôn tập và học kiến thức mới tại nhà ngoài những tài liệu đã được cung cấp mà không cần yêu cầu từ giáo viên",commentAreaId:"665e7d33181e0e47f6c63768",type:"RATE",courseProcessCheckpointEvaluationId:"66c866a56ae1a9fab6399329",courseProcessCheckpointEvaluationTitle:"KIẾN THỨC"},
+            {grade:5,content:"- Ngoài việc nắm vững các kiến thức được giảng dạy, học viên còn có sự chủ động, đặt câu hỏi mở rộng trực tiếp tại lớp từ những kiến thức vừa được cung cấp",commentAreaId:"668d69d8e71f90e7630ce16c",type:"RATE",courseProcessCheckpointEvaluationId:"66c866a56ae1a9fab6399329",courseProcessCheckpointEvaluationTitle:"KIẾN THỨC"},
+            {grade:5,content:"- Học viên phản biện và phân tích các giải pháp một cách sâu rộng, biết thử đi thử lại nhiều lần đến khi ra kết quả từ đó Học viên có thể tổng quát cho nhiều vấn đề tương tự sau này\n- Học viên đưa sản phẩm cá nhân go live và có tiếp nhận người dùng thật",commentAreaId:"668e0f48e71f90e7630d2db6",type:"RATE",courseProcessCheckpointEvaluationId:"66c866a56ae1a9fab639932a",courseProcessCheckpointEvaluationTitle:"KỸ NĂNG"},
+            {grade:5,content:"- Học viên trình bày ý kiến rõ ràng, chủ động hỏi khi gặp vấn đề, thuyết trình trước lớp mạch lạc, rõ ràng\n- Học viên nhìn nhận được những ưu - nhược điểm của bản thân sau khi nhận đánh giá từ giáo viên, bạn bè",commentAreaId:"668e2e7de71f90e7630d4316",type:"RATE",courseProcessCheckpointEvaluationId:"66c866a56ae1a9fab639932a",courseProcessCheckpointEvaluationTitle:"KỸ NĂNG"},
+            {grade:5,content:"- Tốc độ sử dụng chuột/bàn phím rất thành thạo, có thể sử dụng gõ phím bằng 2 tay không cần nhìn phím.\n- Học viên tận dụng tối ưu các phần mềm máy tính, sử dụng các công cụ hỗ trợ xây dựng sơ đồ tư duy, công cụ quản lý tiến độ dự án, công cụ xây dựng sơ đồ thuật toán",commentAreaId:"668e2ce1e71f90e7630d406f",type:"RATE",courseProcessCheckpointEvaluationId:"66c866a56ae1a9fab639932a",courseProcessCheckpointEvaluationTitle:"KỸ NĂNG"},
+            {grade:5,content:"- Học viên thành thạo trong việc sử dụng ngôn ngữ lập trình\n- Học viên có thể tự xây dựng mô hình/sơ đồ tư duy tuần tự các bước lập trình cho dự án cá nhân của mình mà không cần sự hỗ trợ từ Giáo viên",commentAreaId:"668d6a25e71f90e7630ce187",type:"RATE",courseProcessCheckpointEvaluationId:"66c866a56ae1a9fab639932a",courseProcessCheckpointEvaluationTitle:"KỸ NĂNG"},
+            {grade:5,content:"- Học viên chủ động trong việc phát hiện ra những ý tưởng sáng tạo cho các tính năng của sản phẩm dựa trên những kiến thức vừa được học và đặt câu hỏi với Giáo viên.\n- Học viên tự mình thiết kế trò chơi, câu chuyện hoặc dự án hoàn toàn mới, có khả năng thu hút sự chú ý và hứng thú của người khác, hoặc tạo ra một trào lưu trong cộng đồng",commentAreaId:"668d6a69e71f90e7630ce198",type:"RATE",courseProcessCheckpointEvaluationId:"66c866a56ae1a9fab639932a",courseProcessCheckpointEvaluationTitle:"KỸ NĂNG"},
+            {grade:5,content:"- Học viên tập trung lắng nghe bài giảng, tự giác học tập, mentor hầu như không phải nhắc nhở con, hiệu quả buổi học cao\n- Học viên tuân thủ tuyệt đối các quy tắc trong lớp học, luôn có mặt đúng giờ, lễ phép khi giao tiếp với giáo viên",commentAreaId:"668e2eaee71f90e7630d434f",type:"RATE",courseProcessCheckpointEvaluationId:"66c866a56ae1a9fab639932b",courseProcessCheckpointEvaluationTitle:"THÁI ĐỘ"},
+            {grade:5,content:"- Học viên chủ động tìm kiếm thêm các bài tập, dự án để luyện tập và đặt các câu hỏi luyện tập với giáo viên",commentAreaId:"668e2f5be71f90e7630d44c1",type:"RATE",courseProcessCheckpointEvaluationId:"66c866a56ae1a9fab639932b",courseProcessCheckpointEvaluationTitle:"THÁI ĐỘ"}
+        ];
+
+        function buildCheckpointPayload(data) {
+            let theoryScore = data.theory_score;
+            let practiceScore = data.practice_score;
+            const autoScores = data.auto_scores || false;
+
+            if (autoScores || theoryScore == null) theoryScore = [4, 4.5, 5][Math.floor(Math.random()*3)];
+            else theoryScore = parseFloat(theoryScore);
+            if (autoScores || practiceScore == null) practiceScore = [4, 4.5, 5][Math.floor(Math.random()*3)];
+            else practiceScore = parseFloat(practiceScore);
+            theoryScore = Math.max(0, Math.min(5, theoryScore));
+            practiceScore = Math.max(0, Math.min(5, practiceScore));
+
+            const numCorrect = Math.max(0, Math.min(10, Math.floor(theoryScore / 0.5)));
+            let results = Array(numCorrect).fill(true).concat(Array(10-numCorrect).fill(false));
+            for (let i = results.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [results[i],results[j]]=[results[j],results[i]]; }
+
+            const checkpointQuestions = results.map((r,i) => ({
+                title: `${i+1}. `, result: r, score: r ? 0.5 : 0, id: CHECKPOINT_QUESTION_IDS[i]
+            }));
+
+            const totalScore = Math.round((theoryScore + practiceScore) / 2 * 10) / 10;
+            const rank = totalScore >= 4.5 ? 'A' : totalScore >= 3.5 ? 'B' : totalScore >= 2.5 ? 'C' : 'D';
+
+            const surveyArea = {grade:0,content:"Chúng tôi rất cảm ơn Quý phụ huynh đã tin tưởng và lựa chọn đăng ký học cho con tại Học viện công nghệ MindX. Để nâng cao chất lượng đào tạo và dịch vụ, xin Quý phụ huynh dành chút thời gian để hoàn thành khảo sát dưới đây.\nhttps://forms.office.com/r/aD9aPGAw2A",commentAreaId:"670777c055bde44038509a1b",type:"RATE"};
+            const contentArea = {content: data.comment || '<p>Học sinh hoàn thành bài kiểm tra tốt.</p>', commentAreaId: "67b54307f79c7bc326e017ff", type: "CONTENT"};
+            const checkpointArea = {
+                checkpoint: {practiceScore, checkpointScore: theoryScore, checkpointQuestions},
+                content: `Điểm thực hành: ${practiceScore}\n    <p>Điểm trắc nghiệm: ${theoryScore}</p>`,
+                commentAreaId: "668e2f99e71f90e7630d4593", type: "CHECKPOINT"
+            };
+
+            const byAreas = [...CHECKPOINT_RATE_AREAS, surveyArea, contentArea, checkpointArea];
+
+            // Build HTML content (simplified)
+            const theoryItems = checkpointQuestions.map(q => `<li data-list="bullet"><span class="ql-ui"></span><span style="color:rgb(0, 0, 0)">${q.title}: ${q.result ? '0.5 điểm' : '0 điểm'}</span></li>`).join('');
+            const fullContent = `<div style="list-style-type:circle"><p><strong style="color:rgb(0, 0, 0)">Điểm lý thuyết</strong><span style="color:rgb(0, 0, 0)">: </span><strong style="color:rgb(226, 80, 65)">${theoryScore} điểm</strong></p><ul>${theoryItems}</ul><p><strong style="color:rgb(0, 0, 0)">Điểm thực hành</strong><span style="color:rgb(0, 0, 0)">: </span><strong style="color:rgb(226, 80, 65)">${practiceScore} điểm</strong></p></div>`;
+
+            return {
+                payload: {
+                    slotId: data.slot_id, classSiteId: data.class_site_id, sessionNumber: data.session_number,
+                    classId: data.class_id, courseProcessId: data.course_process_id,
+                    slotType: "CheckPoint", totalScore, rank,
+                    ...(data.summary ? {summary: data.summary} : {}),
+                    studentComment: {
+                        studentAttendanceId: data.student_attendance_id, studentId: data.student_id,
+                        content: fullContent, byAreas
+                    }
+                },
+                theoryScore, practiceScore, totalScore, rank
+            };
+        }
+
+        // Demo/Final payload builder
+        const DEMO_CONFIG = [
+            {courseProcessDemoDetailId:"67074eb655bde44038504415",title:" Tư duy máy tính, tư duy thuật toán",maxScore:1.5},
+            {courseProcessDemoDetailId:"67074eb655bde44038504416",title:" Tư duy sáng tạo",maxScore:1},
+            {courseProcessDemoDetailId:"67074eb655bde44038504417",title:" Kỹ năng giao tiếp, hợp tác",maxScore:0.5},
+            {courseProcessDemoDetailId:"67074eb655bde44038504418",title:" Giải quyết vấn đề",maxScore:1},
+            {courseProcessDemoDetailId:"67074eb655bde44038504419",title:" Kỹ năng sử dụng máy tính",maxScore:1}
+        ];
+
+        const FINAL_RATE_AREAS = [
+            {grade:5,content:"- Học viên chủ động liên hệ giáo viên tìm thêm nguồn/ sách để ôn tập và học kiến thức mới tại nhà ngoài những tài liệu đã được cung cấp mà không cần yêu cầu từ giáo viên",commentAreaId:"665e7d33181e0e47f6c63768",type:"RATE",courseProcessFinalEvaluationId:"67075d4b55bde440385073af",courseProcessFinalEvaluationTitle:"KIẾN THỨC"},
+            {grade:5,content:"- Ngoài việc nắm vững các kiến thức được giảng dạy, học viên còn có sự chủ động, đặt câu hỏi mở rộng trực tiếp tại lớp từ những kiến thức vừa được cung cấp",commentAreaId:"668d69d8e71f90e7630ce16c",type:"RATE",courseProcessFinalEvaluationId:"67075d4b55bde440385073af",courseProcessFinalEvaluationTitle:"KIẾN THỨC"},
+            {grade:5,content:"- Học viên trình bày ý kiến rõ ràng, chủ động hỏi khi gặp vấn đề, thuyết trình trước lớp mạch lạc, rõ ràng\n- Học viên nhìn nhận được những ưu - nhược điểm của bản thân sau khi nhận đánh giá từ giáo viên, bạn bè",commentAreaId:"668e2e7de71f90e7630d4316",type:"RATE",courseProcessFinalEvaluationId:"67075d4b55bde440385073b0",courseProcessFinalEvaluationTitle:"KỸ NĂNG"},
+            {grade:5,content:"- Học viên phản biện và phân tích các giải pháp một cách sâu rộng, biết thử đi thử lại nhiều lần đến khi ra kết quả từ đó Học viên có thể tổng quát cho nhiều vấn đề tương tự sau này\n- Học viên đưa sản phẩm cá nhân go live và có tiếp nhận người dùng thật",commentAreaId:"668e0f48e71f90e7630d2db6",type:"RATE",courseProcessFinalEvaluationId:"67075d4b55bde440385073b0",courseProcessFinalEvaluationTitle:"KỸ NĂNG"},
+            {grade:5,content:"- Tốc độ sử dụng chuột/bàn phím rất thành thạo, có thể sử dụng gõ phím bằng 2 tay không cần nhìn phím.\n- Học viên tận dụng tối ưu các phần mềm máy tính, sử dụng các công cụ hỗ trợ xây dựng sơ đồ tư duy, công cụ quản lý tiến độ dự án, công cụ xây dựng sơ đồ thuật toán",commentAreaId:"668e2ce1e71f90e7630d406f",type:"RATE",courseProcessFinalEvaluationId:"67075d4b55bde440385073b0",courseProcessFinalEvaluationTitle:"KỸ NĂNG"},
+            {grade:5,content:"- Học viên chủ động trong việc phát hiện ra những ý tưởng sáng tạo cho các tính năng của sản phẩm dựa trên những kiến thức vừa được học và đặt câu hỏi với Giáo viên.\n- Học viên tự mình thiết kế trò chơi, câu chuyện hoặc dự án hoàn toàn mới, có khả năng thu hút sự chú ý và hứng thú của người khác, hoặc tạo ra một trào lưu trong cộng đồng",commentAreaId:"668d6a69e71f90e7630ce198",type:"RATE",courseProcessFinalEvaluationId:"67075d4b55bde440385073b0",courseProcessFinalEvaluationTitle:"KỸ NĂNG"},
+            {grade:5,content:"- Học viên thành thạo trong việc sử dụng ngôn ngữ lập trình\n- Học viên có thể tự xây dựng mô hình/sơ đồ tư duy tuần tự các bước lập trình cho dự án cá nhân của mình mà không cần sự hỗ trợ từ Giáo viên",commentAreaId:"668d6a25e71f90e7630ce187",type:"RATE",courseProcessFinalEvaluationId:"67075d4b55bde440385073b0",courseProcessFinalEvaluationTitle:"KỸ NĂNG"},
+            {grade:5,content:"- Học viên tập trung lắng nghe bài giảng, tự giác học tập, mentor hầu như không phải nhắc nhở con, hiệu quả buổi học cao\n- Học viên tuân thủ tuyệt đối các quy tắc trong lớp học, luôn có mặt đúng giờ, lễ phép khi giao tiếp với giáo viên",commentAreaId:"668e2eaee71f90e7630d434f",type:"RATE",courseProcessFinalEvaluationId:"67075d4b55bde440385073b1",courseProcessFinalEvaluationTitle:"THÁI ĐỘ"},
+            {grade:5,content:"- Học viên chủ động tìm kiếm thêm các bài tập, dự án để luyện tập và đặt các câu hỏi luyện tập với giáo viên",commentAreaId:"668e2f5be71f90e7630d44c1",type:"RATE",courseProcessFinalEvaluationId:"67075d4b55bde440385073b1",courseProcessFinalEvaluationTitle:"THÁI ĐỘ"}
+        ];
+
+        function randomScoreAbove75(maxScore, step=0.25) {
+            const minScore = Math.ceil(maxScore * 0.75 / step) * step;
+            const possible = [];
+            for (let s = Math.min(minScore + step, maxScore); s <= maxScore + 0.001; s += step) possible.push(Math.round(s * 100) / 100);
+            if (!possible.length) possible.push(maxScore);
+            return possible[Math.floor(Math.random() * possible.length)];
+        }
+
+        function buildFinalDemoPayload(data) {
+            const customScores = data.custom_scores;
+            const autoRate = data.auto_rate !== false;
+
+            const demoQuestions = DEMO_CONFIG.map((q, i) => {
+                let score;
+                if (customScores && i < customScores.length) {
+                    score = Math.max(0, Math.min(parseFloat(customScores[i].score || 0), q.maxScore));
+                } else {
+                    score = randomScoreAbove75(q.maxScore);
+                }
+                return {courseProcessDemoDetailId: q.courseProcessDemoDetailId, score, title: q.title, result: false, maxScore: q.maxScore};
+            });
+
+            const totalDemoScore = Math.round(demoQuestions.reduce((s,q) => s + q.score, 0) * 100) / 100;
+            const demoItems = demoQuestions.map(q => `<li>${q.title}: ${q.score} điểm</li>`).join('');
+            const demoContent = `<div><p><strong>Demo2024 | PTA:</strong><strong style='color: rgb(226, 80, 65)'> ${totalDemoScore} điểm</strong></p><ul>${demoItems}</ul></div>`;
+
+            const rateAreas = autoRate ? FINAL_RATE_AREAS : [];
+            const byAreas = [{demoQuestions, content: demoContent, commentAreaId: "67074eb655bde4403850441a", type: "DEMO", courseProcessDemoId: "67075d4b55bde440385073ae"}, ...rateAreas];
+
+            const fullContent = `<div style="list-style-type:circle"><p><strong style="color:rgb(0, 0, 0)">Điểm Demo</strong><span style="color:rgb(0, 0, 0)">: </span><strong style="color:rgb(226, 80, 65)">${totalDemoScore} điểm</strong></p><ul><li data-list="bullet"><span class="ql-ui"></span><span style="color:rgb(0, 0, 0)">${demoContent}</span></li></ul></div>`;
+
+            return {
+                payload: {
+                    slotId: data.slot_id, classSiteId: data.class_site_id, sessionNumber: data.session_number,
+                    classId: data.class_id, courseProcessId: data.course_process_id,
+                    slotType: "Final", totalScore: totalDemoScore, rank: "A",
+                    ...(data.summary ? {summary: data.summary} : {}),
+                    studentComment: {
+                        studentAttendanceId: data.student_attendance_id, studentId: data.student_id,
+                        content: fullContent, byAreas
+                    }
+                },
+                totalDemoScore, demoQuestions
+            };
+        }
+
+        // UpdateSlotComment mutation
+        const UPDATE_SLOT_COMMENT_QUERY = `mutation UpdateSlotComment($payload: UpdateSlotCommentCommand!) {
+            classes {
+                updateSlotComment(payload: $payload) {
+                    id name
+                    slots {
+                        _id date startTime endTime sessionHour
+                        teachers {
+                            _id
+                            teacher { id username code fullName email phoneNumber user imageUrl }
+                            role { id name shortName }
+                            isActive
+                        }
+                        teacherAttendance {
+                            _id
+                            teacher { id username fullName email phoneNumber user imageUrl }
+                            status note createdBy createdAt lastModifiedBy lastModifiedAt
+                        }
+                        studentAttendance {
+                            _id
+                            student { id fullName phoneNumber email gender imageUrl customer { email } }
+                            comment sendCommentStatus status
+                            commentByAreas {
+                                grade content commentAreaId
+                                checkpoint { practiceScore checkpointScore checkpointQuestions { id title result score } }
+                                courseProcessDemoId courseProcessFinalEvaluationTitle courseProcessFinalEvaluationId
+                                demoQuestions { courseProcessDemoDetailId title result score maxScore }
+                                type
+                            }
+                            createdBy createdAt lastModifiedBy lastModifiedAt
+                            commentStatus { feedback status version }
+                        }
+                        summary homework createdAt createdBy lastModifiedAt lastModifiedBy index
+                    }
+                }
+            }
+        }`;
+
+        async function submitToLMS(payload) {
+            return await lmsApiCall("UpdateSlotComment", UPDATE_SLOT_COMMENT_QUERY, {payload});
+        }
+
+        // Log comment to server for record-keeping
+        async function logComment(info) {
+            try {
+                await fetch('/api/log_comment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(info)
+                });
+            } catch(e) {
+                console.warn('Failed to log comment:', e);
+            }
+        }
+
         // Note templates
         const NOTE_TEMPLATES = {
             good: 'Tập trung, làm bài nhanh, hoàn thành BTVN',
@@ -1616,6 +2337,7 @@
 
         // Filter students
         let filteredStudents = [];
+        const debouncedFilterStudents = debounce(filterStudents, 200);
         function filterStudents() {
             const search = document.getElementById('searchStudent').value.toLowerCase();
             const status = document.getElementById('filterStatus').value;
@@ -1644,13 +2366,12 @@
             const slotId = selectedSlot?._id;
 
             try {
-                const resp = await fetch(`/api/class/${classData.id}`);
-                const data = await resp.json();
-                if (data.error) {
-                    showToast('Lỗi refresh: ' + data.error, 'error');
+                const result = await lmsApiCall("GetClassById", CLASS_DETAIL_QUERY, {id: classData.id});
+                if (result.errors) {
+                    showToast('Lỗi refresh: ' + result.errors[0]?.message, 'error');
                     return;
                 }
-                classData = data.class;
+                classData = result?.data?.classesById;
 
                 // Rebuild slot dropdown
                 const slotSelect = document.getElementById('slotSelect');
@@ -1702,15 +2423,6 @@
             link.download = `nhanxet_${classData?.name || 'class'}_buoi${(selectedSlot?.index || 0) + 1}.csv`;
             link.click();
             showToast('Đã export CSV!');
-        }
-
-        // Play sound
-        function playSound(type = 'success') {
-            const audio = new Audio(type === 'success' 
-                ? 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQsxk9XUl3MIP5fW2ZlsBiiS1NiZbgk1j9HVl2sHPZjW2pltBi6Q0taYbQk4jtDUlmkIP5nW2ppvBimR09iZbQY0kNLWl2oIPpjW2pluBiyP0daXawk3jtDVlmkJPpnW2ppvBiuQ09iYbQY1j9HWl2oJPpjV2pluBy2P0daXawk3jtDVlmkJ'
-                : 'data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTtvAACAgICAgICAgICAf3hxamRfW1lYWFpcX2NpsZ+g');
-            audio.volume = 0.3;
-            audio.play().catch(() => {});
         }
 
         // Show past comments modal
@@ -1850,7 +2562,7 @@
                 const cleanComment = comment.replace(/<[^>]*>/g, '').substring(0, 100);
                 return `
                     <div class="confirm-preview-item">
-                        <div class="confirm-preview-name">${student?.student.fullName || studentId}</div>
+                        <div class="confirm-preview-name">${escapeHtml(student?.student.fullName || studentId)}</div>
                         <div class="confirm-preview-comment">${cleanComment}...</div>
                     </div>
                 `;
@@ -1869,7 +2581,10 @@
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
-            toast.innerHTML = `<span>${icon}</span> ${message}`;
+            const iconSpan = document.createElement('span');
+            iconSpan.textContent = icon;
+            toast.appendChild(iconSpan);
+            toast.appendChild(document.createTextNode(' ' + message));
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
@@ -1900,38 +2615,7 @@
             }
         }
 
-        // Login
-        // Auto-relogin wrapper
-        let _isRelogging = false;
-        async function apiFetch(url, options = {}) {
-            let resp = await fetch(url, options);
-            if (resp.status === 401 && !_isRelogging) {
-                const email = localStorage.getItem('lms_email');
-                const password = localStorage.getItem('lms_password');
-                if (email && password) {
-                    _isRelogging = true;
-                    showToast('Token hết hạn, đang đăng nhập lại...', 'error');
-                    try {
-                        const loginResp = await fetch('/api/login', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({email, password})
-                        });
-                        const loginData = await loginResp.json();
-                        if (loginData.success) {
-                            showToast('Đăng nhập lại thành công!');
-                            resp = await fetch(url, options);
-                        } else {
-                            showToast('Đăng nhập lại thất bại, vui lòng đăng nhập thủ công', 'error');
-                        }
-                    } finally {
-                        _isRelogging = false;
-                    }
-                }
-            }
-            return resp;
-        }
-
+        // Login - directly via Firebase Auth (no server round-trip)
         async function login() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -1942,71 +2626,114 @@
             }
 
             try {
-                const resp = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({email, password})
-                });
-                const data = await resp.json();
+                showToast('Đang đăng nhập...', 'info');
+                await firebaseLogin(email, password);
 
-                if (data.success) {
-                    if (document.getElementById('rememberLogin').checked) {
-                        localStorage.setItem('lms_email', email);
-                        localStorage.setItem('lms_password', password);
-                    }
-                    updateLoginStatus(true);
-                    showToast('Đăng nhập thành công!');
-                    loadClasses();
-                } else {
-                    showToast(data.message, 'error');
+                if (document.getElementById('rememberLogin').checked) {
+                    localStorage.setItem('lms_email', email);
+                    // NOTE: Password NOT stored for security — user must re-enter on token expiry
                 }
+                updateLoginStatus(true);
+                showToast('Đăng nhập thành công!');
+                loadClasses();
             } catch (e) {
-                showToast('Lỗi kết nối', 'error');
+                showToast('Lỗi đăng nhập: ' + e.message, 'error');
             }
+        }
+
+        function toggleCustomModelInput() {
+            const aiModel = document.getElementById('aiModel')?.value;
+            const customGroup = document.getElementById('customModelGroup');
+            if (customGroup) {
+                customGroup.style.display = aiModel === '__custom__' ? 'block' : 'none';
+            }
+        }
+
+        function getSelectedModelConfig() {
+            const aiModel = document.getElementById('aiModel')?.value || 'claude-sonnet-4-6';
+            const customModelId = document.getElementById('customModelId')?.value?.trim() || '';
+            const aiApiKey = localStorage.getItem('ai_api_key') || '';
+            return { aiModel, customModelId, aiApiKey };
         }
 
         // Save config
         async function saveConfig() {
-            const aiModel = document.getElementById('aiModel').value;
+            const { aiModel, customModelId } = getSelectedModelConfig();
+
+            // Save AI API key to localStorage only
+            const aiKey = document.getElementById('proxyApiKey')?.value?.trim() || '';
+            if (aiKey) {
+                localStorage.setItem('ai_api_key', aiKey);
+            }
 
             await fetch('/api/save_config', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     ai_model: aiModel,
-                    custom_model_id: ''
+                    custom_model_id: aiModel === '__custom__' ? customModelId : ''
                 })
             });
             showToast('Đã lưu cấu hình!');
         }
 
-        // Load classes
+        // Load classes - directly from MindX LMS API
         async function loadClasses(forceRefresh = false) {
             const loading = document.getElementById('classLoading');
             const list = document.getElementById('classList');
-            
+
             // Use cache if available
             if (!forceRefresh && classesCache) {
                 renderClassList(classesCache);
                 return;
             }
-            
+
             loading.classList.add('show');
             list.innerHTML = '';
-            
+
             try {
-                const resp = await apiFetch('/api/classes');
-                if (!resp.ok) {
-                    const errData = await resp.json().catch(() => null);
-                    const msg = errData?.error || 'Vui lòng đăng nhập lại';
-                    showToast(msg, 'error');
+                const query = `query GetClasses($pageIndex: Int!, $itemsPerPage: Int!, $statusIn: [String]) {
+                    classes(payload: {
+                        pageIndex: $pageIndex,
+                        itemsPerPage: $itemsPerPage,
+                        status_in: $statusIn,
+                        orderBy: "createdAt_desc"
+                    }) {
+                        data { id name status course { id name shortName } classSites { _id name } slots { _id index date summary } startDate endDate }
+                        pagination { total }
+                    }
+                }`;
+
+                const result = await lmsApiCall("GetClasses", query, {
+                    pageIndex: 0, itemsPerPage: 50, statusIn: ["RUNNING", "FINISHED"]
+                });
+
+                if (result.errors) {
+                    showToast(result.errors[0]?.message || 'Unknown error', 'error');
                     return;
                 }
-                const data = await resp.json();
-                classesCache = data.classes;
-                renderClassList(data.classes);
+
+                const classes = result?.data?.classes?.data || [];
+                const twoMonthsAgo = new Date(Date.now() - 60*24*60*60*1000);
+                const running = [];
+                const recentlyEnded = [];
+                for (const cls of classes) {
+                    if (cls.status === 'RUNNING') running.push(cls);
+                    else if (cls.status === 'FINISHED' && cls.endDate) {
+                        try {
+                            if (new Date(cls.endDate) >= twoMonthsAgo) {
+                                cls.recentlyEnded = true;
+                                recentlyEnded.push(cls);
+                            }
+                        } catch(e) {}
+                    }
+                }
+                recentlyEnded.sort((a,b) => (b.endDate || '').localeCompare(a.endDate || ''));
+
+                classesCache = [...running, ...recentlyEnded];
+                renderClassList(classesCache);
             } catch (e) {
-                showToast('Lỗi tải danh sách lớp', 'error');
+                showToast('Lỗi tải danh sách lớp: ' + e.message, 'error');
             } finally {
                 loading.classList.remove('show');
             }
@@ -2030,28 +2757,75 @@
                 return;
             }
 
-            classes.forEach(cls => {
+            const activeClasses = classes.filter(c => !c.recentlyEnded);
+            const endedClasses = classes.filter(c => c.recentlyEnded);
+
+            activeClasses.forEach(cls => {
                 const div = document.createElement('div');
                 div.className = 'class-item';
                 div.innerHTML = `
-                    <h3>${cls.name}${cls.status === 'FINISHED' ? ' <span style="font-size:11px;color:var(--gray-400);font-weight:400;">(Đã kết thúc)</span>' : ''}</h3>
+                    <h3>${cls.name}</h3>
                     <p>${cls.course?.name || ''} • ${cls.slots?.length || 0} buổi</p>
                 `;
                 div.onclick = () => selectClass(cls, div);
                 list.appendChild(div);
             });
+
+            if (endedClasses.length > 0) {
+                const separator = document.createElement('div');
+                separator.style.cssText = 'display:flex;align-items:center;gap:8px;margin:12px 0 8px;color:var(--gray-400);font-size:12px;';
+                separator.innerHTML = `
+                    <div style="flex:1;height:1px;background:var(--gray-200);"></div>
+                    <span>Đã kết thúc gần đây</span>
+                    <div style="flex:1;height:1px;background:var(--gray-200);"></div>
+                `;
+                list.appendChild(separator);
+
+                endedClasses.forEach(cls => {
+                    const div = document.createElement('div');
+                    div.className = 'class-item';
+                    div.style.opacity = '0.7';
+                    const endDate = cls.endDate ? new Date(cls.endDate).toLocaleDateString('vi-VN') : '';
+                    div.innerHTML = `
+                        <h3>${cls.name} <span style="font-size:11px;color:var(--gray-400);font-weight:400;">(Đã kết thúc)</span></h3>
+                        <p>${cls.course?.name || ''} • ${cls.slots?.length || 0} buổi${endDate ? ' • Kết thúc: ' + endDate : ''}</p>
+                    `;
+                    div.onclick = () => selectClass(cls, div);
+                    list.appendChild(div);
+                });
+            }
         }
 
-        // Select class
+        // Select class - directly from MindX LMS API
+        const CLASS_DETAIL_QUERY = `query GetClassById($id: ID!) {
+            classesById(id: $id) {
+                id name courseProcessId
+                classSites { _id name }
+                slots {
+                    _id index date summary
+                    studentAttendance {
+                        _id
+                        student { id fullName }
+                        status
+                        commentByAreas { grade content commentAreaId type courseProcessDemoId courseProcessFinalEvaluationTitle courseProcessFinalEvaluationId demoQuestions { courseProcessDemoDetailId title result score maxScore } }
+                    }
+                }
+            }
+        }`;
+
         async function selectClass(cls, element) {
             document.querySelectorAll('.class-item').forEach(el => el.classList.remove('selected'));
             element.classList.add('selected');
             selectedClass = cls;
 
             try {
-                const resp = await fetch(`/api/class/${cls.id}`);
-                const data = await resp.json();
-                classData = data.class;
+                const result = await lmsApiCall("GetClassById", CLASS_DETAIL_QUERY, {id: cls.id});
+                classData = result?.data?.classesById;
+
+                if (!classData) {
+                    showToast('Không thể tải thông tin lớp', 'error');
+                    return;
+                }
 
                 const slotSelect = document.getElementById('slotSelect');
                 slotSelect.innerHTML = '<option value="">-- Chọn buổi --</option>';
@@ -2088,9 +2862,8 @@
         async function reloadClassData() {
             if (!selectedClass) return;
             try {
-                const resp = await fetch(`/api/class/${selectedClass.id}`);
-                const data = await resp.json();
-                classData = data.class;
+                const result = await lmsApiCall("GetClassById", CLASS_DETAIL_QUERY, {id: selectedClass.id});
+                classData = result?.data?.classesById;
 
                 const slotSelect = document.getElementById('slotSelect');
                 slotSelect.innerHTML = '<option value="">-- Chọn buổi --</option>';
@@ -2102,13 +2875,20 @@
                     slotSelect.appendChild(opt);
                 });
             } catch (e) {
-                showToast('Lỗi tải thông tin lớp', 'error');
+                showToast('Lỗi tải thông tin lớp: ' + e.message, 'error');
             }
         }
 
         // Check if current session is Final Demo (session 14)
         function isFinalSession() {
             return selectedSlot && (selectedSlot.index + 1) === 14;
+        }
+
+        // Check if current session is Checkpoint (session 5 or 9)
+        function isCheckpointSession() {
+            if (!selectedSlot) return false;
+            const sessionNum = selectedSlot.index + 1;
+            return sessionNum === 5 || sessionNum === 9;
         }
 
         // Load slot students
@@ -2126,17 +2906,22 @@
             }
             
             const isFinal = isFinalSession();
-            
+            const isCheckpoint = isCheckpointSession();
+
             // Toggle action bars based on session type
-            document.getElementById('defaultActionBar').style.display = isFinal ? 'none' : 'flex';
+            document.getElementById('defaultActionBar').style.display = (isFinal || isCheckpoint) ? 'none' : 'flex';
             document.getElementById('demoActionBar').style.display = isFinal ? 'flex' : 'none';
-            
+            document.getElementById('checkpointActionBar').style.display = isCheckpoint ? 'flex' : 'none';
+
             renderStudents();
             updateStats();
-            
+
             const presentStudents = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
-            
-            if (isFinal) {
+
+            if (isCheckpoint) {
+                document.getElementById('submitCheckpointAllBtn').disabled = presentStudents.length === 0;
+                document.getElementById('autoCheckpointCommentBtn').disabled = presentStudents.length === 0;
+            } else if (isFinal) {
                 // Enable demo submit for all present students (allows re-submit)
                 document.getElementById('submitDemoAllBtn').disabled = presentStudents.length === 0;
             } else {
@@ -2174,6 +2959,7 @@
             }
 
             const isFinal = isFinalSession();
+            const isCheckpoint = isCheckpointSession();
 
             // Show demo banner for session 14
             if (isFinal) {
@@ -2183,6 +2969,17 @@
                         <div>
                             <h3>Buổi 14 — Demo Sản phẩm cuối khóa</h3>
                             <p>Điểm demo sẽ được random trên 75% cho từng tiêu chí. Nhấn Submit để tự động chấm điểm.</p>
+                        </div>
+                    </div>
+                `;
+            } else if (isCheckpoint) {
+                const cpNum = selectedSlot.index + 1 === 5 ? 1 : 2;
+                list.innerHTML = `
+                    <div class="checkpoint-banner">
+                        <div class="checkpoint-banner-icon">📝</div>
+                        <div>
+                            <h3>Buổi ${selectedSlot.index + 1} — Checkpoint ${cpNum}</h3>
+                            <p>Điểm lý thuyết và thực hành. Nhập điểm hoặc để auto (random 4-5 điểm). AI sẽ tạo nhận xét tổng hợp.</p>
                         </div>
                     </div>
                 `;
@@ -2198,6 +2995,8 @@
                 if (att.status === 'ATTENDED') { statusText = '✓ Có mặt'; statusClass = 'badge-success'; }
                 else if (att.status === 'LATE_ARRIVED') { statusText = '⏰ Đi muộn'; statusClass = 'badge-warning'; }
                 else if (att.status === 'ABSENT_WITH_NOTICE') { statusText = '📝 Vắng có phép'; statusClass = 'badge-gray'; }
+
+                const hasRateScore = att.commentByAreas && att.commentByAreas.some(a => a.type === 'RATE');
 
                 const div = document.createElement('div');
 
@@ -2234,9 +3033,10 @@
                             <div class="student-info">
                                 <div class="student-avatar">${initials}</div>
                                 <div>
-                                    <div class="student-name">${att.student.fullName}</div>
+                                    <div class="student-name">${escapeHtml(att.student.fullName)}</div>
                                     <div class="student-meta">
                                         <span class="badge ${statusClass}">${statusText}</span>
+                                        ${hasRateScore ? `<span class="badge" style="background:#8b5cf6;color:white;">⭐ Đã có điểm NL</span>` : ''}
                                     </div>
                                 </div>
                             </div>
@@ -2276,6 +3076,12 @@
                                     <span class="demo-total-score" id="dtotal-${studentScoreId}">${totalExisting ? totalExisting.toFixed(1) : '?'} / 5</span>
                                 </div>
                             </div>
+                            <div style="margin-top:10px;margin-bottom:-4px">
+                                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#4B5563">
+                                    <input type="checkbox" id="autoRate-${studentScoreId}" checked>
+                                    Tự điền điểm năng lực (5 điểm)
+                                </label>
+                            </div>
                             <div class="student-actions" style="margin-top:10px">
                                 <button class="btn btn-sm btn-outline" onclick="randomDemoScores('${studentScoreId}')">
                                     🎲 Random >75%
@@ -2294,6 +3100,107 @@
                     return;
                 }
 
+                // ===== CHECKPOINT UI (session 5 and 9) =====
+                if (isCheckpoint) {
+                    const checkpointArea = att.commentByAreas?.find(a => a.type === 'CHECKPOINT');
+                    const hasCheckpoint = !!checkpointArea;
+                    const existingTheory = checkpointArea?.checkpoint?.checkpointScore || '';
+                    const existingPractice = checkpointArea?.checkpoint?.practiceScore || '';
+                    const existingContent = att.commentByAreas?.find(a => a.type === 'CONTENT')?.content || '';
+
+                    const studentScoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
+
+                    div.className = `student-card ${hasCheckpoint ? 'has-comment' : 'no-comment'}`;
+                    div.innerHTML = `
+                        <div class="student-header">
+                            <div class="student-info">
+                                <div class="student-avatar">${initials}</div>
+                                <div>
+                                    <div class="student-name">${escapeHtml(att.student.fullName)}</div>
+                                    <div class="student-meta">
+                                        <span class="badge ${statusClass}">${statusText}</span>
+                                        ${hasRateScore ? `<span class="badge" style="background:#8b5cf6;color:white;">⭐ Đã có điểm NL</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="badge ${hasCheckpoint ? 'badge-checkpoint-done' : 'badge-checkpoint'}">
+                                ${hasCheckpoint ? '✓ Đã chấm' : '📝 Chưa chấm'}
+                            </span>
+                        </div>
+                        ${isPresent ? `
+                            <div class="checkpoint-score-card ${hasCheckpoint ? 'submitted' : ''}">
+                                <div class="checkpoint-score-title">${hasCheckpoint ? '✅ Điểm Checkpoint (có thể sửa)' : '📝 Chấm điểm Checkpoint'}</div>
+                                <div class="checkpoint-score-row">
+                                    <div class="checkpoint-score-input-group">
+                                        <label>Điểm lý thuyết (0-5)</label>
+                                        <input type="number" class="checkpoint-score-input"
+                                            id="cp-theory-${studentScoreId}"
+                                            value="${existingTheory}"
+                                            min="0" max="5" step="0.5"
+                                            placeholder="Auto"
+                                            oninput="updateCheckpointTotal('${studentScoreId}')">
+                                    </div>
+                                    <div class="checkpoint-score-input-group">
+                                        <label>Điểm thực hành (0-5)</label>
+                                        <input type="number" class="checkpoint-score-input"
+                                            id="cp-practice-${studentScoreId}"
+                                            value="${existingPractice}"
+                                            min="0" max="5" step="0.5"
+                                            placeholder="Auto"
+                                            oninput="updateCheckpointTotal('${studentScoreId}')">
+                                    </div>
+                                </div>
+                                <div class="checkpoint-total-row">
+                                    <span class="checkpoint-total-label">Trung bình</span>
+                                    <span>
+                                        <span class="checkpoint-total-score" id="cp-total-${studentScoreId}">
+                                            ${existingTheory && existingPractice ? ((parseFloat(existingTheory) + parseFloat(existingPractice)) / 2).toFixed(1) : '?'}
+                                        </span>
+                                        / 5
+                                        <span class="checkpoint-rank ${getCheckpointRank(existingTheory, existingPractice)}" id="cp-rank-${studentScoreId}">${getCheckpointRank(existingTheory, existingPractice)}</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="checkpoint-comment-section">
+                                <label>📝 Mô tả tóm tắt cho AI (điểm mạnh, điểm yếu, ghi chú...)</label>
+                                <textarea id="cp-desc-${studentScoreId}" placeholder="VD: Học sinh hoàn thành tốt bài kiểm tra, tư duy logic tốt, cần cải thiện kỹ năng thuyết trình...">${getLocalNote(att.student.id)}</textarea>
+                            </div>
+                            ${generatedComments[att.student.id] ? `
+                                <div class="checkpoint-ai-comment">
+                                    <div class="comment-box-label">
+                                        <span>🤖 AI nhận xét Checkpoint</span>
+                                        <button class="btn-icon" onclick="deleteComment('${att.student.id}')" title="Xóa nhận xét">
+                                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <textarea class="comment-edit" id="comment-${att.student.id}" oninput="updateComment('${att.student.id}', this.value)">${generatedComments[att.student.id].replace(/<[^>]*>/g, '')}</textarea>
+                                </div>
+                            ` : (existingContent ? `
+                                <div class="comment-box" style="margin-top:10px">
+                                    <div class="comment-box-label">Nhận xét hiện tại</div>
+                                    ${existingContent}
+                                </div>
+                            ` : '')}
+                            <div class="student-actions" style="margin-top:10px">
+                                <button class="btn btn-sm btn-primary" onclick="generateCheckpointComment('${att.student.id}', '${escapeAttr(att.student.fullName)}', '${studentScoreId}')" id="cp-gen-btn-${studentScoreId}">
+                                    🤖 AI nhận xét
+                                </button>
+                                <button class="btn btn-sm btn-checkpoint" onclick="submitCheckpointSingle('${att.student.id}', '${att._id}', '${studentScoreId}')" id="cp-btn-${studentScoreId}">
+                                    ${hasCheckpoint ? '📝 Re-submit' : '📝 Submit Checkpoint'}
+                                </button>
+                            </div>
+                        ` : `
+                            <div class="checkpoint-score-card" style="opacity:0.5">
+                                <div class="checkpoint-score-title">Học sinh vắng — không chấm Checkpoint</div>
+                            </div>
+                        `}
+                    `;
+                    list.appendChild(div);
+                    return;
+                }
+
                 // ===== DEFAULT UI (regular sessions) =====
                 const hasComment = att.commentByAreas?.some(a => a.type === 'CONTENT' && a.content);
                 const existingComment = att.commentByAreas?.find(a => a.type === 'CONTENT')?.content || '';
@@ -2305,9 +3212,10 @@
                         <div class="student-info">
                             <div class="student-avatar">${initials}</div>
                             <div>
-                                <div class="student-name">${att.student.fullName}</div>
+                                <div class="student-name">${escapeHtml(att.student.fullName)}</div>
                                 <div class="student-meta">
                                     <span class="badge ${statusClass}">${statusText}</span>
+                                    ${hasRateScore ? `<span class="badge" style="background:#8b5cf6;color:white;">⭐ Đã có điểm NL</span>` : ''}
                                 </div>
                             </div>
                         </div>
@@ -2347,10 +3255,10 @@
                         <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'normal')">👌 Bình thường</button>
                         <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'needwork')">📝 Cần cố gắng</button>
                         <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'naughty')">😅 Hay nghịch</button>
-                        <button class="btn btn-xs btn-template" onclick="showPastComments('${att.student.id}', '${att.student.fullName.replace(/'/g, "\\'")}')">📜 Xem buổi trước</button>
+                        <button class="btn btn-xs btn-template" onclick="showPastComments('${att.student.id}', '${escapeAttr(att.student.fullName)}')">📜 Xem buổi trước</button>
                     </div>
                     <div class="student-actions">
-                        <button class="btn btn-sm btn-primary" onclick="generateSingle('${att.student.id}', '${att.student.fullName.replace(/'/g, "\\'")}', ${idx})" id="gen-btn-${att.student.id}">
+                        <button class="btn btn-sm btn-primary" onclick="generateSingle('${att.student.id}', '${escapeAttr(att.student.fullName)}', ${idx})" id="gen-btn-${att.student.id}">
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
                             </svg>
@@ -2363,7 +3271,7 @@
                                 </svg>
                                 Submit
                             </button>
-                            <button class="btn btn-sm btn-outline" onclick="copyZaloComment('${att.student.fullName.replace(/'/g, "\\'")}',' ${att.student.id}')">
+                            <button class="btn btn-sm btn-outline" onclick="copyZaloComment('${escapeAttr(att.student.fullName)}',' ${att.student.id}')">
                                 <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
                                 </svg>
@@ -2426,7 +3334,14 @@
             const summary = document.getElementById('sessionSummary').value;
             const pastSlots = getPastComments(studentId);
             const btn = document.getElementById(`gen-btn-${studentId}`);
-            
+
+            // Check API key first
+            const { aiApiKey } = getSelectedModelConfig();
+            if (!aiApiKey) {
+                showToast('Vui lòng nhập API Key trong phần Cấu hình', 'error');
+                return;
+            }
+
             // Show loading
             if (btn) {
                 btn.disabled = true;
@@ -2439,22 +3354,20 @@
                 
                 const commentLength = document.getElementById('commentLength')?.value || 'medium';
                 const customPrompt = document.getElementById('customPrompt')?.value || '';
-                
-                const resp = await fetch('/api/generate_comment', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
+                const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
+
+                const data = await fetchJSON('/api/generate_comment', {
                         student_id: studentId,
                         student_name: studentName,
                         past_slots: pastSlots,
                         session_summary: summary,
                         is_late: isLate,
+                        model_id: aiModel,
+                        custom_model_id: customModelId,
                         comment_length: commentLength,
-                        custom_prompt: customPrompt
-                    })
-                });
-                
-                const data = await resp.json();
+                        custom_prompt: customPrompt,
+                        ai_api_key: aiApiKey
+                    });
                 if (data.error) {
                     showToast(data.error, 'error');
                     return;
@@ -2486,7 +3399,16 @@
             
             btn.disabled = true;
             progressContainer.classList.add('show');
-            
+
+            // Check API key first
+            const { aiApiKey } = getSelectedModelConfig();
+            if (!aiApiKey) {
+                showToast('Vui lòng nhập API Key trong phần Cấu hình', 'error');
+                btn.disabled = false;
+                progressContainer.classList.remove('show');
+                return;
+            }
+
             // Include both ATTENDED and LATE_ARRIVED students (not ABSENT)
             const presentStudents = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
             
@@ -2504,7 +3426,8 @@
                     try {
                         const commentLength = document.getElementById('commentLength')?.value || 'medium';
                         const customPrompt = document.getElementById('customPrompt')?.value || '';
-                        
+                        const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
+
                         const resp = await fetch('/api/generate_comment', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
@@ -2514,12 +3437,21 @@
                                 past_slots: getPastComments(att.student.id),
                                 session_summary: summary,
                                 is_late: att.status === 'LATE_ARRIVED',
+                                model_id: aiModel,
+                                custom_model_id: customModelId,
                                 comment_length: commentLength,
-                                custom_prompt: customPrompt
+                                custom_prompt: customPrompt,
+                                ai_api_key: aiApiKey
                             })
                         });
                         
-                        const data = await resp.json();
+                        const text = await resp.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    throw new Error(`Server trả về lỗi ${resp.status}`);
+                }
                         if (!data.error) {
                             generatedComments[att.student.id] = data.comment;
                         }
@@ -2552,15 +3484,6 @@
             playSound('success');
             showToast(`Đã tạo ${Object.keys(generatedComments).length} nhận xét!`);
         }
-
-        // Demo config (must match IDs in backend)
-        const DEMO_CONFIG = [
-            {id: '67074eb655bde44038504415', title: 'Tư duy máy tính, thuật toán', maxScore: 1.5},
-            {id: '67074eb655bde44038504416', title: 'Tư duy sáng tạo', maxScore: 1},
-            {id: '67074eb655bde44038504417', title: 'Kỹ năng giao tiếp, hợp tác', maxScore: 0.5},
-            {id: '67074eb655bde44038504418', title: 'Giải quyết vấn đề', maxScore: 1},
-            {id: '67074eb655bde44038504419', title: 'Kỹ năng sử dụng máy tính', maxScore: 1},
-        ];
 
         // Random score above 75% of maxScore with step 0.25
         function randomScore75(maxScore) {
@@ -2598,7 +3521,7 @@
             return DEMO_CONFIG.map((cfg, i) => {
                 const input = document.getElementById(`dscore-${scoreId}-${i}`);
                 return {
-                    id: cfg.id,
+                    id: cfg.courseProcessDemoDetailId,
                     score: parseFloat(input?.value) || 0
                 };
             });
@@ -2627,7 +3550,7 @@
             }
 
             try {
-                const payload = {
+                const baseData = {
                     slot_id: selectedSlot._id,
                     class_site_id: classData.classSites[0]._id,
                     session_number: 14,
@@ -2636,30 +3559,29 @@
                     student_attendance_id: attendanceId,
                     student_id: studentId,
                     comment: '',
-                    slot_type: 'Final',
                     custom_scores: customScores,
-                    summary: `<p>${summary}</p>`
+                    summary: `<p>${summary}</p>`,
+                    auto_rate: document.getElementById(`autoRate-${scoreId}`)?.checked ?? true
                 };
 
-                const resp = await apiFetch('/api/submit_comment', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(payload)
-                });
+                const built = buildFinalDemoPayload(baseData);
+                const result = await submitToLMS(built.payload);
 
-                const data = await resp.json();
-                if (data.success || data.result) {
-                    showToast(`✅ Demo submitted! Tổng: ${data.total_demo_score || '?'} điểm`);
-                    // Reload
-                    const slotIdx = selectedSlot.index;
-                    await reloadClassData();
-                    const slotSelect = document.getElementById('slotSelect');
-                    slotSelect.value = slotIdx;
-                    loadSlotStudents();
-                } else {
-                    showToast('Lỗi: ' + (data.error || 'Unknown'), 'error');
+                if (result.errors) {
+                    showToast('Lỗi: ' + result.errors[0]?.message, 'error');
                     if (btn) { btn.disabled = false; btn.innerHTML = '🎯 Submit Demo'; }
+                    return;
                 }
+
+                const studentName = students.find(s => s.student.id === studentId)?.student?.fullName || '';
+                logComment({class_id: classData.id, class_name: classData.name, session_number: 14, student_id: studentId, student_name: studentName, comment: '', slot_type: 'Final', scores: {total: built.totalDemoScore}, success: true});
+
+                showToast(`✅ Demo submitted! Tổng: ${built.totalDemoScore || '?'} điểm`);
+                const slotIdx = selectedSlot.index;
+                await reloadClassData();
+                const slotSelect = document.getElementById('slotSelect');
+                slotSelect.value = slotIdx;
+                loadSlotStudents();
             } catch (e) {
                 showToast('Lỗi: ' + e.message, 'error');
                 if (btn) { btn.disabled = false; btn.innerHTML = '🎯 Submit Demo'; }
@@ -2679,11 +3601,7 @@
             const progressFill = document.getElementById('progressFill');
             const progressText = document.getElementById('progressText');
 
-            // Get all present students
-            const toSubmit = students.filter(s => {
-                return s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED';
-            });
-
+            const toSubmit = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
             if (toSubmit.length === 0) {
                 showToast('Không có học sinh có mặt!', 'error');
                 return;
@@ -2702,17 +3620,15 @@
                 progressFill.style.width = `${progress}%`;
                 progressText.textContent = `🎯 Demo ${i + 1}/${toSubmit.length} - ${att.student.fullName}`;
 
-                // Read scores from inputs, or generate random if empty
                 let customScores = getDemoScores(scoreId);
                 const hasScores = customScores.some(s => s.score > 0);
                 if (!hasScores) {
-                    // Auto random for this student
                     randomDemoScores(scoreId);
                     customScores = getDemoScores(scoreId);
                 }
 
                 try {
-                    const payload = {
+                    const baseData = {
                         slot_id: selectedSlot._id,
                         class_site_id: classData.classSites[0]._id,
                         session_number: 14,
@@ -2721,24 +3637,21 @@
                         student_attendance_id: att._id,
                         student_id: att.student.id,
                         comment: '',
-                        slot_type: 'Final',
-                        custom_scores: customScores
+                        custom_scores: customScores,
+                        auto_rate: document.getElementById(`autoRate-${scoreId}`)?.checked ?? true
                     };
 
                     if (!summarySubmitted) {
-                        payload.summary = `<p>${summary}</p>`;
+                        baseData.summary = `<p>${summary}</p>`;
                         summarySubmitted = true;
                     }
 
-                    const resp = await apiFetch('/api/submit_comment', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(payload)
-                    });
+                    const built = buildFinalDemoPayload(baseData);
+                    const result = await submitToLMS(built.payload);
 
-                    const data = await resp.json();
-                    if (data.success || data.result) {
+                    if (!result.errors) {
                         successCount++;
+                        logComment({class_id: classData.id, class_name: classData.name, session_number: 14, student_id: att.student.id, student_name: att.student.fullName, comment: '', slot_type: 'Final', scores: {total: built.totalDemoScore}, success: true});
                     }
                 } catch (e) {
                     console.error('Demo submit error:', e);
@@ -2749,7 +3662,6 @@
             btn.innerHTML = '🎯 Submit Demo tất cả (Điểm random >75%)';
             btn.disabled = false;
 
-            // Reload
             if (classData && classData.id) {
                 await reloadClassData();
                 const slotSelect = document.getElementById('slotSelect');
@@ -2763,25 +3675,390 @@
             showToast(`✅ Đã submit Demo ${successCount}/${toSubmit.length} học sinh!`);
         }
 
+        // ===== CHECKPOINT FUNCTIONS =====
+
+        // Get checkpoint rank from scores
+        function getCheckpointRank(theory, practice) {
+            if (!theory && !practice) return '';
+            const total = ((parseFloat(theory) || 0) + (parseFloat(practice) || 0)) / 2;
+            if (total >= 4.5) return 'A';
+            if (total >= 3.5) return 'B';
+            if (total >= 2.5) return 'C';
+            return 'D';
+        }
+
+        // Update checkpoint total display
+        function updateCheckpointTotal(scoreId) {
+            const theory = parseFloat(document.getElementById(`cp-theory-${scoreId}`)?.value) || 0;
+            const practice = parseFloat(document.getElementById(`cp-practice-${scoreId}`)?.value) || 0;
+            const total = ((theory + practice) / 2).toFixed(1);
+            const rank = getCheckpointRank(theory, practice);
+
+            const totalEl = document.getElementById(`cp-total-${scoreId}`);
+            if (totalEl) totalEl.textContent = total;
+
+            const rankEl = document.getElementById(`cp-rank-${scoreId}`);
+            if (rankEl) {
+                rankEl.textContent = rank;
+                rankEl.className = `checkpoint-rank ${rank}`;
+            }
+        }
+
+        // Generate AI comment for checkpoint
+        async function generateCheckpointComment(studentId, studentName, scoreId) {
+            const btn = document.getElementById(`cp-gen-btn-${scoreId}`);
+            const desc = document.getElementById(`cp-desc-${scoreId}`)?.value || '';
+
+            // Check API key first
+            const { aiApiKey } = getSelectedModelConfig();
+            if (!aiApiKey) {
+                showToast('Vui lòng nhập API Key trong phần Cấu hình', 'error');
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Đang tạo...';
+            }
+
+            try {
+                const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
+                const resp = await fetch('/api/generate_checkpoint_comment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        student_name: studentName,
+                        teacher_description: desc,
+                        model_id: aiModel,
+                        custom_model_id: customModelId,
+                        ai_api_key: aiApiKey
+                    })
+                });
+
+                const text = await resp.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    throw new Error(`Server trả về lỗi ${resp.status}`);
+                }
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+
+                generatedComments[studentId] = data.comment;
+                renderStudents();
+                updateStats();
+                showToast('Đã tạo nhận xét checkpoint!');
+            } catch (e) {
+                showToast('Lỗi tạo nhận xét: ' + e.message, 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '🤖 AI nhận xét';
+                }
+            }
+        }
+
+        // Auto generate checkpoint comments for all present students
+        async function autoCheckpointCommentAll() {
+            const btn = document.getElementById('autoCheckpointCommentBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+
+            // Check API key first
+            const { aiApiKey } = getSelectedModelConfig();
+            if (!aiApiKey) {
+                showToast('Vui lòng nhập API Key trong phần Cấu hình', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            progressContainer.classList.add('show');
+
+            const presentStudents = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+            const BATCH_SIZE = 3;
+            let completed = 0;
+
+            for (let i = 0; i < presentStudents.length; i += BATCH_SIZE) {
+                const batch = presentStudents.slice(i, i + BATCH_SIZE);
+
+                const promises = batch.map(async (att) => {
+                    const scoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
+                    const desc = document.getElementById(`cp-desc-${scoreId}`)?.value || '';
+
+                    try {
+                        const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
+                        const resp = await fetch('/api/generate_checkpoint_comment', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                student_name: att.student.fullName,
+                                teacher_description: desc,
+                                model_id: aiModel,
+                                custom_model_id: customModelId,
+                                ai_api_key: aiApiKey
+                            })
+                        });
+
+                        const text = await resp.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    throw new Error(`Server trả về lỗi ${resp.status}`);
+                }
+                        if (!data.error) {
+                            generatedComments[att.student.id] = data.comment;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
+                });
+
+                await Promise.all(promises);
+                completed += batch.length;
+
+                const progress = Math.round((completed / presentStudents.length) * 100);
+                progressFill.style.width = `${progress}%`;
+                progressText.textContent = `${progress}% (${completed}/${presentStudents.length})`;
+                renderStudents();
+                updateStats();
+            }
+
+            btn.disabled = false;
+            progressContainer.classList.remove('show');
+            playSound('success');
+            showToast(`Đã tạo ${Object.keys(generatedComments).length} nhận xét checkpoint!`);
+        }
+
+        // Submit single checkpoint
+        async function submitCheckpointSingle(studentId, attendanceId, scoreId) {
+            const summary = document.getElementById('sessionSummary').value;
+            if (!summary) {
+                showToast('Vui lòng nhập tổng kết buổi học', 'error');
+                return;
+            }
+
+            const theory = document.getElementById(`cp-theory-${scoreId}`)?.value;
+            const practice = document.getElementById(`cp-practice-${scoreId}`)?.value;
+            const comment = generatedComments[studentId] || '';
+
+            if (!comment) {
+                showToast('Vui lòng tạo nhận xét AI trước khi submit', 'error');
+                return;
+            }
+
+            const btn = document.getElementById(`cp-btn-${scoreId}`);
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Đang submit...';
+            }
+
+            try {
+                const baseData = {
+                    slot_id: selectedSlot._id,
+                    class_site_id: classData.classSites[0]._id,
+                    session_number: selectedSlot.index + 1,
+                    class_id: classData.id,
+                    course_process_id: classData.courseProcessId,
+                    student_attendance_id: attendanceId,
+                    student_id: studentId,
+                    comment: comment,
+                    theory_score: theory ? parseFloat(theory) : null,
+                    practice_score: practice ? parseFloat(practice) : null,
+                    auto_scores: !theory && !practice,
+                    summary: `<p>${summary}</p>`
+                };
+
+                const built = buildCheckpointPayload(baseData);
+                const result = await submitToLMS(built.payload);
+
+                if (result.errors) {
+                    showToast('Lỗi: ' + result.errors[0]?.message, 'error');
+                    if (btn) { btn.disabled = false; btn.innerHTML = '📝 Submit Checkpoint'; }
+                    return;
+                }
+
+                delete generatedComments[studentId];
+                const studentName = students.find(s => s.student.id === studentId)?.student?.fullName || '';
+                logComment({class_id: classData.id, class_name: classData.name, session_number: selectedSlot.index + 1, student_id: studentId, student_name: studentName, comment: comment, slot_type: 'CheckPoint', scores: {theory: built.theoryScore, practice: built.practiceScore, total: built.totalScore, rank: built.rank}, success: true});
+
+                showToast(`✅ Checkpoint submitted! LT: ${built.theoryScore} | TH: ${built.practiceScore} | Rank: ${built.rank}`);
+                const slotIdx = selectedSlot.index;
+                await reloadClassData();
+                const slotSelect = document.getElementById('slotSelect');
+                slotSelect.value = slotIdx;
+                loadSlotStudents();
+            } catch (e) {
+                showToast('Lỗi: ' + e.message, 'error');
+                if (btn) { btn.disabled = false; btn.innerHTML = '📝 Submit Checkpoint'; }
+            }
+        }
+
+        // Submit all checkpoints
+        async function submitCheckpointAll() {
+            const summary = document.getElementById('sessionSummary').value;
+            if (!summary) {
+                showToast('Vui lòng nhập tổng kết buổi học', 'error');
+                return;
+            }
+
+            // Check API key (needed for auto-generating comments)
+            const { aiApiKey } = getSelectedModelConfig();
+            if (!aiApiKey) {
+                showToast('Vui lòng nhập API Key trong phần Cấu hình', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('submitCheckpointAllBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+
+            const toSubmit = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+            if (toSubmit.length === 0) {
+                showToast('Không có học sinh có mặt!', 'error');
+                return;
+            }
+
+            // Generate AI comments if needed
+            const needsComment = toSubmit.filter(s => !generatedComments[s.student.id]);
+            if (needsComment.length > 0) {
+                showToast(`Đang tạo nhận xét AI cho ${needsComment.length} học sinh...`, 'info');
+                btn.disabled = true;
+                progressContainer.classList.add('show');
+
+                const BATCH_SIZE = 3;
+                let completed = 0;
+
+                for (let i = 0; i < needsComment.length; i += BATCH_SIZE) {
+                    const batch = needsComment.slice(i, i + BATCH_SIZE);
+                    const promises = batch.map(async (att) => {
+                        const scoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
+                        const desc = document.getElementById(`cp-desc-${scoreId}`)?.value || '';
+                        try {
+                            const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
+                            const resp = await fetch('/api/generate_checkpoint_comment', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({
+                                    student_name: att.student.fullName,
+                                    teacher_description: desc,
+                                    model_id: aiModel,
+                                    custom_model_id: customModelId,
+                                    ai_api_key: aiApiKey
+                                })
+                            });
+                            const text = await resp.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    throw new Error(`Server trả về lỗi ${resp.status}`);
+                }
+                            if (!data.error) {
+                                generatedComments[att.student.id] = data.comment;
+                            }
+                        } catch (e) { console.error(e); }
+                    });
+                    await Promise.all(promises);
+                    completed += batch.length;
+                    const progress = Math.round((completed / needsComment.length) * 50);
+                    progressFill.style.width = `${progress}%`;
+                    progressText.textContent = `Tạo nhận xét: ${completed}/${needsComment.length}`;
+                }
+                renderStudents();
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Đang submit...';
+            progressContainer.classList.add('show');
+            let successCount = 0;
+            let summarySubmitted = false;
+
+            for (let i = 0; i < toSubmit.length; i++) {
+                const att = toSubmit[i];
+                const scoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
+                const progress = 50 + Math.round(((i + 1) / toSubmit.length) * 50);
+                progressFill.style.width = `${progress}%`;
+                progressText.textContent = `📝 Checkpoint ${i + 1}/${toSubmit.length} - ${att.student.fullName}`;
+
+                const theory = document.getElementById(`cp-theory-${scoreId}`)?.value;
+                const practice = document.getElementById(`cp-practice-${scoreId}`)?.value;
+                const comment = generatedComments[att.student.id] || '<p>Học sinh hoàn thành tốt bài kiểm tra.</p>';
+
+                try {
+                    const baseData = {
+                        slot_id: selectedSlot._id,
+                        class_site_id: classData.classSites[0]._id,
+                        session_number: selectedSlot.index + 1,
+                        class_id: classData.id,
+                        course_process_id: classData.courseProcessId,
+                        student_attendance_id: att._id,
+                        student_id: att.student.id,
+                        comment: comment,
+                        theory_score: theory ? parseFloat(theory) : null,
+                        practice_score: practice ? parseFloat(practice) : null,
+                        auto_scores: !theory && !practice
+                    };
+
+                    if (!summarySubmitted) {
+                        baseData.summary = `<p>${summary}</p>`;
+                        summarySubmitted = true;
+                    }
+
+                    const built = buildCheckpointPayload(baseData);
+                    const result = await submitToLMS(built.payload);
+
+                    if (!result.errors) {
+                        successCount++;
+                        delete generatedComments[att.student.id];
+                        logComment({class_id: classData.id, class_name: classData.name, session_number: selectedSlot.index + 1, student_id: att.student.id, student_name: att.student.fullName, comment: comment, slot_type: 'CheckPoint', scores: {theory: built.theoryScore, practice: built.practiceScore, total: built.totalScore, rank: built.rank}, success: true});
+                    }
+                } catch (e) {
+                    console.error('Checkpoint submit error:', e);
+                }
+            }
+
+            progressContainer.classList.remove('show');
+            btn.innerHTML = '📝 Submit Checkpoint tất cả (Auto điểm 4-5)';
+            btn.disabled = false;
+
+            if (classData && classData.id) {
+                await reloadClassData();
+                const slotSelect = document.getElementById('slotSelect');
+                if (selectedSlot) {
+                    slotSelect.value = selectedSlot.index;
+                    loadSlotStudents();
+                }
+            }
+
+            playSound('success');
+            showToast(`✅ Đã submit Checkpoint ${successCount}/${toSubmit.length} học sinh!`);
+        }
+
         // Submit single comment
         async function submitSingle(studentId, attendanceId) {
             const summary = document.getElementById('sessionSummary').value;
             const comment = generatedComments[studentId];
             const sessionNumber = selectedSlot.index + 1;
             const isFinal = sessionNumber === 14;
-            
+
             if (!isFinal && !comment) {
                 showToast('Chưa có nhận xét để submit', 'error');
                 return;
             }
-            
+
             if (!summary) {
                 showToast('Vui lòng nhập tổng kết buổi học', 'error');
                 return;
             }
-            
+
             try {
-                const payload = {
+                const baseData = {
                     slot_id: selectedSlot._id,
                     class_site_id: classData.classSites[0]._id,
                     session_number: sessionNumber,
@@ -2792,77 +4069,80 @@
                     comment: isFinal ? '' : comment,
                     summary: `<p>${summary}</p>`
                 };
-                
-                // Add slot_type for Final/Demo session (buổi 14)
+
+                let payload, resultInfo = {};
                 if (isFinal) {
-                    payload.slot_type = 'Final';
-                }
-                
-                const resp = await apiFetch('/api/submit_comment', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(payload)
-                });
-                
-                const data = await resp.json();
-                console.log('Submit response:', data);
-                
-                if (data.success || data.result) {
-                    delete generatedComments[studentId];
-                    if (isFinal && data.demo_scores) {
-                        const scores = Object.entries(data.demo_scores).map(([k,v]) => `${k}: ${v}`).join(', ');
-                        showToast(`Đã submit Demo! Tổng: ${data.total_demo_score} điểm (${scores})`);
-                    } else {
-                        showToast('Đã submit nhận xét!');
-                    }
-                    // Reload to get updated status
-                    const slotIdx = selectedSlot.index;
-                    await reloadClassData();
-                    const slotSelect = document.getElementById('slotSelect');
-                    slotSelect.value = slotIdx;
-                    loadSlotStudents();
+                    const built = buildFinalDemoPayload(baseData);
+                    payload = built.payload;
+                    resultInfo = {total_demo_score: built.totalDemoScore, demo_scores: built.demoQuestions.reduce((o,q) => ({...o, [q.title.trim()]: q.score}), {})};
                 } else {
-                    showToast('Lỗi submit: ' + (data.error || 'Unknown'), 'error');
+                    payload = buildDefaultPayload(baseData);
                 }
+
+                const result = await submitToLMS(payload);
+
+                if (result.errors) {
+                    showToast('Lỗi submit: ' + result.errors[0]?.message, 'error');
+                    return;
+                }
+
+                delete generatedComments[studentId];
+                const studentName = students.find(s => s.student.id === studentId)?.student?.fullName || '';
+                logComment({class_id: classData.id, class_name: classData.name, session_number: sessionNumber, student_id: studentId, student_name: studentName, comment: isFinal ? '' : comment, slot_type: isFinal ? 'Final' : 'Default', scores: resultInfo, success: true});
+
+                if (isFinal && resultInfo.demo_scores) {
+                    const scores = Object.entries(resultInfo.demo_scores).map(([k,v]) => `${k}: ${v}`).join(', ');
+                    showToast(`Đã submit Demo! Tổng: ${resultInfo.total_demo_score} điểm (${scores})`);
+                } else {
+                    showToast('Đã submit nhận xét!');
+                }
+                // Reload to get updated status
+                const slotIdx = selectedSlot.index;
+                await reloadClassData();
+                const slotSelect = document.getElementById('slotSelect');
+                slotSelect.value = slotIdx;
+                loadSlotStudents();
             } catch (e) {
                 showToast('Lỗi submit: ' + e.message, 'error');
                 console.error(e);
             }
         }
 
-        // Submit summary only
+        // Submit summary only - directly to MindX LMS
         async function submitSummary() {
             const summary = document.getElementById('sessionSummary').value;
             if (!summary) {
                 showToast('Vui lòng nhập tổng kết buổi học', 'error');
                 return;
             }
-            
+
             const btn = document.getElementById('submitSummaryBtn');
             btn.disabled = true;
             btn.textContent = '⏳ Đang lưu...';
-            
+
             try {
                 const payload = {
-                    slot_id: selectedSlot._id,
-                    class_site_id: classData.classSites[0]._id,
-                    session_number: selectedSlot.index + 1,
-                    class_id: classData.id,
-                    course_process_id: classData.courseProcessId,
+                    slotId: selectedSlot._id,
+                    classSiteId: classData.classSites[0]._id,
+                    sessionNumber: selectedSlot.index + 1,
+                    classId: classData.id,
+                    courseProcessId: classData.courseProcessId,
+                    slotType: "Default",
+                    totalScore: null,
+                    rank: "",
                     summary: `<p>${summary}</p>`
                 };
-                
-                const resp = await apiFetch('/api/submit_summary', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(payload)
-                });
-                
-                const data = await resp.json();
-                if (data.success || data.result) {
-                    showToast('Đã lưu tổng kết buổi học!');
+
+                const shortQuery = `mutation UpdateSlotComment($payload: UpdateSlotCommentCommand!) {
+                    classes { updateSlotComment(payload: $payload) { id name } }
+                }`;
+
+                const result = await lmsApiCall("UpdateSlotComment", shortQuery, {payload});
+
+                if (result.errors) {
+                    showToast('Lỗi: ' + result.errors[0]?.message, 'error');
                 } else {
-                    showToast('Lỗi: ' + (data.error || 'Unknown'), 'error');
+                    showToast('Đã lưu tổng kết buổi học!');
                 }
             } catch (e) {
                 showToast('Lỗi: ' + e.message, 'error');
@@ -3077,32 +4357,32 @@ MindX Technology School`;
             const progressContainer = document.getElementById('progressContainer');
             const progressFill = document.getElementById('progressFill');
             const progressText = document.getElementById('progressText');
-            
+
             if (!summary) {
                 showToast('Vui lòng nhập tổng kết buổi học', 'error');
                 return;
             }
-            
+
             btn.disabled = true;
             progressContainer.classList.add('show');
-            
+
             const toSubmit = Object.entries(generatedComments);
             let successCount = 0;
             let summarySubmitted = false;
-            
+
             for (let i = 0; i < toSubmit.length; i++) {
                 const [studentId, comment] = toSubmit[i];
                 const att = students.find(s => s.student.id === studentId);
                 if (!att) continue;
-                
+
                 const progress = Math.round(((i + 1) / toSubmit.length) * 100);
                 progressFill.style.width = `${progress}%`;
                 progressText.textContent = `${progress}% (${i + 1}/${toSubmit.length})`;
-                
+
                 try {
                     const sessionNumber = selectedSlot.index + 1;
                     const isFinal = sessionNumber === 14;
-                    const payload = {
+                    const baseData = {
                         slot_id: selectedSlot._id,
                         class_site_id: classData.classSites[0]._id,
                         session_number: sessionNumber,
@@ -3112,47 +4392,43 @@ MindX Technology School`;
                         student_id: studentId,
                         comment: isFinal ? '' : comment
                     };
-                    
-                    // Add slot_type for Final/Demo session (buổi 14)
-                    if (isFinal) {
-                        payload.slot_type = 'Final';
-                    }
-                    
+
                     if (!summarySubmitted) {
-                        payload.summary = `<p>${summary}</p>`;
+                        baseData.summary = `<p>${summary}</p>`;
                         summarySubmitted = true;
                     }
-                    
-                    const resp = await apiFetch('/api/submit_comment', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(payload)
-                    });
-                    
-                    const data = await resp.json();
-                    if (data.success || data.result) {
+
+                    let payload;
+                    if (isFinal) {
+                        payload = buildFinalDemoPayload(baseData).payload;
+                    } else {
+                        payload = buildDefaultPayload(baseData);
+                    }
+
+                    const result = await submitToLMS(payload);
+                    if (!result.errors) {
                         successCount++;
                         delete generatedComments[studentId];
+                        logComment({class_id: classData.id, class_name: classData.name, session_number: sessionNumber, student_id: studentId, student_name: att.student.fullName, comment: isFinal ? '' : comment, slot_type: isFinal ? 'Final' : 'Default', success: true});
                     }
                 } catch (e) {
                     console.error(e);
                 }
             }
-            
+
             btn.disabled = false;
             progressContainer.classList.remove('show');
-            
-            // Reload class data from server to get updated status
+
+            // Reload class data to get updated status
             if (classData && classData.id) {
                 await reloadClassData();
-                // Re-select the same slot
                 const slotSelect = document.getElementById('slotSelect');
                 if (selectedSlot) {
                     slotSelect.value = selectedSlot.index;
                     loadSlotStudents();
                 }
             }
-            
+
             playSound('success');
             showToast(`Đã submit ${successCount}/${toSubmit.length} nhận xét!`);
         }
@@ -3164,10 +4440,31 @@ MindX Technology School`;
         if (savedEmail) document.getElementById('email').value = savedEmail;
         if (savedPassword) document.getElementById('password').value = savedPassword;
 
-        {% if is_logged_in %}
-        updateLoginStatus(true);
-        loadClasses();
-        {% endif %}
+        toggleCustomModelInput();
+
+        // Load proxy API key from localStorage
+        const savedProxyKey = localStorage.getItem('ai_api_key');
+        if (savedProxyKey) {
+            const keyInput = document.getElementById('proxyApiKey');
+            if (keyInput) keyInput.value = savedProxyKey;
+        }
+
+        // Auto-login if token exists and valid
+        if (isTokenValid()) {
+            updateLoginStatus(true);
+            loadClasses();
+        } else if (savedEmail && savedPassword) {
+            // Try auto-login with saved credentials
+            (async () => {
+                try {
+                    await firebaseLogin(savedEmail, savedPassword);
+                    updateLoginStatus(true);
+                    loadClasses();
+                } catch(e) {
+                    console.warn('Auto-login failed:', e);
+                }
+            })();
+        }
     </script>
 </body>
 </html>
