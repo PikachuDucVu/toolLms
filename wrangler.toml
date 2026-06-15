@@ -1,0 +1,38 @@
+name = "lms-auto-comment-tool"
+main = "src/worker.ts"
+compatibility_date = "2026-05-01"
+account_id = "aeac7a4c153aee0be799bea1169887ef"
+routes = [
+  { pattern = "lms.ducvu.io.vn", custom_domain = true }
+]
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lms_auto_comment"
+database_id = "9dfcc897-ad1b-493a-9f8a-87a215481076"
+
+[[kv_namespaces]]
+binding = "SESSION_CACHE"
+id = "23a5575fd4d54a7980167d210b45abf0"
+
+[[kv_namespaces]]
+binding = "TOKEN_CACHE"
+id = "7463766ff3a64e9fba5810135b56d916"
+
+[[r2_buckets]]
+binding = "ATTACHMENTS"
+bucket_name = "lms-homework-attachments"
+
+[[queues.producers]]
+binding = "GRADING_QUEUE"
+queue = "lms-grading-queue"
+
+[[queues.consumers]]
+queue = "lms-grading-queue"
+max_batch_size = 5
+max_batch_timeout = 30
+max_retries = 3

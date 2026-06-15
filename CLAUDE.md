@@ -26,21 +26,54 @@ No requirements.txt exists. Dependencies: `flask`, `requests`, `boto3`.
 
 ## Architecture
 
+### Dual Architecture: Frontend-Direct + Backend-Proxy
+
+The application uses a **split architecture**:
+
+- **Comment page (index.html)**: All MindX API calls (authentication, class loading, comment submission) are made **directly from the browser** to MindX/Firebase APIs. Tokens are stored in `localStorage`. If CORS blocks direct calls, the frontend automatically falls back to a transparent server proxy (`/api/proxy`).
+
+- **Homework page (homework.html)**: MindX API calls go **through the Flask backend** via `LMSClient` in `lms_api.py`.
+
+- **AI APIs**: Always routed through the Flask backend (keeps API keys secure).
+
+- **Logging**: After successfully submitting comments to MindX, the frontend logs the submission to the server (`/api/log_comment`) for record-keeping.
+
 ### Core Files
 
-- **app.py** - Flask web server. Routes: `/` (comment UI), `/homework` (grading UI). API endpoints under `/api/*`. Contains the AI prompt template for generating Vietnamese student comments and the `COMMENT_AREAS` / `by_areas` structure for LMS submission.
-- **lms_api.py** - `LMSClient` class handling MindX LMS authentication and GraphQL API calls. Has hardcoded default credentials as fallback (overridden by web UI login). Contains pre-defined GraphQL queries in `QUERIES` dict.
+- **app.py** - Flask web server. Routes:
+  - `/` - Comment UI (serves index.html)
+  - `/homework` - Grading UI (serves homework.html)
+  - `/api/proxy` - Transparent proxy for MindX/Firebase API calls (CORS fallback)
+  - `/api/generate_comment`, `/api/generate_checkpoint_comment` - AI comment generation
+  - `/api/log_comment`, `/api/comment_history` - Comment logging to JSON
+  - `/api/save_config`, `/api/notes` - Config and student notes
+  - `/api/login`, `/api/classes`, `/api/class/<id>` - Used by homework page only (via LMSClient)
+  - `/api/homework/*` - Homework grading endpoints (via LMSClient)
+
+- **lms_api.py** - `LMSClient` class handling MindX LMS authentication and GraphQL API calls. Used by homework page and CLI only. Has hardcoded default credentials as fallback.
+
 - **homework_grader.py** - CLI tool for homework management, uses `LMSClient` from `lms_api.py`.
-- **templates/index.html**, **templates/homework.html** - Single-file HTML templates with embedded JS/CSS (no build step, no separate static assets).
 
-### Authentication Flow
+- **templates/index.html** - Comment page. Single-file HTML with embedded JS/CSS. Contains:
+  - Firebase Auth flow (REST API calls directly from browser)
+  - MindX GraphQL client (direct API calls with CORS proxy fallback)
+  - Comment payload builders (Default, Checkpoint, Final/Demo) - all logic in JS
+  - AI comment generation (calls backend `/api/generate_comment`)
+  - Comment logging (calls backend `/api/log_comment` after successful submit)
 
-1. Firebase login with email/password → get Firebase `idToken`
-2. Call `loginWithToken` mutation on `base-api.mindx.edu.vn` (establishes session cookies)
-3. Get custom token via `GetCustomToken` mutation (requires `Authorization: Bearer <firebase_token>`)
-4. Exchange custom token for final LMS token via Firebase `signInWithCustomToken`
-5. Use LMS token **without** `"Bearer "` prefix for `lms-api.mindx.vn` calls
-6. Tokens are cached in `token_cache.json` with auto-refresh on 403 or `INVALID_TOKEN`
+- **templates/homework.html** - Homework grading page. Single-file HTML, calls backend APIs.
+
+### Authentication Flow (Comment Page - Frontend-Direct)
+
+1. Firebase login with email/password → get Firebase `idToken` (browser → Firebase REST API)
+2. Call `loginWithToken` mutation on `base-api.mindx.edu.vn` (browser → MindX)
+3. Get custom token via `GetCustomToken` mutation (browser → MindX)
+4. Exchange custom token for final LMS token via Firebase `signInWithCustomToken` (browser → Firebase)
+5. Refresh token via `securetoken.googleapis.com` (browser → Google)
+6. Store `lmsToken`, `tokenExpiry`, `firebaseToken` in `localStorage`
+7. Use LMS token **without** `"Bearer "` prefix for `lms-api.mindx.vn` calls
+8. Auto-refresh on token expiry or 403/INVALID_TOKEN responses
+9. If any direct call fails due to CORS, automatically switch to `/api/proxy` mode
 
 ### Comment Submission Structure
 
@@ -48,21 +81,22 @@ Comments are submitted via `UpdateSlotComment` mutation with a `byAreas` array c
 - 7 fixed RATE areas (hardcoded COD skill descriptions with grade=5, using MindX comment area IDs)
 - 1 CONTENT area for the AI-generated comment text
 
-The comment area IDs (e.g., `66f12601cdcebc582a30307f`) are MindX-specific and hardcoded in `app.py`.
+The comment area IDs and payload builders are defined in `templates/index.html` JavaScript.
 
 ### AI Integration
 
 Two provider types determined by `get_model_provider()`:
-- **Antigravity** - Uses `ANTIGRAVITY_API_URL` constant (no API key needed), 120s timeout
+- **Antigravity** - Uses `ANTIGRAVITY_API_URL` constant, 120s timeout
 - **OpenRouter** - Requires API key stored in `config.json`, 60s timeout
 
-Both use OpenAI-compatible `/v1/chat/completions` format.
+Both use OpenAI-compatible `/v1/chat/completions` format. Always routed through Flask backend.
 
 ### Data Files (gitignored)
 
 - `config.json` - OpenRouter API key and selected AI model
-- `token_cache.json` - Cached LMS authentication tokens
+- `token_cache.json` - Cached LMS authentication tokens (used by homework page/CLI only)
 - `student_notes.json` - Teacher notes about students (keyed by student ID)
+- `comment_log.json` - Log of all submitted comments (timestamp, class, student, comment, scores)
 
 ### Debug Scripts
 

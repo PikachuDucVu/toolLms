@@ -1740,14 +1740,16 @@
                         <div class="form-group">
                             <label class="form-label" for="aiModel">Model AI</label>
                             <select class="form-select" id="aiModel" onchange="toggleCustomModelInput()">
-                                {% for model in ai_models %}
-                                <option value="{{ model.id }}" data-provider="{{ model.provider }}" {% if model.id == ai_model %}selected{% endif %}>{{ model.name }}</option>
-                                {% endfor %}
+                                <option value="claude-opus-4-6-thinking" data-provider="antigravity">Claude Opus 4.6 Thinking</option>
+                                <option value="claude-sonnet-4-6" data-provider="antigravity" selected>Claude Sonnet 4.6</option>
+                                <option value="gemini-3.1-pro-high" data-provider="antigravity">Gemini 3.1 Pro High</option>
+                                <option value="gpt-5.4" data-provider="antigravity">GPT-5.4</option>
+                                <option value="__custom__" data-provider="antigravity">Tự nhập model</option>
                             </select>
                         </div>
-                        <div class="form-group" id="customModelGroup" style="display: {{ 'block' if ai_model == '__custom__' else 'none' }};">
+                        <div class="form-group" id="customModelGroup" style="display: none;">
                             <label class="form-label" for="customModelId">Tên model custom</label>
-                            <input class="form-input" id="customModelId" value="{{ custom_model_id }}" placeholder="VD: gpt-5.4, gemini-2.5-pro, claude-sonnet-4-6">
+                            <input class="form-input" id="customModelId" value="" placeholder="VD: gpt-5.4, gemini-2.5-pro, claude-sonnet-4-6">
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="commentLength">Độ dài nhận xét</label>
@@ -2073,10 +2075,72 @@
             } catch {
                 throw new Error(`Server trả về lỗi ${resp.status}`);
             }
+            data = await maybeDirectAiFallback(url, body, data);
             if (data.error) {
                 throw new Error(data.error);
             }
             return data;
+        }
+
+        function cleanDirectAiResponse(content) {
+            let cleaned = String(content || '').trim().replaceAll('"', '').replaceAll("'", '');
+            if (cleaned.startsWith('-')) cleaned = cleaned.slice(1).trim();
+            return cleaned.startsWith('<p>') ? cleaned : `<p>${cleaned}</p>`;
+        }
+
+        function shouldUseDirectAiFallback(data) {
+            return data?.comment && /error code:\s*522|Lỗi AI .*522/.test(data.comment);
+        }
+
+        async function callDirectAntigravity(model, apiKey, prompt) {
+            if (!apiKey) throw new Error('Vui lòng nhập API Key trong phần Cấu hình');
+            const resp = await fetch('https://ai.ducvu.io.vn/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] })
+            });
+            const text = await resp.text();
+            let payload;
+            try {
+                payload = JSON.parse(text);
+            } catch {
+                throw new Error(`AI trả về lỗi ${resp.status}`);
+            }
+            if (!resp.ok) {
+                throw new Error(payload.error || text.slice(0, 120) || `AI lỗi ${resp.status}`);
+            }
+            const content = payload?.choices?.[0]?.message?.content;
+            if (!content) throw new Error('AI không trả về nội dung');
+            return { comment: cleanDirectAiResponse(content) };
+        }
+
+        function buildDirectCommentPrompt(body) {
+            const studentName = body.student_name || '';
+            const shortName = studentName ? studentName.trim().split(/\s+/).pop() : 'em';
+            const pastComments = (body.past_slots || []).map(slot => {
+                const content = (slot.commentByAreas || []).find(area => area.type === 'CONTENT' && area.content)?.content || '';
+                return content ? `- Buổi ${slot.index || '?'}: ${content}` : '';
+            }).filter(Boolean).join('\n') || 'Buổi đầu tiên';
+            const localNote = body.student_id ? getLocalNote(body.student_id) : '';
+            const notes = `${body.is_late ? 'Học sinh đi học muộn buổi này.\n' : ''}${localNote || 'Học bình thường, không có gì đặc biệt'}`;
+            const lengthGuide = body.comment_length === 'short' ? '2-3 câu ngắn gọn' : body.comment_length === 'long' ? '4-5 câu chi tiết' : '3-4 câu';
+            return `Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét ngắn gọn cho học sinh gửi phụ huynh.\n\nHỌC SINH: ${studentName} (gọi: ${shortName})\nNỘI DUNG BUỔI HỌC: ${body.session_summary || 'Thực hành lập trình'}\nNHẬN XÉT BUỔI TRƯỚC: ${pastComments}\nGHI CHÚ BUỔI NÀY: ${notes}\n\nHƯỚNG DẪN VIẾT:\n- Viết ${lengthGuide}, mỗi câu nối tiếp tự nhiên.\n- Câu 1: đi học đúng giờ/muộn và tuân thủ nội quy.\n- Câu tiếp theo: mức độ tập trung, thao tác lập trình, tiến độ bài học.\n- Câu cuối: BTVN hoặc việc cần hoàn thiện ở nhà, kèm động viên/nhắc nhở.\n- Dùng em hoặc ${shortName} để gọi học sinh, dùng con khi nói với phụ huynh.\n- Nếu ghi chú có vấn đề, diễn đạt nhẹ nhàng và mang tính xây dựng.\n${body.custom_prompt ? `\nYÊU CẦU THÊM: ${body.custom_prompt}\n` : ''}\nCHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH.`;
+        }
+
+        function buildDirectCheckpointPrompt(body) {
+            const studentName = body.student_name || '';
+            const shortName = studentName ? studentName.trim().split(/\s+/).pop() : 'em';
+            return `Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét checkpoint cho học sinh gửi phụ huynh.\n\nHỌC SINH: ${studentName} (gọi: ${shortName})\nMÔ TẢ TÓM TẮT TỪ GIÁO VIÊN: ${body.teacher_description || 'Học sinh hoàn thành bài kiểm tra tốt'}\n\nViết thành một đoạn nhận xét gồm: Điểm mạnh, Điểm cần cải thiện, Lời khuyên. Giọng văn chuyên nghiệp, tích cực, mang tính xây dựng. Không dùng markdown, không bullet list.\n\nCHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH.`;
+        }
+
+        async function maybeDirectAiFallback(url, body, data) {
+            if (!shouldUseDirectAiFallback(data)) return data;
+            const model = body.model_id === '__custom__' ? (body.custom_model_id || 'claude-sonnet-4-6') : (body.model_id || 'claude-sonnet-4-6');
+            const prompt = url.includes('generate_checkpoint_comment') ? buildDirectCheckpointPrompt(body) : buildDirectCommentPrompt(body);
+            return callDirectAntigravity(model, body.ai_api_key || body.api_key || localStorage.getItem('ai_api_key') || '', prompt);
         }
 
         /** Get list of present students (ATTENDED or LATE_ARRIVED) */
@@ -2102,88 +2166,55 @@
         // DOM element cache (populated after DOMContentLoaded)
         const DOM = {};
 
-        // ============== FIREBASE & MINDX API CONFIG ==============
-        const FIREBASE_API_KEY = "AIzaSyAh2Au-mk5ci-hN83RUBqj1fsAmCMdvJx4";
-        const LMS_API_URL = "/_mx/lms-api/";
-
-        // Token state (stored in localStorage)
-        let lmsToken = localStorage.getItem('lms_token') || null;
-        let tokenExpiry = parseInt(localStorage.getItem('lms_token_expiry') || '0');
-        let firebaseToken = localStorage.getItem('lms_firebase_token') || null;
-
-        function saveTokens() {
-            localStorage.setItem('lms_token', lmsToken || '');
-            localStorage.setItem('lms_token_expiry', String(tokenExpiry));
-            localStorage.setItem('lms_firebase_token', firebaseToken || '');
-        }
+        // ============== AUTH & MINDX API CONFIG ==============
+        const LMS_GRAPHQL_URL = "/api/lms/graphql";
+        let hasServerSession = false;
 
         function clearTokens() {
-            lmsToken = null;
-            tokenExpiry = 0;
-            firebaseToken = null;
+            hasServerSession = false;
             localStorage.removeItem('lms_token');
             localStorage.removeItem('lms_token_expiry');
             localStorage.removeItem('lms_firebase_token');
         }
 
         function isTokenValid() {
-            if (!lmsToken) return false;
-            return Date.now() / 1000 < tokenExpiry - 60;
+            return hasServerSession;
         }
 
-        // ============== AUTH (server-side, returns token to frontend) ==============
+        async function checkServerSession() {
+            const resp = await fetch('/api/auth/me');
+            hasServerSession = resp.ok;
+            return hasServerSession;
+        }
 
         async function firebaseLogin(email, password) {
-            /**
-             * Auth flow runs server-side (needs session cookies between steps).
-             * Server returns the final LMS token which we store in localStorage.
-             */
             const resp = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({email, password})
             });
             const text = await resp.text();
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch {
-                    throw new Error(`Server trả về lỗi ${resp.status}`);
-                }
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch {
+                throw new Error(`Server trả về lỗi ${resp.status}`);
+            }
             if (!data.success) {
                 throw new Error(data.error || 'Login failed');
             }
-            lmsToken = data.lms_token;
-            tokenExpiry = data.token_expiry;
-            saveTokens();
+            clearTokens();
+            hasServerSession = true;
             return true;
         }
 
-        // ============== LMS GraphQL API (direct from frontend via nginx proxy) ==============
+        // ============== LMS GraphQL API (via Cloudflare Worker session) ==============
 
         async function lmsApiCall(operationName, query, variables = {}) {
-            /**
-             * Call MindX LMS GraphQL API via nginx same-origin proxy.
-             * Auto-refreshes token on 403 or INVALID_TOKEN.
-             */
-            if (!isTokenValid()) {
-                throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-            }
-
-            const headers = {
-                "Content-Type": "application/json",
-                "Authorization": lmsToken,  // NO "Bearer " prefix for LMS API
-            };
-
-            const body = {
-                operationName: operationName,
-                variables: variables,
-                query: query
-            };
-
-            let resp = await fetch(LMS_API_URL, {
+            const body = { operationName, variables, query };
+            const resp = await fetch(LMS_GRAPHQL_URL, {
                 method: 'POST',
-                headers,
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(body)
             });
             let data;
@@ -2192,18 +2223,11 @@
             } catch(e) {
                 throw new Error(`API error: ${resp.status}`);
             }
-
-            // Check if token was rejected
-            const shouldRetry = (
-                resp.status === 403 ||
-                (data.errors && JSON.stringify(data.errors).match(/INVALID_TOKEN|Authentication failed|Failed to build auth user/))
-            );
-
-            if (shouldRetry) {
+            if (resp.status === 401 || resp.status === 403) {
                 clearTokens();
+                updateLoginStatus(false);
                 throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
             }
-
             return data;
         }
 
@@ -2815,7 +2839,7 @@
         function initializeConfigPanel({ savedEmail, savedProxyKey } = {}) {
             const firstVisitKey = 'lms_config_first_visit_seen';
             const isFirstVisit = localStorage.getItem(firstVisitKey) !== '1';
-            const hasLoginSetup = Boolean(savedEmail) || Boolean(lmsToken);
+            const hasLoginSetup = Boolean(savedEmail) || Boolean(hasServerSession);
             const hasApiSetup = Boolean(savedProxyKey);
 
             // Lần đầu chưa đăng nhập/chưa có API key thì mở sẵn để setup.
@@ -2871,6 +2895,25 @@
             const customGroup = document.getElementById('customModelGroup');
             if (customGroup) {
                 customGroup.style.display = aiModel === '__custom__' ? 'block' : 'none';
+            }
+        }
+
+        async function loadSavedConfig() {
+            try {
+                const resp = await fetch('/api/config');
+                if (!resp.ok) return;
+                const config = await resp.json();
+                const modelSelect = document.getElementById('aiModel');
+                const customInput = document.getElementById('customModelId');
+                if (modelSelect && config.ai_model) {
+                    modelSelect.value = config.ai_model;
+                }
+                if (customInput) {
+                    customInput.value = config.custom_model_id || '';
+                }
+                toggleCustomModelInput();
+            } catch (e) {
+                console.warn('Failed to load saved config:', e);
             }
         }
 
@@ -3751,30 +3794,18 @@
                         const customPrompt = document.getElementById('customPrompt')?.value || '';
                         const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
 
-                        const resp = await fetch('/api/generate_comment', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({
-                                student_id: att.student.id,
-                                student_name: att.student.fullName,
-                                past_slots: getPastComments(att.student.id),
-                                session_summary: summary,
-                                is_late: att.status === 'LATE_ARRIVED',
-                                model_id: aiModel,
-                                custom_model_id: customModelId,
-                                comment_length: commentLength,
-                                custom_prompt: customPrompt,
-                                ai_api_key: aiApiKey
-                            })
+                        const data = await fetchJSON('/api/generate_comment', {
+                            student_id: att.student.id,
+                            student_name: att.student.fullName,
+                            past_slots: getPastComments(att.student.id),
+                            session_summary: summary,
+                            is_late: att.status === 'LATE_ARRIVED',
+                            model_id: aiModel,
+                            custom_model_id: customModelId,
+                            comment_length: commentLength,
+                            custom_prompt: customPrompt,
+                            ai_api_key: aiApiKey
                         });
-                        
-                        const text = await resp.text();
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch {
-                    throw new Error(`Server trả về lỗi ${resp.status}`);
-                }
                         if (!data.error) {
                             generatedComments[att.student.id] = data.comment;
                         }
@@ -4065,25 +4096,13 @@
 
             try {
                 const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
-                const resp = await fetch('/api/generate_checkpoint_comment', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        student_name: studentName,
-                        teacher_description: desc,
-                        model_id: aiModel,
-                        custom_model_id: customModelId,
-                        ai_api_key: aiApiKey
-                    })
+                const data = await fetchJSON('/api/generate_checkpoint_comment', {
+                    student_name: studentName,
+                    teacher_description: desc,
+                    model_id: aiModel,
+                    custom_model_id: customModelId,
+                    ai_api_key: aiApiKey
                 });
-
-                const text = await resp.text();
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch {
-                    throw new Error(`Server trả về lỗi ${resp.status}`);
-                }
                 if (data.error) {
                     showToast(data.error, 'error');
                     return;
@@ -4134,25 +4153,13 @@
 
                     try {
                         const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
-                        const resp = await fetch('/api/generate_checkpoint_comment', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({
-                                student_name: att.student.fullName,
-                                teacher_description: desc,
-                                model_id: aiModel,
-                                custom_model_id: customModelId,
-                                ai_api_key: aiApiKey
-                            })
+                        const data = await fetchJSON('/api/generate_checkpoint_comment', {
+                            student_name: att.student.fullName,
+                            teacher_description: desc,
+                            model_id: aiModel,
+                            custom_model_id: customModelId,
+                            ai_api_key: aiApiKey
                         });
-
-                        const text = await resp.text();
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch {
-                    throw new Error(`Server trả về lỗi ${resp.status}`);
-                }
                         if (!data.error) {
                             generatedComments[att.student.id] = data.comment;
                         }
@@ -4473,24 +4480,13 @@
                         const desc = document.getElementById(`cp-desc-${scoreId}`)?.value || '';
                         try {
                             const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
-                            const resp = await fetch('/api/generate_checkpoint_comment', {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json'},
-                                body: JSON.stringify({
-                                    student_name: att.student.fullName,
-                                    teacher_description: desc,
-                                    model_id: aiModel,
-                                    custom_model_id: customModelId,
-                                    ai_api_key: aiApiKey
-                                })
+                            const data = await fetchJSON('/api/generate_checkpoint_comment', {
+                                student_name: att.student.fullName,
+                                teacher_description: desc,
+                                model_id: aiModel,
+                                custom_model_id: customModelId,
+                                ai_api_key: aiApiKey
                             });
-                            const text = await resp.text();
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch {
-                    throw new Error(`Server trả về lỗi ${resp.status}`);
-                }
                             if (!data.error) {
                                 generatedComments[att.student.id] = data.comment;
                             }
@@ -4975,7 +4971,7 @@ MindX Technology School`;
         if (savedEmail) document.getElementById('email').value = savedEmail;
         if (savedPassword) document.getElementById('password').value = savedPassword;
 
-        toggleCustomModelInput();
+        loadSavedConfig();
 
         // Load proxy API key from localStorage
         const savedProxyKey = localStorage.getItem('ai_api_key');
@@ -4986,22 +4982,19 @@ MindX Technology School`;
 
         initializeConfigPanel({ savedEmail, savedProxyKey });
 
-        // Auto-login if token exists and valid
-        if (isTokenValid()) {
-            updateLoginStatus(true);
-            loadClasses();
-        } else if (savedEmail && savedPassword) {
-            // Try auto-login with saved credentials
-            (async () => {
-                try {
-                    await firebaseLogin(savedEmail, savedPassword);
+        // Restore Cloudflare Worker session if the HttpOnly cookie is still valid
+        (async () => {
+            try {
+                if (await checkServerSession()) {
                     updateLoginStatus(true);
                     loadClasses();
-                } catch(e) {
-                    console.warn('Auto-login failed:', e);
+                } else {
+                    updateLoginStatus(false);
                 }
-            })();
-        }
+            } catch(e) {
+                updateLoginStatus(false);
+            }
+        })();
     </script>
 </body>
 </html>

@@ -11,15 +11,33 @@ __pycache__/
 *.env
 venv/
 .venv/
+node_modules/
+.wrangler/
 
 # Config with secrets
 config.json
 token_cache.json
 student_notes.json
+comment_log.json
 
 # Logs
 *.log
 *.har
+
+# Debug/development scripts (not part of the app)
+debug_*.py
+check_*.py
+test_*.py
+analyze_*.py
+find_auth.py
+call_api.py
+introspect_*.py
+create_python_ppt.py
+tmp_*.js
+
+# Downloaded files
+downloads/
+*.pptx
 
 # IDE
 .vscode/

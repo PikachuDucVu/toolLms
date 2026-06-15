@@ -8,7 +8,7 @@ import json
 import os
 import sys
 from urllib.parse import quote
-from lms_api import LMSClient
+from lms_api import LMSClient, QUERIES
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -18,27 +18,9 @@ client = LMSClient()
 # API URLs
 PRESIGNED_URL_API = "https://resources.mindx.edu.vn/api/v1/get-presigned-url"
 
-# Queries
-FIND_SUBMISSIONS_QUERY = """query FindStudentSubmissionByClass($payload: FindStudentSubmissionByClassQuery) {
-  findStudentSubmissionByClass(payload: $payload) {
-    students { id displayName studentUid }
-    lessons { id name type isActive displayOrder }
-    submissions {
-      id type note score status category
-      classId lessonId learningCourseId studentUid
-      markedAt markedBy submittedAt submittedCount
-      content { scratchState type attachments totalQuiz submitQuiz correctAnswer }
-    }
-  }
-}"""
-
-MARK_SUBMISSION_QUERY = """mutation MarkStudentSubmission($payload: MarkStudentSubmissionCommand!) {
-  studentHomework {
-    markStudentSubmission(payload: $payload) {
-      id score status markedAt markedBy
-    }
-  }
-}"""
+# Queries — imported from shared lms_api
+FIND_SUBMISSIONS_QUERY = QUERIES["FindStudentSubmissionByClass"]
+MARK_SUBMISSION_QUERY = QUERIES["MarkStudentSubmission"]
 
 
 def get_submissions(class_id):
@@ -324,7 +306,14 @@ Sử dụng:
         if len(sys.argv) < 3:
             print("Cần nhập điểm! VD: python homework_grader.py batch 100")
         else:
-            score = int(sys.argv[2])
+            try:
+                score = int(sys.argv[2])
+                if not 0 <= score <= 100:
+                    print("Điểm phải từ 0 đến 100!")
+                    sys.exit(1)
+            except ValueError:
+                print(f"Điểm không hợp lệ: '{sys.argv[2]}'. Vui lòng nhập số từ 0-100.")
+                sys.exit(1)
             lesson = sys.argv[3] if len(sys.argv) > 3 else None
             grade_batch(CLASS_ID, score, lesson)
 

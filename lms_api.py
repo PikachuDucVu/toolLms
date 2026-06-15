@@ -7,10 +7,10 @@ import os
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-# Firebase config
-FIREBASE_API_KEY = "AIzaSyAh2Au-mk5ci-hN83RUBqj1fsAmCMdvJx4"
-EMAIL = "ducvubn1@mindx.net.vn"
-PASSWORD = "Mindx@2019"
+# Firebase config — prefer environment variables, fallback to defaults
+FIREBASE_API_KEY = os.environ.get("FIREBASE_API_KEY", "AIzaSyAh2Au-mk5ci-hN83RUBqj1fsAmCMdvJx4")
+EMAIL = os.environ.get("LMS_EMAIL", "ducvubn1@mindx.net.vn")
+PASSWORD = os.environ.get("LMS_PASSWORD", "Mindx@2019")
 
 # API endpoints
 FIREBASE_AUTH_URL = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
@@ -48,10 +48,10 @@ class LMSClient:
             try:
                 with open(TOKEN_CACHE_FILE, 'r') as f:
                     cache = json.load(f)
-                
+
                 exp = cache.get('expiry', 0)
                 now = int(time.time())
-                
+
                 # Check if token is still valid (with 5 min buffer)
                 if now < exp - 300:
                     self.lms_token = cache.get('lms_token')
@@ -61,10 +61,23 @@ class LMSClient:
                     return True
                 else:
                     print("Cached token expired, will refresh...")
-            except Exception as e:
+                    self.clear_token_cache()
+            except (json.JSONDecodeError, IOError, KeyError) as e:
                 print(f"Error loading cache: {e}")
+                self.clear_token_cache()
         return False
-    
+
+    def clear_token_cache(self):
+        """Clear in-memory and on-disk token cache"""
+        self.firebase_token = None
+        self.lms_token = None
+        self.token_expiry = 0
+        try:
+            if os.path.exists(TOKEN_CACHE_FILE):
+                os.remove(TOKEN_CACHE_FILE)
+        except OSError as e:
+            print(f"Error clearing cache: {e}")
+
     def save_token_cache(self):
         """Save token to cache file"""
         try:
@@ -76,7 +89,7 @@ class LMSClient:
             with open(TOKEN_CACHE_FILE, 'w') as f:
                 json.dump(cache, f)
             print("Token cached to file")
-        except Exception as e:
+        except (IOError, TypeError) as e:
             print(f"Error saving cache: {e}")
     
     def is_token_valid(self):
@@ -88,13 +101,16 @@ class LMSClient:
     
     def login(self, email=None, password=None, firebase_key=None):
         """Login to Firebase and get LMS token"""
+        self.clear_token_cache()
+        self.session = requests.Session()
+
         # Use passed params or defaults
         login_email = email or EMAIL
         login_password = password or PASSWORD
         api_key = firebase_key or FIREBASE_API_KEY
-        
+
         firebase_auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
-        
+
         # Step 1: Firebase login
         print("Step 1: Logging in to Firebase...")
         payload = {
@@ -103,16 +119,16 @@ class LMSClient:
             "password": login_password,
             "clientType": "CLIENT_TYPE_WEB"
         }
-        
+
         resp = self.session.post(firebase_auth_url, json=payload)
         if resp.status_code != 200:
             print(f"Firebase login failed: {resp.text}")
             return False, f"Firebase login failed: {resp.text[:100]}"
-        
+
         data = resp.json()
         self.firebase_token = data.get("idToken")
-        print(f"Firebase login OK")
-        
+        print("Firebase login OK")
+
         # Step 2: Login with token on base-api (establishes session)
         print("Step 2: Calling loginWithToken...")
         headers = {
@@ -121,70 +137,87 @@ class LMSClient:
             "Origin": "https://base.mindx.edu.vn",
             "Referer": "https://base.mindx.edu.vn/"
         }
-        
+
         login_query = {
             "operationName": "loginWithToken",
             "variables": {"idToken": self.firebase_token},
             "query": "mutation loginWithToken($idToken: String!) {\n  loginWithToken(idToken: $idToken)\n}\n"
         }
-        
+
         resp = self.session.post(BASE_API_URL, headers=headers, json=login_query)
         if resp.status_code != 200:
             print(f"loginWithToken failed: {resp.text[:100]}")
-        
-        # Step 3: Get custom token from base-api  
+
+        # Step 3: Get custom token from base-api
         print("Step 3: Getting custom token from base-api...")
         headers["Origin"] = "https://lms.mindx.edu.vn"
         headers["Referer"] = "https://lms.mindx.edu.vn/"
         headers["Authorization"] = f"Bearer {self.firebase_token}"
-        
+
         custom_token_query = {
             "operationName": "GetCustomToken",
             "variables": {},
             "query": "mutation GetCustomToken{users{getCustomToken{customToken}}}"
         }
-        
+
         resp = self.session.post(BASE_API_URL, headers=headers, json=custom_token_query)
         print(f"GetCustomToken status: {resp.status_code}")
-        
+
         if resp.status_code != 200:
             print(f"GetCustomToken failed: {resp.text}")
             return False, "GetCustomToken failed"
-        
+
         result = resp.json()
-        
-        # Check for errors
+
         if "errors" in result:
             print(f"GetCustomToken error: {result['errors']}")
             return False, f"GetCustomToken error: {result['errors'][0].get('message', 'Unknown error')}"
-        
-        # Extract custom token
+
         custom_token = result.get("data", {}).get("users", {}).get("getCustomToken", {}).get("customToken")
-        
         if not custom_token:
             print(f"No custom token in response: {json.dumps(result)[:200]}")
             return False, "No custom token in response"
-        
-        print(f"Got custom token, exchanging...")
-        
-        # Exchange custom token for ID token
+
+        print("Got custom token, exchanging...")
+
+        # Step 4: Exchange custom token for ID token + refresh token
         exchange_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key={api_key}"
         resp = self.session.post(exchange_url, json={"token": custom_token, "returnSecureToken": True})
         if resp.status_code != 200:
             print(f"Token exchange failed: {resp.text}")
             return False, "Token exchange failed"
-        
-        self.lms_token = resp.json().get("idToken")
-        
-        # Parse token to get expiry
-        payload_part = self.lms_token.split('.')[1]
-        payload_part += '=' * (4 - len(payload_part) % 4)
-        token_data = json.loads(base64.b64decode(payload_part))
-        self.token_expiry = token_data.get('exp', 0)
-        
+
+        exchange_data = resp.json()
+        self.lms_token = exchange_data.get("idToken")
+        refresh_token = exchange_data.get("refreshToken")
+
+        # Step 5: Refresh once via securetoken (matches browser flow and avoids stale custom-session token)
+        if refresh_token:
+            refresh_url = f"https://securetoken.googleapis.com/v1/token?key={api_key}"
+            resp = self.session.post(
+                refresh_url,
+                data={"grant_type": "refresh_token", "refresh_token": refresh_token},
+                headers={
+                    **BROWSER_HEADERS,
+                    "Origin": "https://lms.mindx.edu.vn",
+                    "Referer": "https://lms.mindx.edu.vn/"
+                }
+            )
+            if resp.status_code == 200:
+                refresh_data = resp.json()
+                self.lms_token = refresh_data.get("access_token", self.lms_token)
+                refresh_expires_in = refresh_data.get("expires_in")
+                if refresh_expires_in:
+                    self.token_expiry = int(time.time()) + int(refresh_expires_in)
+
+        if not self.token_expiry:
+            payload_part = self.lms_token.split('.')[1]
+            payload_part += '=' * (4 - len(payload_part) % 4)
+            token_data = json.loads(base64.b64decode(payload_part))
+            self.token_expiry = token_data.get('exp', 0)
+
         print(f"Login successful! Token expires at: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.token_expiry))}")
-        
-        # Save to cache
+
         self.save_token_cache()
         return True, "Đăng nhập thành công!"
     
@@ -216,18 +249,27 @@ class LMSClient:
         }
         
         resp = self.session.post(LMS_API_URL, headers=headers, json=payload)
-        
-        # If error, try refresh token once
-        if resp.status_code == 403 or (resp.status_code == 200 and "INVALID_TOKEN" in resp.text):
+
+        should_retry = (
+            resp.status_code == 403 or
+            (resp.status_code == 200 and (
+                "INVALID_TOKEN" in resp.text or
+                "Authentication failed" in resp.text or
+                "Failed to build auth user" in resp.text
+            ))
+        )
+
+        if should_retry:
             print("Token rejected, refreshing...")
-            self.lms_token = None
-            if self.login():
+            self.clear_token_cache()
+            success, _ = self.login()
+            if success:
                 headers["Authorization"] = self.lms_token
                 resp = self.session.post(LMS_API_URL, headers=headers, json=payload)
-        
+
         try:
             return resp.json()
-        except:
+        except (ValueError, json.JSONDecodeError):
             return {"error": resp.text, "status": resp.status_code}
 
 
@@ -242,7 +284,7 @@ QUERIES = {
     commentByAreas { commentAreaId grade content }
   }
 }""",
-    
+
     "findAllStudentWorks": """query findAllStudentWorks($classSessionId: String, $classId: String, $classIds: [String]) {
   findAllStudentWorks(classSessionId: $classSessionId, classId: $classId, classIds: $classIds) {
     data {
@@ -252,7 +294,7 @@ QUERIES = {
     }
   }
 }""",
-    
+
     "GetClasses": """query GetClasses($search: String, $pageIndex: Int!, $itemsPerPage: Int!, $orderBy: String) {
   classes(payload: {filter_textSearch: $search, pageIndex: $pageIndex, itemsPerPage: $itemsPerPage, orderBy: $orderBy}) {
     data { id name level course { id name shortName } status }
@@ -268,7 +310,28 @@ QUERIES = {
     sessions { _id sessionIndex startTime endTime status }
     students { _id student { id fullName code phoneNumber email } }
   }
-}"""
+}""",
+
+    "FindStudentSubmissionByClass": """query FindStudentSubmissionByClass($payload: FindStudentSubmissionByClassQuery) {
+  findStudentSubmissionByClass(payload: $payload) {
+    students { id displayName studentUid }
+    lessons { id name type isActive displayOrder }
+    submissions {
+      id type note score status category
+      classId lessonId learningCourseId studentUid
+      markedAt markedBy submittedAt submittedCount
+      content { scratchState type attachments totalQuiz submitQuiz correctAnswer }
+    }
+  }
+}""",
+
+    "MarkStudentSubmission": """mutation MarkStudentSubmission($payload: MarkStudentSubmissionCommand!) {
+  studentHomework {
+    markStudentSubmission(payload: $payload) {
+      id score status markedAt markedBy
+    }
+  }
+}""",
 }
 
 

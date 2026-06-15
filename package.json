@@ -1,0 +1,22 @@
+{
+  "name": "lms-auto-comment-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "cf-typegen": "wrangler types",
+    "db:migrate:local": "wrangler d1 execute lms_auto_comment --local --file=src/db/schema.sql",
+    "db:migrate:remote": "wrangler d1 execute lms_auto_comment --remote --file=src/db/schema.sql"
+  },
+  "dependencies": {
+    "hono": "^4.6.16"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251218.0",
+    "typescript": "^5.7.3",
+    "wrangler": "^4.0.0"
+  }
+}

@@ -1,0 +1,33 @@
+LMS Auto Comment Tool Analysis:
+
+1. Frontend Comment Building (templates/index.html)
+   The frontend defines 3 different builder functions based on the session type:
+   
+   a) Normal Sessions (buildDefaultPayload):
+      - Uses DEFAULT_RATE_AREAS (7 areas: Kỹ năng giao tiếp, Kỹ năng giải quyết vấn đề, v.v)
+      - Appends the CONTENT area (id: "67b54307f79c7bc326e017ff") which contains the custom comment.
+      - Payload fields: slotType = "Default", totalScore = null, rank = "N/A"
+
+   b) Checkpoint Sessions (buildCheckpointPayload):
+      - Calculates theory and practice scores, totalScore = (theory + practice)/2, rank based on score (A/B/C/D).
+      - Combines CHECKPOINT_RATE_AREAS, a survey area, a content area, and a checkpoint area (id: "668e2f99e71f90e7630d4593") containing the score break down.
+      - Payload fields: slotType = "CheckPoint"
+
+   c) Demo/Final Sessions (buildFinalDemoPayload):
+      - Generates custom or random scores for DEMO_CONFIG questions to calculate totalDemoScore.
+      - Uses FINAL_RATE_AREAS (only if autoRate is true/checked).
+      - Adds a DEMO area (id: "67074eb655bde4403850441a") which contains the demo score table.
+      - Payload fields: slotType = "Final", rank = "A"
+
+2. Mutation and Submission
+   - All builders generate a payload structure that fits the UpdateSlotCommentCommand.
+   - The query UPDATE_SLOT_COMMENT_QUERY is executed via the lmsApiCall function.
+   - lmsApiCall points to '/api/proxy', avoiding CORS issues.
+
+3. Backend Proxy (app.py)
+   - Route '/api/proxy' receives requests and forwards them transparently to the target URL (e.g. lms-api.mindx.edu.vn).
+   - Validation checks that the hostname is in ALLOWED_PROXY_HOSTS.
+
+4. Log Comment
+   - After a successful submission to the LMS, frontend calls `logComment()` which posts the data to '/api/log_comment'.
+   - The backend stores this log locally in a JSON file for history.

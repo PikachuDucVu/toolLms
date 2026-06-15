@@ -1,16 +1,26 @@
 """
 LMS Auto Comment Tool - Web Interface
 Tự động nhận xét học sinh bằng AI dựa vào lịch sử + notes
+
+Architecture:
+- Comment page (index.html): Frontend calls MindX APIs directly (Firebase Auth + GraphQL)
+- Homework page (homework.html): Backend proxies MindX API calls via LMSClient
+- AI APIs: Always via backend (keeps API keys secure)
+- Server also logs submitted comments to JSON files
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response
 import requests
 import json
 import os
+import re
+import random
+import time
 import base64
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse, quote
 import boto3
-from lms_api import LMSClient
+from lms_api import LMSClient, QUERIES as LMS_QUERIES
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -21,7 +31,7 @@ def add_no_cache(response):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return response
 
-# Initialize LMS client
+# Initialize LMS client (for homework page only)
 lms_client = LMSClient()
 
 # Config file path
@@ -33,7 +43,7 @@ def load_config():
         try:
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except:
+        except (json.JSONDecodeError, IOError):
             pass
     return {}
 
@@ -51,7 +61,7 @@ def load_notes():
         try:
             with open(NOTES_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except:
+        except (json.JSONDecodeError, IOError):
             pass
     return {}
 
@@ -59,6 +69,30 @@ def save_notes(notes):
     """Save student notes to file"""
     with open(NOTES_FILE, 'w', encoding='utf-8') as f:
         json.dump(notes, f, ensure_ascii=False, indent=2)
+
+# Comment log file
+COMMENT_LOG_FILE = "comment_log.json"
+
+def load_comment_log():
+    """Load comment log from file"""
+    if os.path.exists(COMMENT_LOG_FILE):
+        try:
+            with open(COMMENT_LOG_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return []
+
+def save_comment_log(log):
+    """Save comment log to file"""
+    with open(COMMENT_LOG_FILE, 'w', encoding='utf-8') as f:
+        json.dump(log, f, ensure_ascii=False, indent=2)
+
+def append_comment_log(entry):
+    """Append a single entry to the comment log (optimized for frequent writes)"""
+    log = load_comment_log()
+    log.append(entry)
+    save_comment_log(log)
 
 # Comment areas for LMS (standard MindX comment structure)
 COMMENT_AREAS = [
@@ -71,27 +105,62 @@ RATE_CONTENTS = {
     "672f0f7b0b00b07cb06e54bb": "Tốt"  # Kỹ năng COD mặc định là Tốt
 }
 
+CUSTOM_MODEL_OPTION_ID = "__custom__"
 AI_MODELS = [
     {"id": "claude-opus-4-6-thinking", "name": "Claude Opus 4.6 Thinking", "provider": "antigravity"},
     {"id": "claude-sonnet-4-6", "name": "Claude Sonnet 4.6", "provider": "antigravity"},
     {"id": "gemini-3.1-pro-high", "name": "Gemini 3.1 Pro High", "provider": "antigravity"},
+    {"id": "gpt-5.4", "name": "GPT-5.4", "provider": "antigravity"},
+    {"id": CUSTOM_MODEL_OPTION_ID, "name": "Tự nhập model", "provider": "antigravity"},
 ]
 
 ANTIGRAVITY_API_URL = "https://ai.ducvu.io.vn/v1/chat/completions"
+ANTIGRAVITY_ADMIN_API_KEY = ""  # No default - must be provided by user
 
-def call_antigravity_api(prompt, model_id):
+
+def clean_ai_response(content):
+    """Clean up AI-generated comment text"""
+    content = content.strip()
+    content = content.replace('"', '').replace("'", "")
+    if content.startswith("-"):
+        content = content[1:].strip()
+    if not content.startswith("<p>"):
+        content = f"<p>{content}</p>"
+    return content
+
+def resolve_model_id(model_id=None, custom_model_id=None, fallback='claude-sonnet-4-6'):
+    model = (model_id or '').strip()
+    custom_model = (custom_model_id or '').strip()
+    fallback_model = (fallback or 'claude-sonnet-4-6').strip()
+    if fallback_model == CUSTOM_MODEL_OPTION_ID:
+        fallback_model = 'claude-sonnet-4-6'
+
+    if model == CUSTOM_MODEL_OPTION_ID:
+        return custom_model or fallback_model
+    if model:
+        return model
+    if custom_model:
+        return custom_model
+    return fallback_model
+
+
+def call_antigravity_api(prompt, model_id, api_key=None):
     """Call Antigravity/CLI-Proxy API"""
+    key = api_key or ANTIGRAVITY_ADMIN_API_KEY
     try:
         resp = requests.post(
             ANTIGRAVITY_API_URL,
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key}"
+            },
             json={
                 "model": model_id,
                 "messages": [{"role": "user", "content": prompt}]
             },
             timeout=120
         )
-        
+
         if resp.status_code == 200:
             content = resp.json()["choices"][0]["message"]["content"]
             return content, None
@@ -120,7 +189,7 @@ def call_openrouter_api(prompt, model_id, api_key):
             },
             timeout=60
         )
-        
+
         if resp.status_code == 200:
             content = resp.json()["choices"][0]["message"]["content"]
             return content, None
@@ -132,28 +201,33 @@ def call_openrouter_api(prompt, model_id, api_key):
 
 def get_model_provider(model_id):
     """Get provider for a model"""
+    if model_id == CUSTOM_MODEL_OPTION_ID:
+        return 'antigravity'
     for m in AI_MODELS:
         if m['id'] == model_id:
             return m.get('provider', 'openrouter')
-    return 'openrouter'
+    return 'antigravity'
 
-def generate_comment_with_ai(api_key, student_name, past_comments, notes, session_summary, model_id=None, comment_length='medium', custom_prompt=''):
+def generate_comment_with_ai(api_key, student_name, past_comments, notes, session_summary, model_id=None, custom_model_id=None, comment_length='medium', custom_prompt='', ai_api_key=None):
     """Generate comment using AI (OpenRouter or Antigravity)"""
-    
+
     config = load_config()
-    # Prioritize passed model_id, then custom_model_id from config, then selected ai_model
-    model = model_id or config.get('custom_model_id') or config.get('ai_model', 'claude-sonnet-4-6')
-    
+    model = resolve_model_id(
+        model_id,
+        custom_model_id if custom_model_id is not None else config.get('custom_model_id', ''),
+        config.get('ai_model', 'claude-sonnet-4-6')
+    )
+
     # Lấy tên gọi ngắn (tên cuối)
     short_name = student_name.split()[-1] if student_name else "em"
-    
+
     # Độ dài nhận xét
     length_guide = {
         'short': '2-3 câu ngắn gọn',
         'medium': '3-4 câu',
         'long': '4-5 câu chi tiết'
     }.get(comment_length, '3-4 câu')
-    
+
     prompt = f"""Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét ngắn gọn cho học sinh gửi phụ huynh.
 
 HỌC SINH: {student_name} (gọi: {short_name})
@@ -212,23 +286,89 @@ CHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH."""
 
     # Call API based on provider
     provider = get_model_provider(model)
-    
+
     if provider == 'antigravity':
-        content, error = call_antigravity_api(prompt, model)
+        content, error = call_antigravity_api(prompt, model, ai_api_key)
     else:
         content, error = call_openrouter_api(prompt, model, api_key)
-    
+
     if error:
         return f"<p>Lỗi AI ({model}): {error}</p>"
-    
-    # Clean up content
-    content = content.strip()
-    content = content.replace('"', '').replace("'", "")
-    if content.startswith("-"):
-        content = content[1:].strip()
-    if not content.startswith("<p>"):
-        content = f"<p>{content}</p>"
-    return content
+
+    if not content:
+        return f"<p>Lỗi AI ({model}): Không nhận được phản hồi</p>"
+
+    return clean_ai_response(content)
+
+
+def generate_checkpoint_comment_with_ai(api_key, student_name, teacher_description, model_id=None, custom_model_id=None, ai_api_key=None):
+    """Generate checkpoint comment using AI for sessions 5 and 9"""
+    config = load_config()
+    model = resolve_model_id(
+        model_id,
+        custom_model_id if custom_model_id is not None else config.get('custom_model_id', ''),
+        config.get('ai_model', 'claude-sonnet-4-6')
+    )
+
+    short_name = student_name.split()[-1] if student_name else "em"
+
+    prompt = f"""Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét checkpoint (kiểm tra giữa khóa) cho học sinh gửi phụ huynh.
+
+HỌC SINH: {student_name} (gọi: {short_name})
+MÔ TẢ TÓM TẮT TỪ GIÁO VIÊN: {teacher_description if teacher_description else 'Học sinh hoàn thành bài kiểm tra tốt'}
+
+HƯỚNG DẪN VIẾT (sử dụng ngôn từ phù hợp để phụ huynh đọc):
+Viết nhận xét gồm 3 phần rõ ràng, mỗi phần 1-2 câu:
+
+1. Điểm mạnh của học viên: Khả năng, ưu điểm, tiến bộ rõ rệt mà học viên đã thể hiện (chủ động, nhanh nhẹn, tích cực, áp dụng tốt,..)
+
+2. Điểm cần cải thiện: Các vấn đề, điểm yếu, kỹ năng cần cải thiện, có thể là kỹ năng chuyên môn hoặc các yếu tố như sự sáng tạo, khả năng tư duy logic, khả năng giao tiếp.. (Cần cải thiện thêm về ...; Tăng cường về...; Chú ý hơn khi...)
+
+3. Lời khuyên: Gợi ý giải pháp cụ thể giúp học viên phát triển thêm kỹ năng hoặc cải thiện những vấn đề còn yếu (Khuyến khích làm thêm bài tập bổ sung; Tìm hiểu thêm về...; Rèn luyện thêm..)
+
+CÁCH DIỄN ĐẠT:
+- Dùng "em" hoặc "{short_name}" để gọi học sinh
+- Dùng "con" khi nói về học sinh với phụ huynh
+- Giọng văn chuyên nghiệp, tích cực, mang tính xây dựng
+- Dựa vào mô tả tóm tắt của giáo viên để nhận xét cụ thể
+- KHÔNG dùng markdown, KHÔNG dùng ký tự **, KHÔNG dùng bullet list
+- Viết thành một đoạn văn liền mạch hoặc các câu ngắn nối tiếp nhau
+- Có thể dùng các nhãn thuần văn bản: "Điểm mạnh:", "Điểm cần cải thiện:", "Lời khuyên:"
+
+VÍ DỤ:
+- "Điểm mạnh: {short_name} thể hiện rất tốt khả năng tư duy logic trong bài kiểm tra, em hoàn thành nhanh chóng và chính xác các câu hỏi lý thuyết. Điểm cần cải thiện: Em cần chú ý hơn trong phần thực hành, đặc biệt là kỹ năng debug và xử lý lỗi. Lời khuyên: Khuyến khích con rèn luyện thêm bằng cách làm các bài tập thực hành tại nhà, tìm hiểu thêm về các kỹ thuật gỡ lỗi."
+
+CHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT THUẦN VĂN BẢN, KHÔNG GIẢI THÍCH, KHÔNG MARKDOWN."""
+
+    provider = get_model_provider(model)
+
+    if provider == 'antigravity':
+        content, error = call_antigravity_api(prompt, model, ai_api_key)
+    else:
+        content, error = call_openrouter_api(prompt, model, api_key)
+
+    if error:
+        return f"<p>Lỗi AI ({model}): {error}</p>"
+
+    return clean_ai_response(content)
+
+
+def random_score_above_75(max_score, step=0.25):
+    """Random a score above 75% of max_score with given step increments"""
+    min_score = max_score * 0.75
+    # Round up to nearest step
+    min_score = (int(min_score / step) + 1) * step
+    if min_score > max_score:
+        min_score = max_score
+    # Generate possible scores
+    possible = []
+    current = min_score
+    while current <= max_score + 0.001:  # small epsilon for float comparison
+        possible.append(round(current, 2))
+        current += step
+    if not possible:
+        possible = [max_score]
+    return random.choice(possible)
 
 
 # ============== ROUTES ==============
@@ -236,34 +376,258 @@ CHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH."""
 @app.route('/homework')
 def homework_page():
     config = load_config()
+    custom_model_id = config.get('custom_model_id', '')
+    ai_model = config.get('ai_model', 'claude-sonnet-4-6')
+    if custom_model_id and ai_model not in {m['id'] for m in AI_MODELS}:
+        ai_model = CUSTOM_MODEL_OPTION_ID
     return render_template('homework.html',
                          ai_models=AI_MODELS,
-                         ai_model=config.get('ai_model', 'claude-sonnet-4-6'))
+                         ai_model=ai_model,
+                         custom_model_id=custom_model_id)
 
 
 @app.route('/')
 def index():
     config = load_config()
-    return render_template('index.html', 
+    custom_model_id = config.get('custom_model_id', '')
+    ai_model = config.get('ai_model', 'claude-sonnet-4-6')
+    if custom_model_id and ai_model not in {m['id'] for m in AI_MODELS}:
+        ai_model = CUSTOM_MODEL_OPTION_ID
+    return render_template('index.html',
                          openrouter_key=config.get('openrouter_key', ''),
-                         ai_model=config.get('ai_model', 'claude-sonnet-4-6'),
-                         custom_model_id=config.get('custom_model_id', ''),
-                         ai_models=AI_MODELS,
-                         is_logged_in=lms_client.lms_token is not None)
+                         ai_model=ai_model,
+                         custom_model_id=custom_model_id,
+                         ai_models=AI_MODELS)
 
 
-@app.route('/api/login', methods=['POST'])
-def api_login():
+# ============== AUTH ROUTE (for comment page - server-side auth, returns token to frontend) ==============
+
+FIREBASE_API_KEY = "AIzaSyAh2Au-mk5ci-hN83RUBqj1fsAmCMdvJx4"
+WORKER_BASE_URL = "https://mindx-proxy.ducvubn1.workers.dev"
+
+# Auth flow uses direct upstreams so requests.Session preserves MindX session cookies correctly
+FIREBASE_AUTH_URL = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
+FIREBASE_CUSTOM_TOKEN_URL = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key={FIREBASE_API_KEY}"
+FIREBASE_REFRESH_URL = f"https://securetoken.googleapis.com/v1/token?key={FIREBASE_API_KEY}"
+BASE_API_URL_UPSTREAM = "https://base-api.mindx.edu.vn/"
+
+BROWSER_HEADERS = {
+    "Accept": "*/*",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+}
+
+def get_client_ip():
+    """Get real client IP (behind Cloudflare + nginx)"""
+    return (
+        request.headers.get('CF-Connecting-IP') or
+        request.headers.get('X-Real-IP') or
+        request.headers.get('X-Forwarded-For', '').split(',')[0].strip() or
+        request.remote_addr
+    )
+
+@app.route('/api/auth/login', methods=['POST'])
+def auth_login():
+    """Server-side auth flow for comment page.
+    Does the full 5-step Firebase+MindX auth dance and returns the final LMS token.
+    The session cookie between loginWithToken and GetCustomToken is handled server-side.
+    Forwards the real client IP via X-Forwarded-For so MindX sees the browser's IP.
+    """
     data = request.json
-    # Save firebase key if provided
-    if data.get('firebase_key'):
-        config = load_config()
-        config['firebase_key'] = data['firebase_key']
-        save_config(config)
-    
-    success, message = lms_client.login(data['email'], data['password'], data.get('firebase_key'))
-    return jsonify({"success": success, "message": message})
+    email = data.get('email', '')
+    password = data.get('password', '')
 
+    if not email or not password:
+        return jsonify({"success": False, "error": "Email and password required"}), 400
+
+    client_ip = get_client_ip()
+
+    try:
+        session = requests.Session()
+
+        # Step 1: Firebase login
+        resp = session.post(FIREBASE_AUTH_URL, json={
+            "returnSecureToken": True,
+            "email": email,
+            "password": password,
+            "clientType": "CLIENT_TYPE_WEB"
+        }, headers={
+            "X-Forwarded-For": client_ip,
+        }, timeout=15)
+        if resp.status_code != 200:
+            err = resp.json().get('error', {}).get('message', resp.text[:100])
+            return jsonify({"success": False, "error": f"Firebase login failed: {err}"}), 400
+        firebase_token = resp.json().get("idToken")
+
+        # Step 2: loginWithToken (establishes session cookie)
+        headers = {
+            **BROWSER_HEADERS,
+            "Content-Type": "application/json",
+            "Origin": "https://base.mindx.edu.vn",
+            "Referer": "https://base.mindx.edu.vn/",
+            "X-Forwarded-For": client_ip,
+            "X-Real-IP": client_ip,
+        }
+        session.post(BASE_API_URL_UPSTREAM, headers=headers, json={
+            "operationName": "loginWithToken",
+            "variables": {"idToken": firebase_token},
+            "query": "mutation loginWithToken($idToken: String!) {\n  loginWithToken(idToken: $idToken)\n}\n"
+        }, timeout=15)
+
+        # Step 3: GetCustomToken (needs session cookie from step 2)
+        headers["Origin"] = "https://lms.mindx.edu.vn"
+        headers["Referer"] = "https://lms.mindx.edu.vn/"
+        headers["Authorization"] = f"Bearer {firebase_token}"
+        resp = session.post(BASE_API_URL_UPSTREAM, headers=headers, json={
+            "operationName": "GetCustomToken",
+            "variables": {},
+            "query": "mutation GetCustomToken{users{getCustomToken{customToken}}}"
+        }, timeout=15)
+        result = resp.json()
+        if "errors" in result:
+            return jsonify({"success": False, "error": result["errors"][0].get("message", "GetCustomToken failed")}), 400
+        custom_token = result.get("data", {}).get("users", {}).get("getCustomToken", {}).get("customToken")
+        if not custom_token:
+            return jsonify({"success": False, "error": "No custom token in response"}), 400
+
+        # Step 4: Exchange custom token
+        resp = session.post(FIREBASE_CUSTOM_TOKEN_URL, json={
+            "token": custom_token,
+            "returnSecureToken": True
+        }, timeout=15)
+        if resp.status_code != 200:
+            return jsonify({"success": False, "error": "Token exchange failed"}), 400
+        exchange_data = resp.json()
+        lms_token = exchange_data.get("idToken")
+        refresh_token = exchange_data.get("refreshToken")
+
+        # Step 5: Refresh token
+        token_expiry = 0
+        if refresh_token:
+            resp = session.post(FIREBASE_REFRESH_URL, data={
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token
+            }, headers={
+                **BROWSER_HEADERS,
+                "Origin": "https://lms.mindx.edu.vn",
+                "Referer": "https://lms.mindx.edu.vn/"
+            }, timeout=15)
+            if resp.status_code == 200:
+                refresh_data = resp.json()
+                lms_token = refresh_data.get("access_token", lms_token)
+                expires_in = refresh_data.get("expires_in")
+                if expires_in:
+                    token_expiry = int(time.time()) + int(expires_in)
+
+        # Fallback: parse expiry from JWT
+        if not token_expiry:
+            try:
+                payload_part = lms_token.split('.')[1]
+                payload_part += '=' * (4 - len(payload_part) % 4)
+                token_data = json.loads(base64.b64decode(payload_part))
+                token_expiry = token_data.get('exp', 0)
+            except (ValueError, KeyError):
+                pass
+
+        return jsonify({
+            "success": True,
+            "lms_token": lms_token,
+            "token_expiry": token_expiry
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============== PROXY ROUTE (for MindX API calls from frontend) ==============
+
+ALLOWED_PROXY_HOSTS = {
+    'identitytoolkit.googleapis.com',
+    'securetoken.googleapis.com',
+    'base-api.mindx.edu.vn',
+    'lms-api.mindx.edu.vn',
+}
+
+@app.route('/api/proxy', methods=['POST'])
+def proxy_request():
+    """Transparent proxy for MindX API calls when CORS blocks direct browser requests.
+    Frontend sends: { url, method, headers, body }
+    Server forwards as-is and returns the response.
+    """
+    data = request.json
+    target_url = data.get('url', '')
+    method = data.get('method', 'POST').upper()
+    headers = data.get('headers', {})
+    body = data.get('body')
+
+    # Security: only allow proxying to known MindX/Firebase hosts
+    parsed = urlparse(target_url)
+    if parsed.hostname not in ALLOWED_PROXY_HOSTS:
+        return jsonify({"error": f"Proxy not allowed for host: {parsed.hostname}"}), 403
+
+    try:
+        if method == 'POST':
+            if isinstance(body, dict):
+                resp = requests.post(target_url, headers=headers, json=body, timeout=30)
+            else:
+                resp = requests.post(target_url, headers=headers, data=body, timeout=30)
+        elif method == 'GET':
+            resp = requests.get(target_url, headers=headers, timeout=30)
+        else:
+            return jsonify({"error": f"Unsupported method: {method}"}), 400
+
+        # Forward response as-is
+        try:
+            return jsonify(resp.json()), resp.status_code
+        except (ValueError, json.JSONDecodeError):
+            return Response(resp.text, status=resp.status_code, content_type=resp.headers.get('content-type', 'text/plain'))
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "Proxy timeout"}), 504
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ============== COMMENT LOG ROUTE ==============
+
+@app.route('/api/log_comment', methods=['POST'])
+def log_comment():
+    """Log a submitted comment for record-keeping.
+    Called by frontend after successfully submitting to MindX API.
+    """
+    data = request.json
+    log_entry = {
+        "timestamp": datetime.now().isoformat(),
+        "class_id": data.get('class_id', ''),
+        "class_name": data.get('class_name', ''),
+        "session_number": data.get('session_number', ''),
+        "student_id": data.get('student_id', ''),
+        "student_name": data.get('student_name', ''),
+        "comment": data.get('comment', ''),
+        "slot_type": data.get('slot_type', 'Default'),
+        "scores": data.get('scores', {}),
+        "success": data.get('success', True),
+    }
+
+    append_comment_log(log_entry)
+
+    return jsonify({"success": True, "logged": True})
+
+
+@app.route('/api/comment_history', methods=['GET'])
+def get_comment_history():
+    """Get comment history, optionally filtered by class_id or student_id"""
+    log = load_comment_log()
+    class_id = request.args.get('class_id')
+    student_id = request.args.get('student_id')
+
+    if class_id:
+        log = [e for e in log if e.get('class_id') == class_id]
+    if student_id:
+        log = [e for e in log if e.get('student_id') == student_id]
+
+    return jsonify({"history": log})
+
+
+# ============== CONFIG & NOTES ROUTES (unchanged) ==============
 
 @app.route('/api/save_config', methods=['POST'])
 def save_config_api():
@@ -275,14 +639,126 @@ def save_config_api():
         config['ai_model'] = data['ai_model']
     if 'custom_model_id' in data:
         config['custom_model_id'] = data['custom_model_id']
-    
+
     save_config(config)
     return jsonify({"success": True})
 
 
+@app.route('/api/notes', methods=['GET'])
+def get_notes():
+    return jsonify(load_notes())
+
+
+@app.route('/api/notes/<student_id>', methods=['POST'])
+def save_student_note(student_id):
+    data = request.json
+    notes = load_notes()
+    if student_id not in notes:
+        notes[student_id] = []
+    notes[student_id].append({
+        "date": datetime.now().isoformat(),
+        "note": data['note']
+    })
+    save_notes(notes)
+    return jsonify({"success": True})
+
+
+# ============== AI ROUTES (unchanged - always via backend) ==============
+
+@app.route('/api/generate_comment', methods=['POST'])
+def generate_comment():
+    data = request.json
+    config = load_config()
+    api_key = config.get('openrouter_key', '')
+
+    model_id = data.get('model_id') or config.get('ai_model', 'claude-sonnet-4-6')
+    custom_model_id = data.get('custom_model_id', config.get('custom_model_id', ''))
+    resolved_model = resolve_model_id(model_id, custom_model_id, config.get('ai_model', 'claude-sonnet-4-6'))
+    provider = get_model_provider(model_id if model_id else resolved_model)
+    ai_api_key = data.get('ai_api_key', '')
+
+    if provider == 'antigravity' and not ai_api_key:
+        return jsonify({"error": "Vui lòng nhập API Key trong phần Cấu hình"}), 400
+    if provider != 'antigravity' and not api_key:
+        return jsonify({"error": "Please set OpenRouter API key"}), 400
+
+    # Get past comments for this student
+    past_comments = ""
+    for slot in data.get('past_slots', []):
+        for area in slot.get('commentByAreas', []):
+            if area.get('type') == 'CONTENT' and area.get('content'):
+                past_comments += f"- Buổi {slot.get('index', '?')}: {area['content']}\n"
+
+    # Get notes
+    notes = load_notes()
+    student_notes = notes.get(data['student_id'], [])
+    notes_text = "\n".join([n['note'] for n in student_notes])
+
+    # Check if student was late
+    is_late = data.get('is_late', False)
+    if is_late:
+        notes_text = "Học sinh đi học muộn buổi này.\n" + notes_text
+
+    comment = generate_comment_with_ai(
+        api_key,
+        data['student_name'],
+        past_comments,
+        notes_text,
+        data.get('session_summary', ''),
+        model_id=model_id,
+        custom_model_id=custom_model_id,
+        comment_length=data.get('comment_length', 'medium'),
+        custom_prompt=data.get('custom_prompt', ''),
+        ai_api_key=data.get('ai_api_key', '')
+    )
+
+    return jsonify({"comment": comment})
+
+
+@app.route('/api/generate_checkpoint_comment', methods=['POST'])
+def generate_checkpoint_comment():
+    """Generate AI comment specifically for checkpoint sessions"""
+    data = request.json
+    config = load_config()
+    api_key = config.get('openrouter_key', '')
+
+    model_id = data.get('model_id') or config.get('ai_model', 'claude-sonnet-4-6')
+    custom_model_id = data.get('custom_model_id', config.get('custom_model_id', ''))
+    ai_api_key = data.get('ai_api_key', '')
+
+    if not ai_api_key:
+        return jsonify({"error": "Vui lòng nhập API Key trong phần Cấu hình"}), 400
+
+    comment = generate_checkpoint_comment_with_ai(
+        api_key,
+        data['student_name'],
+        data.get('teacher_description', ''),
+        model_id=model_id,
+        custom_model_id=custom_model_id,
+        ai_api_key=data.get('ai_api_key', '')
+    )
+
+    return jsonify({"comment": comment})
+
+
+# ============== HOMEWORK ROUTES (unchanged - still via backend/LMSClient) ==============
+
+# Login route - now only used by homework page
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.json
+    # Save firebase key if provided
+    if data.get('firebase_key'):
+        config = load_config()
+        config['firebase_key'] = data['firebase_key']
+        save_config(config)
+
+    success, message = lms_client.login(data['email'], data['password'], data.get('firebase_key'))
+    return jsonify({"success": success, "message": message})
+
+
 @app.route('/api/classes', methods=['GET'])
 def get_classes():
-    from datetime import datetime, timedelta, timezone
 
     query = """query GetClasses($pageIndex: Int!, $itemsPerPage: Int!, $statusIn: [String]) {
         classes(payload: {
@@ -321,21 +797,26 @@ def get_classes():
 
     classes = result.get("data", {}).get("classes", {}).get("data", [])
 
-    # Filter: keep RUNNING + FINISHED within last 7 days
-    one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    filtered = []
+    # Separate: RUNNING classes first, then FINISHED within last 2 months
+    two_months_ago = datetime.now(timezone.utc) - timedelta(days=60)
+    running = []
+    recently_ended = []
     for cls in classes:
         if cls.get("status") == "RUNNING":
-            filtered.append(cls)
+            running.append(cls)
         elif cls.get("status") == "FINISHED" and cls.get("endDate"):
             try:
                 end = datetime.fromisoformat(cls["endDate"].replace("Z", "+00:00"))
-                if end >= one_week_ago:
-                    filtered.append(cls)
-            except:
+                if end >= two_months_ago:
+                    cls["recentlyEnded"] = True
+                    recently_ended.append(cls)
+            except (ValueError, TypeError):
                 pass
 
-    return jsonify({"classes": filtered})
+    # Sort recently ended by endDate descending (most recent first)
+    recently_ended.sort(key=lambda c: c.get("endDate", ""), reverse=True)
+
+    return jsonify({"classes": running + recently_ended})
 
 
 @app.route('/api/class/<class_id>', methods=['GET'])
@@ -375,704 +856,19 @@ def get_class_detail(class_id):
             }
         }
     }"""
-    
+
     result = lms_client.call_api("GetClassById", query, {"id": class_id})
-    
+
     if "error" in result:
         return jsonify({"error": result["error"]}), 401
-    
+
     class_data = result.get("data", {}).get("classesById", {})
     return jsonify({"class": class_data})
 
 
-@app.route('/api/notes', methods=['GET'])
-def get_notes():
-    return jsonify(load_notes())
-
-
-@app.route('/api/notes/<student_id>', methods=['POST'])
-def save_student_note(student_id):
-    data = request.json
-    notes = load_notes()
-    if student_id not in notes:
-        notes[student_id] = []
-    notes[student_id].append({
-        "date": datetime.now().isoformat(),
-        "note": data['note']
-    })
-    save_notes(notes)
-    return jsonify({"success": True})
-
-
-@app.route('/api/generate_comment', methods=['POST'])
-def generate_comment():
-    data = request.json
-    config = load_config()
-    api_key = config.get('openrouter_key', '')
-    
-    # Check provider - Antigravity doesn't need API key
-    model_id = config.get('ai_model', 'claude-sonnet-4-6')
-    provider = get_model_provider(model_id)
-    
-    if provider != 'antigravity' and not api_key:
-        return jsonify({"error": "Please set OpenRouter API key"}), 400
-    
-    # Get past comments for this student
-    past_comments = ""
-    for slot in data.get('past_slots', []):
-        for area in slot.get('commentByAreas', []):
-            if area.get('type') == 'CONTENT' and area.get('content'):
-                past_comments += f"- Buổi {slot.get('index', '?')}: {area['content']}\n"
-    
-    # Get notes
-    notes = load_notes()
-    student_notes = notes.get(data['student_id'], [])
-    notes_text = "\n".join([n['note'] for n in student_notes])
-    
-    # Check if student was late
-    is_late = data.get('is_late', False)
-    if is_late:
-        notes_text = "Học sinh đi học muộn buổi này.\n" + notes_text
-    
-    comment = generate_comment_with_ai(
-        api_key,
-        data['student_name'],
-        past_comments,
-        notes_text,
-        data.get('session_summary', ''),
-        comment_length=data.get('comment_length', 'medium'),
-        custom_prompt=data.get('custom_prompt', '')
-    )
-    
-    return jsonify({"comment": comment})
-
-
-def random_score_above_75(max_score, step=0.25):
-    """Random a score above 75% of max_score with given step increments"""
-    import random
-    min_score = max_score * 0.75
-    # Round up to nearest step
-    min_score = (int(min_score / step) + 1) * step
-    if min_score > max_score:
-        min_score = max_score
-    # Generate possible scores
-    possible = []
-    current = min_score
-    while current <= max_score + 0.001:  # small epsilon for float comparison
-        possible.append(round(current, 2))
-        current += step
-    if not possible:
-        possible = [max_score]
-    return random.choice(possible)
-
-
-def build_final_demo_payload(data):
-    """Build payload for Final/Demo session (buổi 14) with randomized scores above 75%"""
-    import random
-
-    # Demo questions config with maxScore
-    demo_config = [
-        {"courseProcessDemoDetailId": "67074eb655bde44038504415", "title": " Tư duy máy tính, tư duy thuật toán", "maxScore": 1.5},
-        {"courseProcessDemoDetailId": "67074eb655bde44038504416", "title": " Tư duy sáng tạo", "maxScore": 1},
-        {"courseProcessDemoDetailId": "67074eb655bde44038504417", "title": " Kỹ năng giao tiếp, hợp tác", "maxScore": 0.5},
-        {"courseProcessDemoDetailId": "67074eb655bde44038504418", "title": " Giải quyết vấn đề", "maxScore": 1},
-        {"courseProcessDemoDetailId": "67074eb655bde44038504419", "title": " Kỹ năng sử dụng máy tính", "maxScore": 1},
-    ]
-
-    # Get custom scores from frontend (if provided)
-    custom_scores = data.get('custom_scores', None)  # list of {id, score}
-
-    # Randomize or use custom scores
-    demo_questions = []
-    for i, q in enumerate(demo_config):
-        if custom_scores and i < len(custom_scores):
-            score = float(custom_scores[i].get('score', 0))
-            # Clamp score to valid range
-            score = max(0, min(score, q["maxScore"]))
-        else:
-            score = random_score_above_75(q["maxScore"])
-        demo_questions.append({
-            "courseProcessDemoDetailId": q["courseProcessDemoDetailId"],
-            "score": score,
-            "title": q["title"],
-            "result": False,
-            "maxScore": q["maxScore"]
-        })
-
-    total_demo_score = round(sum(q["score"] for q in demo_questions), 2)
-
-    # Build demo content HTML
-    demo_items = "".join(
-        f"<li>{q['title']}: {q['score']} điểm</li>" for q in demo_questions
-    )
-    demo_content = f"""<div>
-                <p>
-                  <strong>Demo2024 | PTA:</strong>
-                  <strong style='color: rgb(226, 80, 65)'> {total_demo_score} điểm</strong>
-                </p>
-                <ul>
-                  {demo_items}
-                </ul>
-            </div>"""
-
-    # RATE areas config (all grade 5 for >75%)
-    rate_areas = [
-        {
-            "grade": 5,
-            "content": "- Học viên chủ động liên hệ giáo viên tìm thêm nguồn/ sách để ôn tập và học kiến thức mới tại nhà ngoài những tài liệu đã được cung cấp mà không cần yêu cầu từ giáo viên",
-            "commentAreaId": "665e7d33181e0e47f6c63768",
-            "type": "RATE",
-            "courseProcessFinalEvaluationId": "67075d4b55bde440385073af",
-            "courseProcessFinalEvaluationTitle": "KIẾN THỨC"
-        },
-        {
-            "grade": 5,
-            "content": "- Ngoài việc nắm vững các kiến thức được giảng dạy, học viên còn có sự chủ động, đặt câu hỏi mở rộng trực tiếp tại lớp từ những kiến thức vừa được cung cấp",
-            "commentAreaId": "668d69d8e71f90e7630ce16c",
-            "type": "RATE",
-            "courseProcessFinalEvaluationId": "67075d4b55bde440385073af",
-            "courseProcessFinalEvaluationTitle": "KIẾN THỨC"
-        },
-        {
-            "grade": 5,
-            "content": "- Học viên trình bày ý kiến rõ ràng, chủ động hỏi khi gặp vấn đề, thuyết trình trước lớp mạch lạc, rõ ràng\n- Học viên nhìn nhận được những ưu - nhược điểm của bản thân sau khi nhận đánh giá từ giáo viên, bạn bè",
-            "commentAreaId": "668e2e7de71f90e7630d4316",
-            "type": "RATE",
-            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b0",
-            "courseProcessFinalEvaluationTitle": "KỸ NĂNG"
-        },
-        {
-            "grade": 5,
-            "content": "- Học viên phản biện và phân tích các giải pháp một cách sâu rộng, biết thử đi thử lại nhiều lần đến khi ra kết quả từ đó Học viên có thể tổng quát cho nhiều vấn đề tương tự sau này\n- Học viên đưa sản phẩm cá nhân go live và có tiếp nhận người dùng thật",
-            "commentAreaId": "668e0f48e71f90e7630d2db6",
-            "type": "RATE",
-            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b0",
-            "courseProcessFinalEvaluationTitle": "KỸ NĂNG"
-        },
-        {
-            "grade": 5,
-            "content": "- Tốc độ sử dụng chuột/bàn phím rất thành thạo, có thể sử dụng gõ phím bằng 2 tay không cần nhìn phím.\n- Học viên tận dụng tối ưu các phần mềm máy tính, sử dụng các công cụ hỗ trợ xây dựng sơ đồ tư duy, công cụ quản lý tiến độ dự án, công cụ xây dựng sơ đồ thuật toán",
-            "commentAreaId": "668e2ce1e71f90e7630d406f",
-            "type": "RATE",
-            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b0",
-            "courseProcessFinalEvaluationTitle": "KỸ NĂNG"
-        },
-        {
-            "grade": 5,
-            "content": "- Học viên chủ động trong việc phát hiện ra những ý tưởng sáng tạo cho các tính năng của sản phẩm dựa trên những kiến thức vừa được học và đặt câu hỏi với Giáo viên.\n- Học viên tự mình thiết kế trò chơi, câu chuyện hoặc dự án hoàn toàn mới, có khả năng thu hút sự chú ý và hứng thú của người khác, hoặc tạo ra một trào lưu trong cộng đồng",
-            "commentAreaId": "668d6a69e71f90e7630ce198",
-            "type": "RATE",
-            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b0",
-            "courseProcessFinalEvaluationTitle": "KỸ NĂNG"
-        },
-        {
-            "grade": 5,
-            "content": "- Học viên thành thạo trong việc sử dụng ngôn ngữ lập trình\n- Học viên có thể tự xây dựng mô hình/sơ đồ tư duy tuần tự các bước lập trình cho dự án cá nhân của mình mà không cần sự hỗ trợ từ Giáo viên",
-            "commentAreaId": "668d6a25e71f90e7630ce187",
-            "type": "RATE",
-            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b0",
-            "courseProcessFinalEvaluationTitle": "KỸ NĂNG"
-        },
-        {
-            "grade": 5,
-            "content": "- Học viên tập trung lắng nghe bài giảng, tự giác học tập, mentor hầu như không phải nhắc nhở con, hiệu quả buổi học cao\n- Học viên tuân thủ tuyệt đối các quy tắc trong lớp học, luôn có mặt đúng giờ, lễ phép khi giao tiếp với giáo viên",
-            "commentAreaId": "668e2eaee71f90e7630d434f",
-            "type": "RATE",
-            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b1",
-            "courseProcessFinalEvaluationTitle": "THÁI ĐỘ"
-        },
-        {
-            "grade": 5,
-            "content": "- Học viên chủ động tìm kiếm thêm các bài tập, dự án để luyện tập và đặt các câu hỏi luyện tập với giáo viên",
-            "commentAreaId": "668e2f5be71f90e7630d44c1",
-            "type": "RATE",
-            "courseProcessFinalEvaluationId": "67075d4b55bde440385073b1",
-            "courseProcessFinalEvaluationTitle": "THÁI ĐỘ"
-        }
-    ]
-
-    # Build byAreas: DEMO area first, then RATE areas
-    by_areas = [
-        {
-            "demoQuestions": demo_questions,
-            "content": demo_content,
-            "commentAreaId": "67074eb655bde4403850441a",
-            "type": "DEMO",
-            "courseProcessDemoId": "67075d4b55bde440385073ae"
-        }
-    ] + rate_areas
-
-    # Build KIẾN THỨC sub-items
-    kien_thuc_items = ""
-    for area in rate_areas:
-        if area["courseProcessFinalEvaluationTitle"] == "KIẾN THỨC":
-            kien_thuc_items += f"""<ul><span style="color:rgb(0, 0, 0)"><li data-list='bullet' className='ql-indent-2'>
-                        <span className='ql-ui'></span>{area['content'].replace('- ', '')}</li></span></ul>"""
-
-    # Build KỸ NĂNG sub-items
-    ky_nang_items = ""
-    ky_nang_areas = [a for a in rate_areas if a["courseProcessFinalEvaluationTitle"] == "KỸ NĂNG"]
-    for area in ky_nang_areas:
-        lines = area['content'].split('\n')
-        items = ""
-        for line in lines:
-            line = line.strip()
-            if line.startswith('- '):
-                line = line[2:]
-            if line:
-                items += f"""<li data-list='bullet' className='ql-indent-2'>
-                        <span className='ql-ui'></span>{line}</li>"""
-        ky_nang_items += f"""<ul><span style="color:rgb(0, 0, 0)">{items}</span></ul>"""
-
-    # Build THÁI ĐỘ sub-items
-    thai_do_items = ""
-    thai_do_areas = [a for a in rate_areas if a["courseProcessFinalEvaluationTitle"] == "THÁI ĐỘ"]
-    for area in thai_do_areas:
-        lines = area['content'].split('\n')
-        items = ""
-        for line in lines:
-            line = line.strip()
-            if line.startswith('- '):
-                line = line[2:]
-            if line:
-                items += f"""<li data-list='bullet' className='ql-indent-2'>
-                        <span className='ql-ui'></span>{line}</li>"""
-        thai_do_items += f"""<ul><span style="color:rgb(0, 0, 0)">{items}</span></ul>"""
-
-    # Build full content HTML
-    full_content = f"""<div style="list-style-type:circle"><p><strong style="color:rgb(0, 0, 0)">Điểm Demo</strong><span style="color:rgb(0, 0, 0)">: </span><strong style="color:rgb(226, 80, 65)">{total_demo_score} điểm</strong></p><ul><li data-list="bullet"><span class="ql-ui"></span><span style="color:rgb(0, 0, 0)">{demo_content}</span></li></ul><p><strong style="color:rgb(0, 0, 0)">Điểm năng lực: </strong><strong style="color:rgb(226, 80, 65)">5 điểm</strong></p><ul><li data-list="bullet" style="list-style-type:circle"><span class="ql-ui"></span><strong style="color:rgb(226, 80, 65)"></strong><strong style="color:rgb(0, 0, 0)">KIẾN THỨC: </strong>{kien_thuc_items}</li><li data-list="bullet" style="list-style-type:circle"><span class="ql-ui"></span><strong style="color:rgb(226, 80, 65)"></strong><strong style="color:rgb(0, 0, 0)">KỸ NĂNG: </strong>{ky_nang_items}</li><li data-list="bullet" style="list-style-type:circle"><span class="ql-ui"></span><strong style="color:rgb(226, 80, 65)"></strong><strong style="color:rgb(0, 0, 0)">THÁI ĐỘ: </strong>{thai_do_items}</li></ul></div>"""
-
-    payload = {
-        "slotId": data['slot_id'],
-        "classSiteId": data['class_site_id'],
-        "sessionNumber": data['session_number'],
-        "classId": data['class_id'],
-        "courseProcessId": data['course_process_id'],
-        "slotType": "Final",
-        "totalScore": total_demo_score,
-        "rank": "A",
-        "studentComment": {
-            "studentAttendanceId": data['student_attendance_id'],
-            "studentId": data['student_id'],
-            "content": full_content,
-            "byAreas": by_areas
-        }
-    }
-
-    return payload, total_demo_score, demo_questions
-
-
-@app.route('/api/submit_comment', methods=['POST'])
-def submit_comment():
-    data = request.json
-    slot_type = data.get('slot_type', 'Default')
-
-    # ===== FINAL/DEMO SLOT (buổi 14) =====
-    if slot_type == 'Final':
-        payload, total_demo_score, demo_questions = build_final_demo_payload(data)
-
-        query = """mutation UpdateSlotComment($payload: UpdateSlotCommentCommand!) {
-            classes {
-                updateSlotComment(payload: $payload) {
-                    id
-                    name
-                    slots {
-                        _id
-                        date
-                        startTime
-                        endTime
-                        sessionHour
-                        teachers {
-                            _id
-                            teacher {
-                                id
-                                username
-                                code
-                                fullName
-                                email
-                                phoneNumber
-                                user
-                                imageUrl
-                            }
-                            role {
-                                id
-                                name
-                                shortName
-                            }
-                            isActive
-                        }
-                        teacherAttendance {
-                            _id
-                            teacher {
-                                id
-                                username
-                                fullName
-                                email
-                                phoneNumber
-                                user
-                                imageUrl
-                            }
-                            status
-                            note
-                            createdBy
-                            createdAt
-                            lastModifiedBy
-                            lastModifiedAt
-                        }
-                        studentAttendance {
-                            _id
-                            student {
-                                id
-                                fullName
-                                phoneNumber
-                                email
-                                gender
-                                imageUrl
-                                customer {
-                                    email
-                                }
-                            }
-                            comment
-                            sendCommentStatus
-                            status
-                            commentByAreas {
-                                grade
-                                content
-                                commentAreaId
-                                checkpoint {
-                                    practiceScore
-                                    checkpointScore
-                                    checkpointQuestions {
-                                        id
-                                        title
-                                        result
-                                        score
-                                    }
-                                }
-                                courseProcessDemoId
-                                courseProcessFinalEvaluationTitle
-                                courseProcessFinalEvaluationId
-                                demoQuestions {
-                                    courseProcessDemoDetailId
-                                    title
-                                    result
-                                    score
-                                    maxScore
-                                }
-                                type
-                            }
-                            createdBy
-                            createdAt
-                            lastModifiedBy
-                            lastModifiedAt
-                            commentStatus {
-                                feedback
-                                status
-                                version
-                            }
-                        }
-                        summary
-                        homework
-                        createdAt
-                        createdBy
-                        lastModifiedAt
-                        lastModifiedBy
-                        index
-                    }
-                }
-            }
-        }"""
-
-        result = lms_client.call_api("UpdateSlotComment", query, {"payload": payload})
-
-        if "error" in result:
-            return jsonify({"error": result["error"]}), 400
-
-        if "errors" in result:
-            return jsonify({"error": result["errors"][0]["message"]}), 400
-
-        # Return with score info for UI display
-        scores_info = {q["title"].strip(): q["score"] for q in demo_questions}
-        return jsonify({
-            "success": True,
-            "result": result,
-            "demo_scores": scores_info,
-            "total_demo_score": total_demo_score
-        })
-
-    # ===== DEFAULT SLOT (buổi thường) =====
-    # Default byAreas with 7 RATE areas (grade=5) + 1 CONTENT area for AI comment
-    # These are standard MindX COD comment areas
-    by_areas = [
-        {
-            "grade": 5,
-            "content": "- Học viên trình bày ý kiến rõ ràng, chủ động hỏi khi gặp vấn đề, thuyết trình trước lớp mạch lạc, rõ ràng.\n- Học viên nhìn nhận được những ưu - nhược điểm của bản thân sau khi nhận đánh giá từ giáo viên, bạn bè",
-            "commentAreaId": "66f12601cdcebc582a30307f",
-            "type": "RATE"
-        },
-        {
-            "grade": 5,
-            "content": "- Học viên phản biện và phân tích các giải pháp một cách sâu rộng, biết thử đi thử lại nhiều lần đến khi ra kết quả từ đó Học viên có thể tổng quát cho nhiều vấn đề tương tự sau này\n- Học viên đưa sản phẩm cá nhân go live và có tiếp nhận người dùng thật.",
-            "commentAreaId": "66f12569cdcebc582a302bd2",
-            "type": "RATE"
-        },
-        {
-            "grade": 5,
-            "content": "- Tốc độ sử dụng chuột/bàn phím rất thành thạo, có thể sử dụng gõ phím bằng 2 tay không cần nhìn phím.\n- Học viên tận dụng tối ưu các phần mềm máy tính, sử dụng các công cụ hỗ trợ xây dựng sơ đồ tư duy, công cụ quản lý tiến độ dự án, công cụ xây dựng sơ đồ thuật toán.",
-            "commentAreaId": "66f125d3cdcebc582a302f35",
-            "type": "RATE"
-        },
-        {
-            "grade": 5,
-            "content": "- Học viên tập trung lắng nghe bài giảng, tự giác học tập, giáo viên hầu như không phải nhắc nhở con, hiệu quả buổi học cao\n- Học viên tuân thủ tuyệt đối các quy tắc trong lớp học, luôn có mặt đúng giờ, lễ phép khi giao tiếp với giáo viên.\n",
-            "commentAreaId": "66f12637cdcebc582a30321c",
-            "type": "RATE"
-        },
-        {
-            "grade": 5,
-            "content": "- Ngoài việc nắm chắc kiến thức được hướng dẫn trong buổi học,  học viên có sự chủ động đặt câu hỏi với giáo viên để mở rộng/ nâng cao thêm vốn hiểu biết.",
-            "commentAreaId": "66f124bbcdcebc582a302727",
-            "type": "RATE"
-        },
-        {
-            "grade": 5,
-            "content": "- Học viên thành thạo trong việc sử dụng ngôn ngữ lập trình, biết tối ưu hoá đoạn code và sắp xếp chỉnh chu, gọn gàng\n- Học viên có thể tự xây dựng mô hình/sơ đồ tư duy tuần tự các bước lập trình cho dự án cá nhân của mình mà không cần sự hỗ trợ từ giáo viên",
-            "commentAreaId": "66f12525cdcebc582a302a65",
-            "type": "RATE"
-        },
-        {
-            "grade": 5,
-            "content": "- Học viên chủ động trong việc phát hiện ra những ý tưởng sáng tạo cho các tính năng của sản phẩm dựa trên những kiến thức vừa được học và đặt câu hỏi với Giáo viên.\n- Học viên tự mình thiết kế trò chơi, câu chuyện hoặc dự án hoàn toàn mới, có khả năng thu hút sự chú ý và hứng thú của người khác, hoặc tạo ra một trào lưu trong cộng đồng",
-            "commentAreaId": "66f1259bcdcebc582a302cd7",
-            "type": "RATE"
-        },
-        {
-            "content": data['comment'],  # AI generated comment goes here
-            "commentAreaId": "67b54307f79c7bc326e017ff",
-            "type": "CONTENT"
-        }
-    ]
-
-    # Build the full content string from byAreas (for LMS display)
-    content_parts = []
-    area_names = [
-        "Kỹ năng giao tiếp, hợp tác",
-        "Kỹ năng giải quyết vấn đề",
-        "Kỹ năng sử dụng máy tính",
-        "Thái độ học tập trên lớp",
-        "Kiến thức học viên đã được học tại lớp",
-        "Tư duy máy tính, tư duy thuật toán",
-        "Tư duy sáng tạo"
-    ]
-    for i, area in enumerate(by_areas[:7]):
-        content_parts.append(f"- [COD]  {area_names[i]}: {area['content']}")
-    content_parts.append(f"- Đánh giá chung: {data['comment']}")
-    full_content = "<br>".join(content_parts)
-
-    payload = {
-        "slotId": data['slot_id'],
-        "classSiteId": data['class_site_id'],
-        "sessionNumber": data['session_number'],
-        "classId": data['class_id'],
-        "courseProcessId": data['course_process_id'],
-        "slotType": "Default",
-        "rank": "N/A",
-        "totalScore": None,
-        "studentComment": {
-            "studentAttendanceId": data['student_attendance_id'],
-            "studentId": data['student_id'],
-            "content": full_content,
-            "byAreas": by_areas
-        }
-    }
-
-    # Add summary if provided
-    if data.get('summary'):
-        payload['summary'] = data['summary']
-
-    query = """mutation UpdateSlotComment($payload: UpdateSlotCommentCommand!) {
-        classes {
-            updateSlotComment(payload: $payload) {
-                id
-                name
-                slots {
-                    _id
-                    date
-                    startTime
-                    endTime
-                    sessionHour
-                    teachers {
-                        _id
-                        teacher {
-                            id
-                            username
-                            code
-                            fullName
-                            email
-                            phoneNumber
-                            user
-                            imageUrl
-                        }
-                        role {
-                            id
-                            name
-                            shortName
-                        }
-                        isActive
-                    }
-                    teacherAttendance {
-                        _id
-                        teacher {
-                            id
-                            username
-                            fullName
-                            email
-                            phoneNumber
-                            user
-                            imageUrl
-                        }
-                        status
-                        note
-                        createdBy
-                        createdAt
-                        lastModifiedBy
-                        lastModifiedAt
-                    }
-                    studentAttendance {
-                        _id
-                        student {
-                            id
-                            fullName
-                            phoneNumber
-                            email
-                            gender
-                            imageUrl
-                            customer {
-                                email
-                            }
-                        }
-                        comment
-                        sendCommentStatus
-                        status
-                        commentByAreas {
-                            grade
-                            content
-                            commentAreaId
-                            checkpoint {
-                                practiceScore
-                                checkpointScore
-                                checkpointQuestions {
-                                    id
-                                    title
-                                    result
-                                    score
-                                }
-                            }
-                            courseProcessDemoId
-                            courseProcessFinalEvaluationTitle
-                            courseProcessFinalEvaluationId
-                            demoQuestions {
-                                courseProcessDemoDetailId
-                                title
-                                result
-                                score
-                                maxScore
-                            }
-                            type
-                        }
-                        createdBy
-                        createdAt
-                        lastModifiedBy
-                        lastModifiedAt
-                        commentStatus {
-                            feedback
-                            status
-                            version
-                        }
-                    }
-                    summary
-                    homework
-                    createdAt
-                    createdBy
-                    lastModifiedAt
-                    lastModifiedBy
-                    index
-                }
-            }
-        }
-    }"""
-
-    result = lms_client.call_api("UpdateSlotComment", query, {"payload": payload})
-
-    if "error" in result:
-        return jsonify({"error": result["error"]}), 400
-
-    if "errors" in result:
-        return jsonify({"error": result["errors"][0]["message"]}), 400
-
-    return jsonify({"success": True, "result": result})
-
-
-@app.route('/api/submit_summary', methods=['POST'])
-def submit_summary():
-    """Submit only the session summary (without student comment)"""
-    data = request.json
-    
-    payload = {
-        "slotId": data['slot_id'],
-        "classSiteId": data['class_site_id'],
-        "sessionNumber": data['session_number'],
-        "classId": data['class_id'],
-        "courseProcessId": data['course_process_id'],
-        "slotType": "Default",
-        "totalScore": None,
-        "rank": "",
-        "summary": data['summary']
-    }
-    
-    query = """mutation UpdateSlotComment($payload: UpdateSlotCommentCommand!) {
-        classes {
-            updateSlotComment(payload: $payload) {
-                id
-                name
-            }
-        }
-    }"""
-    
-    result = lms_client.call_api("UpdateSlotComment", query, {"payload": payload})
-    
-    if "error" in result:
-        return jsonify({"error": result["error"]}), 400
-    
-    if "errors" in result:
-        return jsonify({"error": result["errors"][0]["message"]}), 400
-    
-    return jsonify({"success": True, "result": result})
-
-
-# ============== HOMEWORK GRADING APIs ==============
-
-# Queries for homework
-FIND_SUBMISSIONS_QUERY = """query FindStudentSubmissionByClass($payload: FindStudentSubmissionByClassQuery) {
-  findStudentSubmissionByClass(payload: $payload) {
-    students { id displayName studentUid }
-    lessons { id name type isActive displayOrder }
-    submissions {
-      id type note score status category
-      classId lessonId learningCourseId studentUid
-      markedAt markedBy submittedAt submittedCount
-      content { scratchState type attachments totalQuiz submitQuiz correctAnswer }
-    }
-  }
-}"""
-
-MARK_SUBMISSION_QUERY = """mutation MarkStudentSubmission($payload: MarkStudentSubmissionCommand!) {
-  studentHomework {
-    markStudentSubmission(payload: $payload) {
-      id score status markedAt markedBy
-    }
-  }
-}"""
+# Queries for homework — imported from lms_api shared queries
+FIND_SUBMISSIONS_QUERY = LMS_QUERIES["FindStudentSubmissionByClass"]
+MARK_SUBMISSION_QUERY = LMS_QUERIES["MarkStudentSubmission"]
 
 
 @app.route('/api/homework/<class_id>')
@@ -1095,7 +891,6 @@ def get_homework_submissions(class_id):
 @app.route('/api/homework/download-url')
 def get_download_url():
     """Lấy presigned URL để tải file"""
-    from urllib.parse import quote
     file_key = request.args.get('key', '')
     if not file_key:
         return jsonify({'error': 'Missing file key'}), 400
@@ -1192,17 +987,25 @@ def batch_mark_homework():
 @app.route('/api/homework/ai-grade', methods=['POST'])
 def ai_grade_homework():
     """Chấm bài tập bằng AI - phân tích hình ảnh bài nộp"""
-    from urllib.parse import quote
-    import re
 
     data = request.json
     attachments = data.get('attachments', [])
     lesson_name = data.get('lesson_name', '')
     student_name = data.get('student_name', '')
     model_id = data.get('model_id', '')
+    custom_model_id = data.get('custom_model_id', '')
+    ai_api_key = data.get('api_key', '')
 
     config = load_config()
-    model = model_id or config.get('ai_model', 'claude-sonnet-4-6')
+    model = resolve_model_id(model_id, custom_model_id, config.get('ai_model', 'claude-sonnet-4-6'))
+
+    provider = get_model_provider(model_id if model_id else model)
+    if provider == 'antigravity' and not ai_api_key:
+        return jsonify({'success': False, 'error': 'Vui lòng nhập API Key'}), 400
+    if provider != 'antigravity':
+        openrouter_key = config.get('openrouter_key', '')
+        if not ai_api_key and not openrouter_key:
+            return jsonify({'success': False, 'error': 'Vui lòng nhập API Key hoặc cấu hình OpenRouter key'}), 400
 
     # Get presigned URLs for image attachments
     image_urls = []
@@ -1220,7 +1023,7 @@ def ai_grade_homework():
                     presigned_data = resp.json()
                     if presigned_data.get('success'):
                         image_urls.append(presigned_data.get('url'))
-            except:
+            except (requests.RequestException, ValueError, KeyError):
                 pass
 
     if not image_urls and not attachments:
@@ -1255,15 +1058,33 @@ Chỉ trả về JSON, không thêm gì khác."""
         content = prompt_text
 
     try:
-        resp = requests.post(
-            ANTIGRAVITY_API_URL,
-            headers={"Content-Type": "application/json"},
-            json={
+        key = ai_api_key or ANTIGRAVITY_ADMIN_API_KEY
+        if provider == 'antigravity':
+            api_url = ANTIGRAVITY_API_URL
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key}"
+            }
+            body = {
                 "model": model,
                 "messages": [{"role": "user", "content": content}]
-            },
-            timeout=120
-        )
+            }
+        else:
+            api_url = "https://openrouter.ai/api/v1/chat/completions"
+            or_key = ai_api_key or config.get('openrouter_key', '')
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {or_key}",
+                "HTTP-Referer": "https://mindx.edu.vn",
+                "X-Title": "LMS Auto Comment"
+            }
+            body = {
+                "model": model,
+                "messages": [{"role": "user", "content": content}],
+                "provider": {"data_collection": "allow"}
+            }
+
+        resp = requests.post(api_url, headers=headers, json=body, timeout=120)
 
         if resp.status_code == 200:
             ai_response = resp.json()["choices"][0]["message"]["content"]
