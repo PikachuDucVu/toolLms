@@ -1,3 +1,4 @@
+import { unzipSync } from "fflate";
 import { FIND_SUBMISSIONS_QUERY, MARK_SUBMISSION_QUERY } from "../constants/lmsQueries";
 import type { AppConfig, Env, HomeworkSubmission, LmsGraphqlResponse, SessionRecord } from "../types";
 import { gradeHomeworkWithAi } from "./aiClient";
@@ -5,6 +6,30 @@ import { LmsClient, type LmsCallResult } from "./lmsClient";
 
 const PRESIGNED_URL_API = "https://resources.mindx.edu.vn/api/v1/get-presigned-url";
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"]);
+const TEXT_EXTENSIONS = new Set([
+  ".html", ".htm", ".css", ".js", ".mjs", ".cjs", ".ts", ".jsx", ".tsx",
+  ".py", ".json", ".txt", ".md", ".xml", ".csv", ".yml", ".yaml", ".sql",
+  ".java", ".c", ".cpp", ".cs", ".php", ".rb", ".go",
+]);
+// Archives we can crack open to read text/code inside (GameMaker export, plain zip)
+const ARCHIVE_EXTENSIONS = new Set([".yyz", ".zip"]);
+// Text-ish files worth extracting from inside an archive. Note: GameMaker .yy files are pure
+// resource metadata (GUIDs, sprite layer coords) — huge and useless for grading, so we skip them
+// and keep only real code (.gml) plus the project manifest (.yyp).
+const ARCHIVE_TEXT_EXTENSIONS = new Set([...TEXT_EXTENSIONS, ".gml", ".yyp", ".shader", ".vsh", ".fsh"]);
+// Rank inner files so code survives the budget before lower-value manifests.
+const ARCHIVE_EXT_PRIORITY = new Map<string, number>([
+  [".gml", 0],
+  [".yyp", 2],
+]);
+const MAX_TEXT_FILE_CHARS = 40000;
+// Guard against a huge project dumping thousands of tiny resource files into the prompt
+const MAX_ARCHIVE_FILES = 40;
+// Total chars an archive may contribute to the prompt. GameMaker code is tiny (~500 chars);
+// keeping this small stops the self-hosted AI from timing out (Cloudflare 522) on bloated prompts.
+const MAX_ARCHIVE_TOTAL_CHARS = 15000;
+// Skip archives too large to unzip in a Worker without blowing memory/CPU
+const MAX_ARCHIVE_BYTES = 15 * 1024 * 1024;
 
 export function validateFileKey(fileKey: string): void {
   if (!fileKey || fileKey.length > 2048) throw new Error("Missing file key");
@@ -82,6 +107,50 @@ export async function batchMarkHomework(
   return { session: activeSession, results };
 }
 
+export async function getTextFileContent(fileKey: string): Promise<string> {
+  const url = await getDownloadUrl(fileKey);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Download failed");
+  const text = await response.text();
+  return text.length > MAX_TEXT_FILE_CHARS ? `${text.slice(0, MAX_TEXT_FILE_CHARS)}\n... (nội dung bị cắt bớt)` : text;
+}
+
+function innerExtensionOf(path: string): string {
+  const filename = path.split("/").at(-1) || path;
+  const dot = filename.lastIndexOf(".");
+  return dot >= 0 ? filename.slice(dot).toLowerCase() : "";
+}
+
+// Download an archive (.yyz/.zip) and extract the text/code files inside as prompt-ready entries.
+export async function extractArchiveTextFiles(fileKey: string): Promise<Array<{ name: string; content: string }>> {
+  const url = await getDownloadUrl(fileKey);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Download failed");
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength > MAX_ARCHIVE_BYTES) throw new Error("Archive too large");
+  const entries = unzipSync(bytes, {
+    filter: (file) => ARCHIVE_TEXT_EXTENSIONS.has(innerExtensionOf(file.name)) && !file.name.endsWith("/"),
+  });
+  const decoder = new TextDecoder();
+  const priority = (path: string) => ARCHIVE_EXT_PRIORITY.get(innerExtensionOf(path)) ?? 1;
+  const paths = Object.keys(entries)
+    // Code (.gml) first, then generic text, then the .yyp manifest last
+    .sort((a, b) => priority(a) - priority(b))
+    .slice(0, MAX_ARCHIVE_FILES);
+
+  const archiveName = fileKey.split("/").at(-1) || "archive";
+  let budget = MAX_ARCHIVE_TOTAL_CHARS;
+  const files: Array<{ name: string; content: string }> = [];
+  for (const path of paths) {
+    if (budget <= 0) break;
+    let content = decoder.decode(entries[path]);
+    if (content.length > budget) content = `${content.slice(0, budget)}\n... (nội dung bị cắt bớt)`;
+    budget -= content.length;
+    files.push({ name: `${archiveName}:${path}`, content });
+  }
+  return files;
+}
+
 export async function aiGradeHomework(
   env: Env,
   config: AppConfig,
@@ -96,16 +165,39 @@ export async function aiGradeHomework(
 ): Promise<{ success: true; score: number; note: string } | { success: false; error: string; raw?: string }> {
   if (!input.attachments.length) return { success: false, error: "Không có tệp đính kèm để chấm" };
   const imageUrls: string[] = [];
+  const textFiles: Array<{ name: string; content: string }> = [];
+  const otherFiles: string[] = [];
   for (const attachment of input.attachments) {
-    if (!IMAGE_EXTENSIONS.has(extensionOf(attachment))) continue;
-    try {
-      imageUrls.push(await getDownloadUrl(attachment));
-    } catch {
-      continue;
+    const ext = extensionOf(attachment);
+    const name = attachment.split("/").at(-1) || attachment;
+    if (IMAGE_EXTENSIONS.has(ext)) {
+      try {
+        imageUrls.push(await getDownloadUrl(attachment));
+      } catch {
+        continue;
+      }
+    } else if (TEXT_EXTENSIONS.has(ext)) {
+      try {
+        textFiles.push({ name, content: await getTextFileContent(attachment) });
+      } catch {
+        otherFiles.push(name);
+      }
+    } else if (ARCHIVE_EXTENSIONS.has(ext)) {
+      try {
+        const extracted = await extractArchiveTextFiles(attachment);
+        if (extracted.length) textFiles.push(...extracted);
+        else otherFiles.push(name);
+      } catch {
+        otherFiles.push(name);
+      }
+    } else {
+      otherFiles.push(name);
     }
   }
-  if (!imageUrls.length) return { success: false, error: "Hiện chỉ hỗ trợ chấm AI từ file ảnh" };
-  return gradeHomeworkWithAi(env, config, { ...input, imageUrls });
+  if (!imageUrls.length && !textFiles.length) {
+    return { success: false, error: "Không có nội dung chấm được (chỉ hỗ trợ file ảnh và file code/văn bản)" };
+  }
+  return gradeHomeworkWithAi(env, config, { ...input, imageUrls, textFiles, otherFiles });
 }
 
 export function firstGraphqlError(body: LmsGraphqlResponse): string {

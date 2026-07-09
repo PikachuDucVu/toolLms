@@ -279,6 +279,65 @@
             border-color: var(--gray-400);
         }
 
+        /* Config Section */
+        .config-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 640px) {
+            .config-grid { grid-template-columns: 1fr; }
+        }
+
+        .config-section {
+            padding: 18px;
+            background: var(--gray-50);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--gray-200);
+        }
+
+        .config-section h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .config-section h3 svg {
+            width: 16px;
+            height: 16px;
+            color: var(--primary);
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gray-600);
+            margin-bottom: 6px;
+        }
+
+        .form-group .form-select,
+        .form-group .form-input {
+            width: 100%;
+        }
+
+        .btn-block {
+            width: 100%;
+        }
+
         /* Buttons */
         .btn {
             display: inline-flex;
@@ -560,6 +619,36 @@
             font-size: 15px;
         }
 
+        /* Note editor */
+        .note-cell {
+            min-width: 240px;
+        }
+
+        .note-input {
+            width: 100%;
+            min-width: 220px;
+            min-height: 56px;
+            padding: 8px 10px;
+            border: 1.5px solid var(--gray-300);
+            border-radius: var(--radius-xs);
+            font-size: 13px;
+            font-family: inherit;
+            line-height: 1.5;
+            color: var(--gray-700);
+            resize: vertical;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+
+        .note-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+        }
+
+        .note-input::placeholder {
+            color: var(--gray-400);
+        }
+
         /* Checkbox */
         .checkbox-cell {
             width: 48px;
@@ -677,6 +766,58 @@
 
         ::-webkit-scrollbar-thumb:hover {
             background: var(--gray-400);
+        }
+
+        /* Session bar */
+        .session-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+        }
+
+        .session-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--gray-700);
+            font-weight: 500;
+        }
+
+        .session-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .session-dot.ok { background: var(--success); box-shadow: 0 0 0 3px var(--success-light); }
+        .session-dot.bad { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-light); }
+        .session-dot.checking {
+            background: var(--warning);
+            box-shadow: 0 0 0 3px var(--warning-light);
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+
+        .btn-spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
         }
 
         /* Mobile Responsive */
@@ -803,6 +944,65 @@
             </div>
         </div>
 
+        <!-- Settings -->
+        <div class="card">
+            <div class="card-header">
+                <h2>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    Cấu hình chấm AI
+                </h2>
+            </div>
+            <div class="card-body">
+                <div class="session-bar" id="sessionBar">
+                    <div class="session-status" id="sessionStatus">
+                        <span class="session-dot checking" id="sessionDot"></span>
+                        <span id="sessionText">Đang kiểm tra phiên đăng nhập...</span>
+                    </div>
+                    <button class="btn btn-outline btn-sm" id="reloginBtn" onclick="retryLogin()">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13.8 12H3"/></svg>
+                        Đăng nhập lại
+                    </button>
+                </div>
+                <div class="config-grid">
+                    <div class="config-section">
+                        <h3>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            Model AI
+                        </h3>
+                        <div class="form-group">
+                            <label class="form-label" for="aiModel">Model AI</label>
+                            <select class="form-select" id="aiModel" onchange="toggleHomeworkCustomModelInput()">
+                                <option value="claude-opus-4-6-thinking">Claude Opus 4.6 Thinking</option>
+                                <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+                                <option value="gemini-3.1-pro-high">Gemini 3.1 Pro High</option>
+                                <option value="gpt-5.5">GPT-5.5</option>
+                                <option value="gpt-5.4" selected>GPT-5.4</option>
+                                <option value="__custom__">Tự nhập model</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="customModelGroup" style="display: none;">
+                            <label class="form-label" for="customModelId">Tên model custom</label>
+                            <input class="form-input" id="customModelId" value="" placeholder="VD: gpt-5.4, gemini-2.5-pro">
+                        </div>
+                    </div>
+                    <div class="config-section">
+                        <h3>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                            API Key
+                        </h3>
+                        <div class="form-group">
+                            <label class="form-label" for="hwApiKey">API Key AI</label>
+                            <input type="password" class="form-input" id="hwApiKey" placeholder="Nhập API key cho AI" autocomplete="off">
+                        </div>
+                        <button class="btn btn-success btn-block" onclick="saveHomeworkConfig()">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                            Lưu cấu hình
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Filters -->
         <div class="card">
             <div class="card-header">
@@ -822,16 +1022,7 @@
                         <option value="MARKED">Đã chấm</option>
                         <option value="">Tất cả</option>
                     </select>
-                    <select class="form-select" id="aiModel" onchange="toggleHomeworkCustomModelInput()">
-                        <option value="claude-opus-4-6-thinking">Claude Opus 4.6 Thinking</option>
-                        <option value="claude-sonnet-4-6" selected>Claude Sonnet 4.6</option>
-                        <option value="gemini-3.1-pro-high">Gemini 3.1 Pro High</option>
-                        <option value="gpt-5.4">GPT-5.4</option>
-                        <option value="__custom__">Tự nhập model</option>
-                    </select>
-                    <input class="form-input" id="customModelId" value="" placeholder="Tự nhập model" style="display: none; min-width: 220px;">
-                    <input type="password" class="form-input" id="hwApiKey" placeholder="API Key" style="min-width: 180px;" autocomplete="off">
-                    <button class="btn btn-ghost btn-sm" onclick="loadHomework()">
+                    <button class="btn btn-ghost btn-sm" id="refreshBtn" onclick="refreshHomework()">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                         Làm mới
                     </button>
@@ -883,12 +1074,13 @@
                                 <th>Tệp</th>
                                 <th>Trạng thái</th>
                                 <th>Điểm</th>
+                                <th>Nhận xét</th>
                                 <th>Thao tác</th>
                             </tr>
                         </thead>
                         <tbody id="submissionsBody">
                             <tr>
-                                <td colspan="7">
+                                <td colspan="8">
                                     <div class="empty-state">
                                         <svg class="empty-state-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                                         <div class="empty-state-text">Chọn lớp để xem danh sách bài nộp</div>
@@ -990,10 +1182,89 @@
         }
 
         function getHomeworkSelectedModel() {
-            const aiModel = document.getElementById('aiModel')?.value || 'claude-sonnet-4-6';
+            const aiModel = document.getElementById('aiModel')?.value || 'gpt-5.4';
             const customModelId = document.getElementById('customModelId')?.value?.trim() || '';
             const aiApiKey = document.getElementById('hwApiKey')?.value?.trim() || localStorage.getItem('ai_api_key') || '';
             return { aiModel, customModelId, aiApiKey };
+        }
+
+        async function saveHomeworkConfig() {
+            const { aiModel, customModelId } = getHomeworkSelectedModel();
+            const aiKey = document.getElementById('hwApiKey')?.value?.trim() || '';
+            if (aiKey) localStorage.setItem('ai_api_key', aiKey);
+            try {
+                await fetch('/api/save_config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        ai_model: aiModel,
+                        custom_model_id: aiModel === '__custom__' ? customModelId : ''
+                    })
+                });
+                showToast('Đã lưu cấu hình!');
+            } catch (e) {
+                showToast('Lỗi lưu cấu hình: ' + e.message, 'error');
+            }
+        }
+
+        // ============== SESSION / LOGIN ==============
+
+        function updateSessionBar(state, detail = '') {
+            const bar = document.getElementById('sessionBar');
+            const dot = document.getElementById('sessionDot');
+            const text = document.getElementById('sessionText');
+            const btn = document.getElementById('reloginBtn');
+            if (!bar || !dot || !text || !btn) return;
+            bar.className = 'session-bar ' + state;
+            dot.className = 'session-dot ' + state;
+            const email = localStorage.getItem('lms_email') || '';
+            const messages = {
+                checking: 'Đang kiểm tra phiên đăng nhập...',
+                ok: email ? `Đã đăng nhập: ${email}` : 'Đã đăng nhập',
+                expired: 'Phiên đã hết hạn — cần đăng nhập lại',
+                error: detail || 'Không kết nối được máy chủ',
+                loggingin: 'Đang đăng nhập lại...',
+            };
+            text.textContent = messages[state] || '';
+            btn.style.display = (state === 'ok' || state === 'checking' || state === 'loggingin') ? 'none' : 'inline-flex';
+        }
+
+        async function retryLogin() {
+            const email = localStorage.getItem('lms_email');
+            const password = localStorage.getItem('lms_password');
+            if (!email || !password) {
+                showToast('Chưa lưu thông tin đăng nhập. Vui lòng đăng nhập từ trang Nhận xét.', 'error');
+                updateSessionBar('expired');
+                return false;
+            }
+            const btn = document.getElementById('reloginBtn');
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;margin:0;"></div> Đang đăng nhập...';
+            updateSessionBar('loggingin');
+            try {
+                const resp = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok || !data.success) {
+                    updateSessionBar('expired');
+                    showToast(data.error || 'Đăng nhập lại thất bại', 'error');
+                    return false;
+                }
+                showToast('Đăng nhập lại thành công!');
+                await loadClasses();
+                return true;
+            } catch (e) {
+                updateSessionBar('error', 'Lỗi mạng khi đăng nhập lại');
+                showToast('Lỗi: ' + e.message, 'error');
+                return false;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
         }
 
         // Load classes
@@ -1001,10 +1272,11 @@
             try {
                 const resp = await fetch('/api/classes');
                 if (!resp.ok) {
-                    showToast('Vui lòng đăng nhập từ trang chính', 'error');
-                    return;
+                    updateSessionBar(resp.status === 401 || resp.status === 403 ? 'expired' : 'error');
+                    return false;
                 }
                 const data = await resp.json();
+                updateSessionBar('ok');
                 const select = document.getElementById('classSelect');
                 select.innerHTML = '<option value="">-- Chọn lớp --</option>';
 
@@ -1030,8 +1302,26 @@
                     });
                     select.appendChild(optgroup);
                 }
+                return true;
             } catch (e) {
-                showToast('Lỗi tải danh sách lớp', 'error');
+                updateSessionBar('error');
+                return false;
+            }
+        }
+
+        // Refresh: re-check session, reload class list, then reload current homework — with button loading
+        async function refreshHomework() {
+            const btn = document.getElementById('refreshBtn');
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;margin:0;"></div> Đang tải...';
+            try {
+                const ok = await loadClasses();
+                if (!ok) return;
+                if (document.getElementById('classSelect').value) await loadHomework();
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
             }
         }
 
@@ -1048,6 +1338,11 @@
 
             try {
                 const resp = await fetch(`/api/homework/${classId}`);
+                if (resp.status === 401 || resp.status === 403) {
+                    updateSessionBar('expired');
+                    showToast('Phiên đã hết hạn — bấm "Đăng nhập lại"', 'error');
+                    return;
+                }
                 if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
                 const data = await resp.json();
 
@@ -1086,8 +1381,32 @@
             }
         }
 
+        // Persist in-progress score/note edits from the DOM back into state so a re-render
+        // (filter change, AI fill, etc.) never discards what the teacher typed or AI suggested.
+        function syncEditsToState() {
+            for (const sub of allSubmissions) {
+                const scoreInput = document.getElementById(`score-${sub.id}`);
+                const noteInput = document.getElementById(`note-${sub.id}`);
+                if (scoreInput) {
+                    const val = parseInt(scoreInput.value);
+                    if (!isNaN(val)) sub.score = val;
+                }
+                if (noteInput) sub.note = noteInput.value;
+            }
+        }
+
+        // After marking, if the status filter hides MARKED rows, switch to "Tất cả"
+        // so the just-graded submission stays visible instead of vanishing.
+        function keepMarkedVisible() {
+            const statusFilter = document.getElementById('statusFilter');
+            if (statusFilter && statusFilter.value === 'SUBMITTED') {
+                statusFilter.value = '';
+            }
+        }
+
         // Filter submissions
         function filterSubmissions() {
+            syncEditsToState();
             const lessonId = document.getElementById('lessonFilter').value;
             const status = document.getElementById('statusFilter').value;
 
@@ -1110,7 +1429,7 @@
             if (filteredSubmissions.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7">
+                        <td colspan="8">
                             <div class="empty-state">
                                 <svg class="empty-state-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                                 <div class="empty-state-text">Không tìm thấy bài nộp</div>
@@ -1152,10 +1471,13 @@
                             <input type="number" class="score-input" id="score-${sub.id}" value="${isMarked ? sub.score : 100}" min="0" max="100">
                         </td>
                         <td>
+                            <textarea class="note-input" id="note-${sub.id}" placeholder="Nhận xét (AI sẽ tự điền)...">${escapeHtml(sub.note || '')}</textarea>
+                        </td>
+                        <td>
                             <div style="display: flex; gap: 6px;">
                                 <button class="btn btn-success btn-sm" onclick="markSingle('${sub.id}')">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                                    Chấm
+                                    Gửi
                                 </button>
                                 <button class="btn btn-primary btn-sm" id="ai-btn-${sub.id}" onclick="aiGradeSingle('${sub.id}')">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
@@ -1241,11 +1563,15 @@
                 showToast('Điểm phải từ 0 đến 100', 'error');
                 return;
             }
+            const note = document.getElementById(`note-${id}`)?.value?.trim() || '';
 
             try {
-                const data = await apiCall('/api/homework/mark', { id, score });
+                const data = await apiCall('/api/homework/mark', { id, score, note });
                 if (data.success) {
                     showToast(`Đã chấm ${score} điểm!`);
+                    const sub = allSubmissions.find(s => s.id === id);
+                    if (sub) sub.note = note;
+                    keepMarkedVisible();
                     updateSubmissionLocally(id, score);
                 } else {
                     showToast(data.error || 'Lỗi chấm điểm', 'error');
@@ -1267,7 +1593,12 @@
                 showToast('Điểm phải từ 0 đến 100', 'error');
                 return;
             }
-            const submissions = Array.from(selectedIds).map(id => ({ id, score }));
+            syncEditsToState();
+            // Send each row's edited note along with the batch score
+            const submissions = Array.from(selectedIds).map(id => {
+                const sub = allSubmissions.find(s => s.id === id);
+                return { id, score, note: sub?.note || '' };
+            });
 
             const btn = document.getElementById('markSelectedBtn');
             btn.disabled = true;
@@ -1288,6 +1619,7 @@
                     });
 
                     selectedIds.clear();
+                    keepMarkedVisible();
                     filterSubmissions();
                     updateStats();
                 } else {
@@ -1346,7 +1678,7 @@
             btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;margin:0;"></div>';
 
             try {
-                // Step 1: AI analyze
+                // AI analyze — fill score + note into the row for teacher to review, do NOT auto-submit
                 const aiResp = await fetch('/api/homework/ai-grade', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -1366,27 +1698,13 @@
                     return;
                 }
 
-                // Step 2: Mark with AI result
-                const markResp = await fetch('/api/homework/mark', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        id: id,
-                        score: aiData.score,
-                        note: aiData.note
-                    })
-                });
-                const markData = await markResp.json();
-
-                if (markData.success) {
-                    sub.status = 'MARKED';
-                    sub.score = aiData.score;
-                    showToast(`${student.displayName}: ${aiData.score} điểm - ${aiData.note}`);
-                    filterSubmissions();
-                    updateStats();
-                } else {
-                    showToast(markData.error || 'Lỗi chấm điểm', 'error');
-                }
+                sub.score = aiData.score;
+                sub.note = aiData.note || '';
+                const scoreInput = document.getElementById(`score-${id}`);
+                const noteInput = document.getElementById(`note-${id}`);
+                if (scoreInput) scoreInput.value = aiData.score;
+                if (noteInput) noteInput.value = aiData.note || '';
+                showToast(`AI đề xuất ${aiData.score} điểm. Kiểm tra rồi bấm "Gửi".`, 'info');
             } catch (e) {
                 showToast('Lỗi: ' + e.message, 'error');
             } finally {
@@ -1484,7 +1802,14 @@
                 localStorage.setItem('ai_api_key', val);
             }
         });
-        loadClasses();
+        // Check session on load: fetch classes; if unauthorized, try auto-relogin with saved credentials
+        (async () => {
+            updateSessionBar('checking');
+            const ok = await loadClasses();
+            if (!ok && localStorage.getItem('lms_email') && localStorage.getItem('lms_password')) {
+                await retryLogin();
+            }
+        })();
     </script>
 </body>
 </html>

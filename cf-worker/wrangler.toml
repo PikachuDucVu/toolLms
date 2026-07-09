@@ -1,7 +1,0 @@
-name = "mindx-proxy"
-main = "worker.js"
-compatibility_date = "2024-01-01"
-account_id = "aeac7a4c153aee0be799bea1169887ef"
-
-# Deploy: npx wrangler deploy
-# Or assign a custom domain/route in Cloudflare dashboard

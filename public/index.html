@@ -424,14 +424,51 @@
         }
 
         /* Class List */
+        .class-status-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding: 10px 12px;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            background: var(--gray-50);
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--gray-600);
+        }
+
+        .legend-dot,
+        .class-meta-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .legend-dot.done,
+        .class-meta-dot.done { background: var(--success); }
+        .legend-dot.pending,
+        .class-meta-dot.pending { background: var(--danger); }
+        .legend-dot.unknown,
+        .class-meta-dot.unknown { background: var(--gray-400); }
+
         .class-list {
-            max-height: 280px;
+            max-height: 360px;
             overflow-y: auto;
         }
 
         .class-item {
             padding: 14px 16px;
             border: 1.5px solid var(--gray-200);
+            border-left-width: 4px;
             border-radius: var(--radius-sm);
             margin-bottom: 8px;
             cursor: pointer;
@@ -445,10 +482,57 @@
             transform: translateX(3px);
         }
 
+        .class-item.comment-done {
+            border-left-color: var(--success);
+            background: linear-gradient(90deg, rgba(34, 197, 94, 0.10) 0%, #FFFFFF 42%);
+        }
+
+        .class-item.comment-pending {
+            border-left-color: var(--danger);
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.10) 0%, #FFFFFF 42%);
+        }
+
+        .class-item.comment-unknown {
+            border-left-color: var(--gray-300);
+        }
+
+        .class-item.comment-done:hover {
+            border-color: rgba(34, 197, 94, 0.55);
+            background: linear-gradient(90deg, rgba(34, 197, 94, 0.16) 0%, #F0FDF4 100%);
+        }
+
+        .class-item.comment-pending:hover {
+            border-color: rgba(239, 68, 68, 0.55);
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.16) 0%, #FEF2F2 100%);
+        }
+
         .class-item.selected {
             border-color: var(--primary);
             background: var(--primary-lighter);
             box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+        }
+
+        .class-item.selected.comment-done {
+            border-color: var(--success);
+            background: linear-gradient(90deg, rgba(34, 197, 94, 0.16) 0%, #ECFDF5 100%);
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.14);
+        }
+
+        .class-item.selected.comment-pending {
+            border-color: var(--danger);
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.16) 0%, #FEF2F2 100%);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.14);
+        }
+
+        .class-item.recently-ended {
+            opacity: 0.76;
+        }
+
+        .class-item-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
         }
 
         .class-item h3 {
@@ -456,11 +540,53 @@
             font-weight: 600;
             color: var(--gray-800);
             margin-bottom: 4px;
+            min-width: 0;
         }
 
         .class-item p {
             font-size: 12px;
             color: var(--gray-500);
+        }
+
+        .class-status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            padding: 3px 8px;
+            font-size: 10px;
+            font-weight: 800;
+            line-height: 1.2;
+            white-space: nowrap;
+            border: 1px solid transparent;
+        }
+
+        .class-status-badge.done {
+            color: var(--success-dark);
+            background: var(--success-light);
+            border-color: #BBF7D0;
+        }
+
+        .class-status-badge.pending {
+            color: var(--danger-dark);
+            background: var(--danger-light);
+            border-color: #FECACA;
+        }
+
+        .class-status-badge.unknown {
+            color: var(--gray-600);
+            background: var(--gray-100);
+            border-color: var(--gray-200);
+        }
+
+        .class-comment-meta {
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--gray-600);
         }
 
         /* Student Cards */
@@ -1643,6 +1769,118 @@
             .checkpoint-score-title { align-items: flex-start; flex-direction: column; }
             .checkpoint-score-hint { white-space: normal; }
         }
+
+        /* ===== Checkpoint Accordion ===== */
+        .cp-accordion { padding: 0; overflow: hidden; }
+        .cp-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            cursor: pointer;
+            user-select: none;
+            transition: background var(--transition-fast);
+        }
+        .cp-head:hover { background: #FFFBEB; }
+        .cp-head:focus-visible {
+            outline: none;
+            box-shadow: inset 0 0 0 2px #F59E0B;
+        }
+        .cp-head-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+            flex: 1;
+        }
+        .cp-head-info { min-width: 0; }
+        .cp-head-info .student-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .cp-head-info .student-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 3px;
+        }
+        .cp-head-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .cp-head-score {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 1px;
+            font-size: 13px;
+            color: var(--gray-600);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        .cp-head-score b { font-size: 18px; color: #B45309; font-weight: 800; }
+        .cp-head-score-empty b { color: var(--gray-400); }
+        .cp-chevron {
+            width: 20px;
+            height: 20px;
+            color: var(--gray-400);
+            transition: transform var(--transition);
+            flex-shrink: 0;
+        }
+        .cp-accordion.collapsed .cp-chevron { transform: rotate(-90deg); }
+        .badge-nl { background: #EDE9FE; color: #6D28D9; border: 1px solid #DDD6FE; }
+        .cp-body {
+            padding: 0 14px 14px;
+            border-top: 1px solid #FDE68A;
+        }
+        .cp-accordion.collapsed .cp-body { display: none; }
+        /* Collapsed graded cards read as a calm single row; ungraded stay amber-tinted */
+        .cp-accordion.collapsed.has-comment { background: linear-gradient(180deg,#FFFFFF,#F0FDF4); }
+        .cp-body .checkpoint-score-card { margin-top: 12px; }
+        .checkpoint-inline-hint {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--gray-500);
+            margin-top: 8px;
+        }
+        .cp-comment-stack {
+            display: grid;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .cp-note-compact textarea { min-height: 52px; }
+        .cp-existing-details {
+            margin-top: 10px;
+            border: 1px solid #FDE68A;
+            border-radius: var(--radius-sm);
+            background: #FFFBEB;
+            overflow: hidden;
+        }
+        .cp-existing-details summary {
+            cursor: pointer;
+            padding: 9px 12px;
+            font-size: 12px;
+            font-weight: 800;
+            color: #92400E;
+            list-style: none;
+        }
+        .cp-existing-details summary::-webkit-details-marker { display: none; }
+        .cp-existing-details summary::before { content: '▸ '; }
+        .cp-existing-details[open] summary::before { content: '▾ '; }
+        .cp-existing-details .checkpoint-existing-comment {
+            padding: 0 12px 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        @media (max-width: 640px) {
+            .cp-head-right { gap: 6px; }
+            .cp-head-score b { font-size: 16px; }
+        }
     </style>
 </head>
 <body>
@@ -1790,7 +2028,7 @@
                             </svg>
                             Danh sách lớp
                         </h2>
-                        <button class="btn btn-sm btn-outline" onclick="loadClasses()" aria-label="Tải lại danh sách lớp">
+                        <button class="btn btn-sm btn-outline" onclick="loadClasses(true)" aria-label="Tải lại danh sách lớp">
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
@@ -1800,6 +2038,11 @@
                         <div class="loading" id="classLoading" role="status" aria-live="polite">
                             <div class="spinner" aria-hidden="true"></div>
                             <div class="loading-text">Đang tải...</div>
+                        </div>
+                        <div class="class-status-legend" aria-label="Chú thích trạng thái nhận xét lớp">
+                            <span class="legend-item"><span class="legend-dot done" aria-hidden="true"></span>Đã nhận xét</span>
+                            <span class="legend-item"><span class="legend-dot pending" aria-hidden="true"></span>Chưa nhận xét</span>
+                            <span class="legend-item"><span class="legend-dot unknown" aria-hidden="true"></span>Chưa có dữ liệu</span>
                         </div>
                         <div class="class-list" id="classList" role="listbox" aria-label="Danh sách lớp học">
                             <div class="empty-state">
@@ -2031,6 +2274,18 @@
         let classData = null;
         let classesCache = null;
 
+        // ===== Kiemtra (Cloudflare) checkpoint submission status =====
+        const KIEMTRA_BASE = 'https://kiemtra.ducvu.io.vn';
+        // {studentId: {original: SubmissionInfo|null, makeup: SubmissionInfo|null}}
+        // SubmissionInfo = {submittedAt, scratchSubmittedAt, hasScratchFinal, examId, practiceType, essayFiles[]}
+        let checkpointSubmissionStatus = {};
+        let checkpointStatusOriginal = null; // exam summary for the original checkpoint, or null
+        let checkpointStatusMakeup = null;   // exam summary for the makeup (Kiểm tra bù), or null
+        let checkpointBranchSelection = {};  // {studentId: 'original'|'makeup'} — per-student toggle
+        let checkpointStatusLoading = false;
+        let checkpointStatusKey = null; // `${classId}:${checkpointNum}` currently loaded
+        let checkpointExpanded = {};    // {studentId: true} — which checkpoint cards are open (persists across re-render)
+
         // ============== UTILITY HELPERS ==============
 
         /** Escape HTML entities to prevent XSS */
@@ -2145,7 +2400,7 @@
 
         /** Get list of present students (ATTENDED or LATE_ARRIVED) */
         function getPresentStudents() {
-            return students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+            return students.filter(isPresentAttendance);
         }
 
         /** Cached Audio objects */
@@ -2393,13 +2648,41 @@
         }
 
         // Demo/Final payload builder
-        const DEMO_CONFIG = [
-            {courseProcessDemoDetailId:"67074eb655bde44038504415",title:" Tư duy máy tính, tư duy thuật toán",maxScore:1.5},
-            {courseProcessDemoDetailId:"67074eb655bde44038504416",title:" Tư duy sáng tạo",maxScore:1},
-            {courseProcessDemoDetailId:"67074eb655bde44038504417",title:" Kỹ năng giao tiếp, hợp tác",maxScore:0.5},
-            {courseProcessDemoDetailId:"67074eb655bde44038504418",title:" Giải quyết vấn đề",maxScore:1},
-            {courseProcessDemoDetailId:"67074eb655bde44038504419",title:" Kỹ năng sử dụng máy tính",maxScore:1}
-        ];
+        const DEMO_FALLBACKS = {
+            HACKATHON: {
+                label: "Điểm bài Hackathon",
+                commentAreaId: "66c44cf76ae1a9fab631679d",
+                courseProcessDemoId: "66c86cff6ae1a9fab639aa24",
+                demoGrade: 0,
+                questions: [
+                    {courseProcessDemoDetailId:"66c44cf76ae1a9fab631679c", title:"Điểm Hackathon", maxScore:5}
+                ]
+            },
+            GA: {
+                label: "Demo2024 | GA",
+                commentAreaId: "67074e6255bde440385042df",
+                courseProcessDemoId: "68f0bcff22849dccaa447c33",
+                questions: [
+                    {courseProcessDemoDetailId:"67074e6255bde440385042da", title:" Tư duy máy tính, tư duy thuật toán", maxScore:2},
+                    {courseProcessDemoDetailId:"67074e6255bde440385042db", title:"Tư duy sáng tạo", maxScore:1},
+                    {courseProcessDemoDetailId:"67074e6255bde440385042dc", title:"Kỹ năng giao tiếp, hợp tác", maxScore:0.5},
+                    {courseProcessDemoDetailId:"67074e6255bde440385042dd", title:" Giải quyết vấn đề", maxScore:0.5},
+                    {courseProcessDemoDetailId:"67074e6255bde440385042de", title:"Kỹ năng sử dụng máy tính", maxScore:1}
+                ]
+            },
+            GB: {
+                label: "Demo2024 | GB",
+                commentAreaId: "66c80bf66ae1a9fab6386af3",
+                courseProcessDemoId: "66c815666ae1a9fab6388763",
+                questions: [
+                    {courseProcessDemoDetailId:"66c80bf66ae1a9fab6386aee", title:"Tư duy máy tính, tư duy thuật toán", maxScore:2},
+                    {courseProcessDemoDetailId:"66c80bf66ae1a9fab6386aef", title:"Tư duy sáng tạo", maxScore:1},
+                    {courseProcessDemoDetailId:"66c80bf66ae1a9fab6386af0", title:"Kỹ năng giao tiếp, hợp tác", maxScore:0.5},
+                    {courseProcessDemoDetailId:"66c80bf66ae1a9fab6386af1", title:"Giải quyết vấn đề", maxScore:0.5},
+                    {courseProcessDemoDetailId:"66c80bf66ae1a9fab6386af2", title:"Kỹ năng sử dụng máy tính", maxScore:1}
+                ]
+            }
+        };
 
         const FINAL_RATE_AREAS = [
             {grade:5,content:"- Học viên chủ động liên hệ giáo viên tìm thêm nguồn/ sách để ôn tập và học kiến thức mới tại nhà ngoài những tài liệu đã được cung cấp mà không cần yêu cầu từ giáo viên",commentAreaId:"665e7d33181e0e47f6c63768",type:"RATE",courseProcessFinalEvaluationId:"67075d4b55bde440385073af",courseProcessFinalEvaluationTitle:"KIẾN THỨC"},
@@ -2413,6 +2696,196 @@
             {grade:5,content:"- Học viên chủ động tìm kiếm thêm các bài tập, dự án để luyện tập và đặt các câu hỏi luyện tập với giáo viên",commentAreaId:"668e2f5be71f90e7630d44c1",type:"RATE",courseProcessFinalEvaluationId:"67075d4b55bde440385073b1",courseProcessFinalEvaluationTitle:"THÁI ĐỘ"}
         ];
 
+        const FINAL_RATE_CONTENT_BY_AREA_ID = FINAL_RATE_AREAS.reduce((acc, area) => {
+            acc[area.commentAreaId] = area.content;
+            return acc;
+        }, {});
+        const FINAL_RATE_AREA_ORDER = FINAL_RATE_AREAS.map(area => area.commentAreaId);
+        const FINAL_RATE_TITLE_ORDER = ["KIẾN THỨC", "KỸ NĂNG", "THÁI ĐỘ"];
+
+        function formatScore(value) {
+            const num = Number(value);
+            if (!Number.isFinite(num)) return '0';
+            return String(Math.round(num * 100) / 100);
+        }
+
+        function getRankFromScore(score) {
+            const num = Number(score) || 0;
+            if (num >= 4.5) return 'A';
+            if (num >= 4) return 'B';
+            if (num >= 2.5) return 'C';
+            return 'D';
+        }
+
+        function getActiveCourseProcess() {
+            if (classData?.courseProcess) return classData.courseProcess;
+            const courseProcesses = classData?.course?.courseProcesses || selectedClass?.course?.courseProcesses || [];
+            if (!Array.isArray(courseProcesses) || !courseProcesses.length) return null;
+            const targetId = classData?.courseProcessId || selectedClass?.courseProcessId || selectedClass?.course?.courseProcessId;
+            return courseProcesses.find(cp => cp?.id === targetId) || courseProcesses[0];
+        }
+
+        function getFallbackDemoSchema() {
+            const haystack = [
+                classData?.course?.shortName,
+                selectedClass?.course?.shortName,
+                classData?.course?.name,
+                selectedClass?.course?.name,
+                classData?.name,
+                selectedClass?.name
+            ].filter(Boolean).join(' ').toUpperCase();
+
+            if (haystack.includes('C4K-GA') || /(^|[^A-Z])GA([^A-Z]|$)/.test(haystack)) return DEMO_FALLBACKS.GA;
+            if (haystack.includes('C4K-GB') || /(^|[^A-Z])GB([^A-Z]|$)/.test(haystack)) return DEMO_FALLBACKS.GB;
+            if (/(^|[^A-Z])PT[ABI]([^A-Z]|$)/.test(haystack) || haystack.includes('HACKATHON')) return DEMO_FALLBACKS.HACKATHON;
+            return DEMO_FALLBACKS.HACKATHON;
+        }
+
+        function getDemoScoreConfig() {
+            const demoScore = getActiveCourseProcess()?.finalSession?.demoScore || null;
+            const areas = Array.isArray(demoScore?.commentAreas) ? demoScore.commentAreas : [];
+            const area = areas.find(a => Array.isArray(a?.demo) && a.demo.length > 0) || areas[0] || null;
+            return {demoScore, area};
+        }
+
+        function normalizeDemoQuestion(question) {
+            const id = question?.courseProcessDemoDetailId || question?.id || '';
+            return {
+                id,
+                courseProcessDemoDetailId: id,
+                title: question?.title || '',
+                maxScore: Number(question?.maxScore ?? 0) || 0
+            };
+        }
+
+        function getDemoConfig() {
+            const {area} = getDemoScoreConfig();
+            const dynamicQuestions = (area?.demo || []).map(normalizeDemoQuestion).filter(q => q.courseProcessDemoDetailId && q.maxScore > 0);
+            if (dynamicQuestions.length) return dynamicQuestions;
+            return getFallbackDemoSchema().questions.map(normalizeDemoQuestion);
+        }
+
+        function getDemoMaxTotal(config = getDemoConfig()) {
+            return Math.round(config.reduce((sum, q) => sum + (Number(q.maxScore) || 0), 0) * 100) / 100;
+        }
+
+        function getDemoAreaName() {
+            const {area} = getDemoScoreConfig();
+            return area?.name || getFallbackDemoSchema().label;
+        }
+
+        function getDemoAreaId() {
+            const {area} = getDemoScoreConfig();
+            return area?.id || getFallbackDemoSchema().commentAreaId;
+        }
+
+        function getCourseProcessDemoId() {
+            const {demoScore} = getDemoScoreConfig();
+            return demoScore?.id || getFallbackDemoSchema().courseProcessDemoId;
+        }
+
+        function getDemoAreaGrade() {
+            const {area} = getDemoScoreConfig();
+            const areaName = String(area?.name || getFallbackDemoSchema().label || '').toUpperCase();
+            const hasHackathonQuestion = getDemoConfig().some(q => String(q.title || '').toUpperCase().includes('HACKATHON'));
+            if (areaName.includes('HACKATHON') || hasHackathonQuestion) return 0;
+            return getFallbackDemoSchema().demoGrade ?? null;
+        }
+
+        function getRateCommentSample(area) {
+            const rates = Array.isArray(area?.rates) ? area.rates : [];
+            const bestRate = rates.find(rate => Number(rate?.value) === 5) || rates[rates.length - 1];
+            return bestRate?.commentSamples?.[0] || '';
+        }
+
+        function getFinalRateAreas() {
+            const finalEvaluations = getActiveCourseProcess()?.finalSession?.finalEvaluations || [];
+            const dynamicAreas = [];
+            let order = 0;
+
+            finalEvaluations.forEach(evaluation => {
+                (evaluation?.commentAreas || []).forEach(area => {
+                    if (!area?.id || (area.type && area.type !== 'RATE')) return;
+                    const content = FINAL_RATE_CONTENT_BY_AREA_ID[area.id] || getRateCommentSample(area);
+                    if (!content) return;
+                    dynamicAreas.push({
+                        __order: order++,
+                        grade: 5,
+                        content,
+                        commentAreaId: area.id,
+                        courseProcessFinalEvaluationTitle: evaluation?.title || '',
+                        courseProcessFinalEvaluationId: evaluation?.id || null,
+                        demoQuestions: [],
+                        type: 'RATE'
+                    });
+                });
+            });
+
+            const source = dynamicAreas.length ? dynamicAreas : FINAL_RATE_AREAS.map((area, index) => ({...area, __order: index, demoQuestions: []}));
+            return source
+                .sort((a, b) => {
+                    const ai = FINAL_RATE_AREA_ORDER.indexOf(a.commentAreaId);
+                    const bi = FINAL_RATE_AREA_ORDER.indexOf(b.commentAreaId);
+                    if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+                    return a.__order - b.__order;
+                })
+                .map(area => {
+                    const {__order, ...cleanArea} = area;
+                    return cleanArea;
+                });
+        }
+
+        function getFinalAbilityScore(rateAreas) {
+            if (!rateAreas.length) return 0;
+            const total = rateAreas.reduce((sum, area) => sum + (Number(area.grade) || 0), 0);
+            return Math.round((total / rateAreas.length) * 100) / 100;
+        }
+
+        function calculateFinalTotalScore(demoScore, rateAreas) {
+            if (!rateAreas.length) return Math.round((Number(demoScore) || 0) * 10) / 10;
+            const abilityScore = getFinalAbilityScore(rateAreas);
+            return Math.round(((Number(demoScore) || 0) * 0.6 + abilityScore * 0.4) * 10) / 10;
+        }
+
+        function normalizeRateLine(line) {
+            return String(line || '').replace(/^\s*-\s*/, '').trim();
+        }
+
+        function buildFinalEvaluationHtml(rateAreas) {
+            if (!rateAreas.length) return '';
+            const groups = [];
+            rateAreas.forEach(area => {
+                const title = area.courseProcessFinalEvaluationTitle || 'ĐÁNH GIÁ';
+                let group = groups.find(item => item.title === title);
+                if (!group) {
+                    group = {title, areas: []};
+                    groups.push(group);
+                }
+                group.areas.push(area);
+            });
+            groups.sort((a, b) => {
+                const ai = FINAL_RATE_TITLE_ORDER.indexOf(a.title);
+                const bi = FINAL_RATE_TITLE_ORDER.indexOf(b.title);
+                if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+                return 0;
+            });
+
+            const sections = groups.map(group => {
+                const areaBlocks = group.areas.map(area => {
+                    const items = String(area.content || '')
+                        .split(/\n+/)
+                        .map(normalizeRateLine)
+                        .filter(Boolean)
+                        .map(line => `<li data-list='bullet' class='ql-indent-2'><span class='ql-ui'></span>${escapeHtml(line)}</li>`)
+                        .join('');
+                    return `<ul><span style="color:rgb(0, 0, 0)">${items}</span></ul>`;
+                }).join('');
+                return `<li data-list="bullet" style="list-style-type:circle"><span class="ql-ui"></span><strong style="color:rgb(226, 80, 65)">​</strong><strong style="color:rgb(0, 0, 0)">${escapeHtml(group.title)}: </strong>${areaBlocks}</li>`;
+            }).join('');
+
+            return `<p><strong style="color:rgb(0, 0, 0)">​Điểm năng lực: </strong><strong style="color:rgb(226, 80, 65)">${formatScore(getFinalAbilityScore(rateAreas))} điểm</strong></p><ul>${sections}</ul>`;
+        }
+
         function randomScoreAbove75(maxScore, step=0.25) {
             const minScore = Math.ceil(maxScore * 0.75 / step) * step;
             const possible = [];
@@ -2424,31 +2897,52 @@
         function buildFinalDemoPayload(data) {
             const customScores = data.custom_scores;
             const autoRate = data.auto_rate !== false;
+            const demoConfig = getDemoConfig();
 
-            const demoQuestions = DEMO_CONFIG.map((q, i) => {
+            const demoQuestions = demoConfig.map((q, i) => {
+                const maxScore = Number(q.maxScore) || 0;
                 let score;
                 if (customScores && i < customScores.length) {
-                    score = Math.max(0, Math.min(parseFloat(customScores[i].score || 0), q.maxScore));
+                    score = Math.max(0, Math.min(parseFloat(customScores[i].score || 0), maxScore));
                 } else {
-                    score = randomScoreAbove75(q.maxScore);
+                    score = randomScoreAbove75(maxScore);
                 }
-                return {courseProcessDemoDetailId: q.courseProcessDemoDetailId, score, title: q.title, result: false, maxScore: q.maxScore};
+                score = Math.round(score * 100) / 100;
+                return {courseProcessDemoDetailId: q.courseProcessDemoDetailId, score, title: q.title, result: false, maxScore};
             });
 
             const totalDemoScore = Math.round(demoQuestions.reduce((s,q) => s + q.score, 0) * 100) / 100;
-            const demoItems = demoQuestions.map(q => `<li>${q.title}: ${q.score} điểm</li>`).join('');
-            const demoContent = `<div><p><strong>Demo2024 | PTA:</strong><strong style='color: rgb(226, 80, 65)'> ${totalDemoScore} điểm</strong></p><ul>${demoItems}</ul></div>`;
+            const demoItems = demoQuestions.map(q => `<li>${escapeHtml(q.title)}: ${formatScore(q.score)} điểm</li>`).join('');
+            const demoContent = `<div>
+                <p>
+                  <strong>${escapeHtml(getDemoAreaName())}:</strong>
+                  <strong style='color: rgb(226, 80, 65)'> ${formatScore(totalDemoScore)} điểm</strong>
+                </p>
+                <ul>
+                  ${demoItems}
+                </ul>
+            </div>`;
 
-            const rateAreas = autoRate ? FINAL_RATE_AREAS : [];
-            const byAreas = [{demoQuestions, content: demoContent, commentAreaId: "67074eb655bde4403850441a", type: "DEMO", courseProcessDemoId: "67075d4b55bde440385073ae"}, ...rateAreas];
+            const rateAreas = autoRate ? getFinalRateAreas() : [];
+            const demoGrade = getDemoAreaGrade();
+            const demoArea = {
+                ...(demoGrade !== null ? {grade: demoGrade} : {}),
+                demoQuestions,
+                content: demoContent,
+                commentAreaId: getDemoAreaId(),
+                type: "DEMO",
+                courseProcessDemoId: getCourseProcessDemoId()
+            };
+            const byAreas = [...rateAreas, demoArea];
+            const finalTotalScore = calculateFinalTotalScore(totalDemoScore, rateAreas);
 
-            const fullContent = `<div style="list-style-type:circle"><p><strong style="color:rgb(0, 0, 0)">Điểm Demo</strong><span style="color:rgb(0, 0, 0)">: </span><strong style="color:rgb(226, 80, 65)">${totalDemoScore} điểm</strong></p><ul><li data-list="bullet"><span class="ql-ui"></span><span style="color:rgb(0, 0, 0)">${demoContent}</span></li></ul></div>`;
+            const fullContent = `<div style="list-style-type:circle"><p><strong style="color:rgb(0, 0, 0)">Điểm Demo</strong><span style="color:rgb(0, 0, 0)">: </span><strong style="color:rgb(226, 80, 65)">${formatScore(totalDemoScore)} điểm</strong></p><ul><li data-list="bullet"><span class="ql-ui"></span><span style="color:rgb(0, 0, 0)">${demoContent}</span></li></ul>${buildFinalEvaluationHtml(rateAreas)}</div>`;
 
             return {
                 payload: {
                     slotId: data.slot_id, classSiteId: data.class_site_id, sessionNumber: data.session_number,
                     classId: data.class_id, courseProcessId: data.course_process_id,
-                    slotType: "Final", totalScore: totalDemoScore, rank: "A",
+                    slotType: "Final", totalScore: finalTotalScore, rank: getRankFromScore(finalTotalScore),
                     ...(data.summary ? {summary: data.summary} : {}),
                     studentComment: {
                         studentAttendanceId: data.student_attendance_id, studentId: data.student_id,
@@ -2543,8 +3037,8 @@
             
             filteredStudents = students.filter(s => {
                 const matchName = s.student.fullName.toLowerCase().includes(search);
-                const isPresent = s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED';
-                const hasComment = s.commentByAreas?.some(a => a.type === 'CONTENT' && a.content);
+                const isPresent = isPresentAttendance(s);
+                const hasComment = hasContentComment(s);
                 
                 let matchStatus = true;
                 if (status === 'present') matchStatus = isPresent;
@@ -2571,6 +3065,7 @@
                     return;
                 }
                 classData = result?.data?.classesById;
+                mergeClassDetailIntoCache(classData);
 
                 // Rebuild slot dropdown
                 const slotSelect = document.getElementById('slotSelect');
@@ -2667,37 +3162,134 @@
             return slotIndex + 1;
         }
 
+        function isPresentAttendance(att) {
+            return att?.status === 'ATTENDED' || att?.status === 'LATE_ARRIVED';
+        }
+
+        function hasAreaType(att, areaType, requireContent = false) {
+            const areas = Array.isArray(att?.commentByAreas) ? att.commentByAreas : [];
+            return areas.some(area => {
+                if (area?.type !== areaType) return false;
+                // Some lightweight list queries fetch only `type`. In that case the
+                // presence of CONTENT/DEMO/CHECKPOINT means the slot was submitted.
+                if (!requireContent || !Object.prototype.hasOwnProperty.call(area, 'content')) return true;
+                return String(area.content || '').trim().length > 0;
+            });
+        }
+
+        function hasContentComment(att) {
+            return hasAreaType(att, 'CONTENT', true);
+        }
+
+        function isSlotCompletedForAttendance(att, slot, slotIdx = null) {
+            if (!isPresentAttendance(att)) return true;
+            const sessionNumber = getSlotDisplayNumber(slot, slotIdx);
+            if (sessionNumber === 14) return hasAreaType(att, 'DEMO') || hasContentComment(att);
+            if ([5, 9].includes(sessionNumber)) return hasAreaType(att, 'CHECKPOINT') || hasContentComment(att);
+            return hasContentComment(att);
+        }
+
+        function getSlotCommentProgress(slot, slotIdx = null) {
+            const attendance = Array.isArray(slot?.studentAttendance) ? slot.studentAttendance : [];
+            const present = attendance.filter(isPresentAttendance);
+            const completed = present.filter(att => isSlotCompletedForAttendance(att, slot, slotIdx)).length;
+            const missing = Math.max(present.length - completed, 0);
+            return {
+                present: present.length,
+                completed,
+                missing,
+                done: present.length > 0 && missing === 0
+            };
+        }
+
+        function findLatestCommentableSlotIndex(slots) {
+            if (!Array.isArray(slots)) return -1;
+            const now = new Date();
+            for (let i = slots.length - 1; i >= 0; i--) {
+                const slot = slots[i];
+                const attendance = Array.isArray(slot?.studentAttendance) ? slot.studentAttendance : [];
+                if (!attendance.length) continue;
+                const slotDate = new Date(slot.date);
+                if (Number.isNaN(slotDate.getTime()) || slotDate <= now) return i;
+            }
+            return -1;
+        }
+
+        function getClassCommentProgress(cls) {
+            const slots = Array.isArray(cls?.slots) ? cls.slots : [];
+            const latestIdx = findLatestCommentableSlotIndex(slots);
+            if (latestIdx < 0) {
+                return { state: 'unknown', badgeText: 'Chưa có dữ liệu', meta: '' };
+            }
+
+            let pendingIdx = -1;
+            let pendingProgress = null;
+            for (let i = latestIdx; i >= 0; i--) {
+                const progress = getSlotCommentProgress(slots[i], i);
+                if (progress.present > 0 && progress.missing > 0) {
+                    pendingIdx = i;
+                    pendingProgress = progress;
+                }
+            }
+
+            if (pendingIdx >= 0) {
+                return {
+                    state: 'pending',
+                    badgeText: 'Chưa nhận xét',
+                    slotNumber: getSlotDisplayNumber(slots[pendingIdx], pendingIdx),
+                    ...pendingProgress
+                };
+            }
+
+            const doneProgress = getSlotCommentProgress(slots[latestIdx], latestIdx);
+            return {
+                state: 'done',
+                badgeText: 'Đã nhận xét',
+                slotNumber: getSlotDisplayNumber(slots[latestIdx], latestIdx),
+                ...doneProgress
+            };
+        }
+
+        function getClassCommentMeta(progress) {
+            if (!progress || progress.state === 'unknown') return 'Chưa có buổi đã điểm danh';
+            if (progress.state === 'pending') {
+                return `Buổi ${progress.slotNumber}: còn ${progress.missing}/${progress.present} học sinh chưa nhận xét`;
+            }
+            return `Buổi ${progress.slotNumber}: ${progress.completed}/${progress.present} học sinh đã nhận xét`;
+        }
+
+        function mergeClassDetailIntoCache(detail) {
+            if (!detail || !classesCache) return;
+            const idx = classesCache.findIndex(cls => cls.id === detail.id);
+            if (idx < 0) return;
+            const previous = classesCache[idx];
+            classesCache[idx] = {
+                ...previous,
+                ...detail,
+                status: previous.status,
+                startDate: previous.startDate,
+                endDate: previous.endDate,
+                recentlyEnded: previous.recentlyEnded
+            };
+            selectedClass = classesCache[idx];
+            renderClassList(classesCache);
+        }
+
         // Auto select latest uncommented slot
         function autoSelectLatestSlot() {
             if (!classData || !classData.slots) return;
 
-            const now = new Date();
-
-            // Find the latest slot that has happened (closest to today)
-            let latestIdx = -1;
-            for (let i = classData.slots.length - 1; i >= 0; i--) {
-                const slotDate = new Date(classData.slots[i].date);
-                if (slotDate <= now && classData.slots[i].studentAttendance?.length > 0) {
-                    latestIdx = i;
-                    break;
-                }
-            }
-
+            const latestIdx = findLatestCommentableSlotIndex(classData.slots);
             if (latestIdx < 0) return;
 
             const latestSlot = classData.slots[latestIdx];
             const latestNum = getSlotDisplayNumber(latestSlot, latestIdx);
 
-            // Find the earliest uncommented slot (from latest backwards)
+            // Find the earliest unfinished slot (from latest backwards)
             let uncommentedIdx = -1;
             for (let i = latestIdx; i >= 0; i--) {
-                const slot = classData.slots[i];
-                if (!slot.studentAttendance?.length) continue;
-                const hasUncommented = slot.studentAttendance.some(s =>
-                    (s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED') &&
-                    !s.commentByAreas?.some(a => a.type === 'CONTENT' && a.content)
-                );
-                if (hasUncommented) {
+                const progress = getSlotCommentProgress(classData.slots[i], i);
+                if (progress.present > 0 && progress.missing > 0) {
                     uncommentedIdx = i;
                 }
             }
@@ -2722,9 +3314,9 @@
         // Update stats
         function updateStats() {
             const total = students.length;
-            const present = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED').length;
+            const present = students.filter(isPresentAttendance).length;
             const generated = Object.keys(generatedComments).length;
-            const submitted = students.filter(s => s.commentByAreas?.some(a => a.type === 'CONTENT' && a.content)).length;
+            const submitted = students.filter(hasContentComment).length;
             
             document.getElementById('statTotal').textContent = total;
             document.getElementById('statPresent').textContent = present;
@@ -2960,20 +3552,37 @@
             list.innerHTML = '';
 
             try {
-                const query = `query GetClasses($pageIndex: Int!, $itemsPerPage: Int!, $statusIn: [String]) {
+                const query = `query GetClasses($pageIndex: Int!, $itemsPerPage: Int!) {
                     classes(payload: {
                         pageIndex: $pageIndex,
                         itemsPerPage: $itemsPerPage,
-                        status_in: $statusIn,
                         orderBy: "createdAt_desc"
                     }) {
-                        data { id name status course { id name shortName } classSites { _id name } slots { _id index date summary } startDate endDate }
+                        data {
+                            id
+                            name
+                            status
+                            course { id name shortName }
+                            classSites { _id name }
+                            slots {
+                                _id
+                                index
+                                date
+                                summary
+                                studentAttendance {
+                                    status
+                                    commentByAreas { type }
+                                }
+                            }
+                            startDate
+                            endDate
+                        }
                         pagination { total }
                     }
                 }`;
 
                 const result = await lmsApiCall("GetClasses", query, {
-                    pageIndex: 0, itemsPerPage: 50, statusIn: ["RUNNING", "FINISHED"]
+                    pageIndex: 0, itemsPerPage: 200
                 });
 
                 if (result.errors) {
@@ -2982,18 +3591,20 @@
                 }
 
                 const classes = result?.data?.classes?.data || [];
-                const twoMonthsAgo = new Date(Date.now() - 60*24*60*60*1000);
+                const now = new Date();
+                const twoWeeksAgo = new Date(Date.now() - 14*24*60*60*1000);
                 const running = [];
                 const recentlyEnded = [];
                 for (const cls of classes) {
-                    if (cls.status === 'RUNNING') running.push(cls);
-                    else if (cls.status === 'FINISHED' && cls.endDate) {
-                        try {
-                            if (new Date(cls.endDate) >= twoMonthsAgo) {
-                                cls.recentlyEnded = true;
-                                recentlyEnded.push(cls);
-                            }
-                        } catch(e) {}
+                    const endDate = cls.endDate ? new Date(cls.endDate) : null;
+                    const hasValidEndDate = endDate && !Number.isNaN(endDate.getTime());
+                    const endedByDate = hasValidEndDate && endDate < now;
+
+                    if (cls.status === 'RUNNING' && !endedByDate) {
+                        running.push(cls);
+                    } else if ((cls.status === 'FINISHED' || endedByDate) && hasValidEndDate && endDate >= twoWeeksAgo) {
+                        cls.recentlyEnded = true;
+                        recentlyEnded.push(cls);
                     }
                 }
                 recentlyEnded.sort((a,b) => (b.endDate || '').localeCompare(a.endDate || ''));
@@ -3028,16 +3639,7 @@
             const activeClasses = classes.filter(c => !c.recentlyEnded);
             const endedClasses = classes.filter(c => c.recentlyEnded);
 
-            activeClasses.forEach(cls => {
-                const div = document.createElement('div');
-                div.className = 'class-item';
-                div.innerHTML = `
-                    <h3>${cls.name}</h3>
-                    <p>${cls.course?.name || ''} • ${cls.slots?.length || 0} buổi</p>
-                `;
-                div.onclick = () => selectClass(cls, div);
-                list.appendChild(div);
-            });
+            activeClasses.forEach(cls => list.appendChild(createClassListItem(cls)));
 
             if (endedClasses.length > 0) {
                 const separator = document.createElement('div');
@@ -3048,26 +3650,78 @@
                     <div style="flex:1;height:1px;background:var(--gray-200);"></div>
                 `;
                 list.appendChild(separator);
-
-                endedClasses.forEach(cls => {
-                    const div = document.createElement('div');
-                    div.className = 'class-item';
-                    div.style.opacity = '0.7';
-                    const endDate = cls.endDate ? new Date(cls.endDate).toLocaleDateString('vi-VN') : '';
-                    div.innerHTML = `
-                        <h3>${cls.name} <span style="font-size:11px;color:var(--gray-400);font-weight:400;">(Đã kết thúc)</span></h3>
-                        <p>${cls.course?.name || ''} • ${cls.slots?.length || 0} buổi${endDate ? ' • Kết thúc: ' + endDate : ''}</p>
-                    `;
-                    div.onclick = () => selectClass(cls, div);
-                    list.appendChild(div);
-                });
+                endedClasses.forEach(cls => list.appendChild(createClassListItem(cls, { ended: true })));
             }
+        }
+
+        function createClassListItem(cls, { ended = false } = {}) {
+            const progress = getClassCommentProgress(cls);
+            const div = document.createElement('div');
+            const selected = selectedClass?.id === cls.id;
+            div.className = [
+                'class-item',
+                `comment-${progress.state}`,
+                ended ? 'recently-ended' : '',
+                selected ? 'selected' : ''
+            ].filter(Boolean).join(' ');
+            div.setAttribute('role', 'option');
+            div.setAttribute('aria-selected', selected ? 'true' : 'false');
+            div.setAttribute('aria-label', `${cls.name} - ${progress.badgeText}`);
+
+            const endDate = ended && cls.endDate ? new Date(cls.endDate).toLocaleDateString('vi-VN') : '';
+            const endedLabel = ended ? ` <span style="font-size:11px;color:var(--gray-400);font-weight:400;">(Đã kết thúc)</span>` : '';
+            const courseName = escapeHtml(cls.course?.name || '');
+            const slotCount = cls.slots?.length || 0;
+            const endText = endDate ? ` • Kết thúc: ${endDate}` : '';
+            const metaText = getClassCommentMeta(progress);
+
+            div.innerHTML = `
+                <div class="class-item-header">
+                    <h3>${escapeHtml(cls.name)}${endedLabel}</h3>
+                    <span class="class-status-badge ${progress.state}">${progress.badgeText}</span>
+                </div>
+                <p>${courseName} • ${slotCount} buổi${endText}</p>
+                ${metaText ? `
+                    <div class="class-comment-meta">
+                        <span class="class-meta-dot ${progress.state}" aria-hidden="true"></span>
+                        <span>${metaText}</span>
+                    </div>
+                ` : ''}
+            `;
+            div.onclick = () => selectClass(cls, div);
+            return div;
         }
 
         // Select class - directly from MindX LMS API
         const CLASS_DETAIL_QUERY = `query GetClassById($id: ID!) {
             classesById(id: $id) {
                 id name courseProcessId
+                course { id name shortName }
+                courseProcess {
+                    id
+                    name
+                    finalSession {
+                        finalEvaluations {
+                            id
+                            title
+                            commentAreas {
+                                id
+                                name
+                                type
+                                rates { value commentSamples }
+                            }
+                        }
+                        demoScore {
+                            id
+                            commentAreas {
+                                id
+                                name
+                                type
+                                demo { id title maxScore }
+                            }
+                        }
+                    }
+                }
                 classSites { _id name }
                 slots {
                     _id index date summary
@@ -3096,6 +3750,8 @@
                     showToast('Không thể tải thông tin lớp', 'error');
                     return;
                 }
+
+                mergeClassDetailIntoCache(classData);
 
                 const slotSelect = document.getElementById('slotSelect');
                 slotSelect.innerHTML = '<option value="">-- Chọn buổi --</option>';
@@ -3140,6 +3796,7 @@
             try {
                 const result = await lmsApiCall("GetClassById", CLASS_DETAIL_QUERY, {id: selectedClass.id});
                 classData = result?.data?.classesById;
+                mergeClassDetailIntoCache(classData);
 
                 const slotSelect = document.getElementById('slotSelect');
                 slotSelect.innerHTML = '<option value="">-- Chọn buổi --</option>';
@@ -3190,6 +3847,96 @@
             return [5, 9].includes(getCurrentSessionNumber());
         }
 
+        // Map checkpoint session (5 -> checkpoint 1, 9 -> checkpoint 2) for kiemtra
+        function getCheckpointNumber() {
+            const sessionNum = getSessionNumberForTargets([5, 9]) || getCurrentSessionNumber();
+            return sessionNum === 5 ? 1 : sessionNum === 9 ? 2 : null;
+        }
+
+        // Fetch submission status from the kiemtra (Cloudflare) project for the
+        // current class + checkpoint, cache it by studentId, then re-render.
+        async function loadCheckpointSubmissionStatus() {
+            const classId = classData?.id;
+            const checkpointNum = getCheckpointNumber();
+            if (!classId || !checkpointNum) return;
+
+            const key = `${classId}:${checkpointNum}`;
+            if (checkpointStatusKey === key && checkpointStatusOriginal !== null) return; // already loaded
+
+            checkpointStatusKey = key;
+            checkpointSubmissionStatus = {};
+            checkpointStatusOriginal = null;
+            checkpointStatusMakeup = null;
+            checkpointBranchSelection = {};
+            checkpointStatusLoading = true;
+
+            try {
+                const url = `${KIEMTRA_BASE}/api/public/checkpoint-status?classId=${encodeURIComponent(classId)}&checkpoint=${checkpointNum}`;
+                const res = await fetch(url, { mode: 'cors' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+
+                checkpointStatusOriginal = data.original || null;
+                checkpointStatusMakeup = data.makeup || null;
+                (data.students || []).forEach(s => {
+                    checkpointSubmissionStatus[s.studentId] = s;
+                    // Default to the most recent submission across both branches.
+                    const origAt = s.original?.submittedAt || '';
+                    const makeupAt = s.makeup?.submittedAt || '';
+                    if (makeupAt && (!origAt || makeupAt > origAt)) {
+                        checkpointBranchSelection[s.studentId] = 'makeup';
+                    } else if (origAt) {
+                        checkpointBranchSelection[s.studentId] = 'original';
+                    }
+                });
+            } catch (err) {
+                console.warn('Không thể tải trạng thái nộp bài từ kiemtra:', err);
+                checkpointStatusOriginal = null;
+                checkpointStatusMakeup = null;
+            } finally {
+                checkpointStatusLoading = false;
+                // Only re-render if we're still on a checkpoint session for this class
+                if (isCheckpointSession() && classData?.id === classId) {
+                    saveCheckpointScoresToCache();
+                    renderStudents();
+                }
+            }
+        }
+
+        // Switch a student between their original and makeup ("Kiểm tra bù")
+        // submission. Students sometimes submit to the wrong exam, so the teacher
+        // can flip which branch is shown/graded per student.
+        function setCheckpointBranch(studentId, branch) {
+            checkpointBranchSelection[studentId] = branch;
+            saveCheckpointScoresToCache();
+            renderStudents();
+        }
+
+        // Accordion: toggle a checkpoint card open/closed WITHOUT re-rendering.
+        // We flip a CSS class (so every score/comment input stays in the DOM — submit
+        // + batch logic reads values via getElementById, text being typed is never
+        // lost) AND record the state in checkpointExpanded so it survives a re-render
+        // (AI generate / branch switch call renderStudents). studentId identifies the
+        // student; event may be undefined when called programmatically.
+        function toggleCheckpointCard(studentId, event) {
+            if (event) event.stopPropagation();
+            const scoreId = studentId.replace(/[^a-zA-Z0-9]/g, '_');
+            const card = document.getElementById(`cp-card-${scoreId}`);
+            if (!card) return;
+            const nowCollapsed = card.classList.toggle('collapsed');
+            if (nowCollapsed) delete checkpointExpanded[studentId];
+            else checkpointExpanded[studentId] = true;
+        }
+
+        // Force a card open (used before an action that needs the body visible,
+        // e.g. after generating an AI comment for a collapsed card).
+        function expandCheckpointCard(studentId) {
+            checkpointExpanded[studentId] = true;
+            const scoreId = studentId.replace(/[^a-zA-Z0-9]/g, '_');
+            const card = document.getElementById(`cp-card-${scoreId}`);
+            if (card) card.classList.remove('collapsed');
+        }
+
         // Load slot students
         function loadSlotStudents() {
             const slotIdx = document.getElementById('slotSelect').value;
@@ -3219,21 +3966,21 @@
             renderStudents();
             updateStats();
 
-            const presentStudents = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+            const presentStudents = students.filter(isPresentAttendance);
 
             if (isCheckpoint) {
                 document.getElementById('submitCheckpointScoresAllBtn').disabled = presentStudents.length === 0;
                 document.getElementById('submitCheckpointAllBtn').disabled = presentStudents.length === 0;
                 document.getElementById('autoCheckpointCommentBtn').disabled = presentStudents.length === 0;
+                // Reset cached status so a class/checkpoint switch reloads fresh data
+                checkpointStatusKey = null;
+                loadCheckpointSubmissionStatus();
             } else if (isFinal) {
                 // Enable demo submit for all present students (allows re-submit)
                 document.getElementById('submitDemoAllBtn').disabled = presentStudents.length === 0;
             } else {
                 // Check if any present student has existing comment
-                const hasAnyComment = presentStudents.some(s => {
-                    const content = s.commentByAreas?.find(a => a.type === 'CONTENT')?.content;
-                    return content && content.trim().length > 0;
-                });
+                const hasAnyComment = presentStudents.some(hasContentComment);
                 
                 document.getElementById('autoCommentBtn').disabled = presentStudents.length === 0;
                 document.getElementById('submitAllBtn').disabled = true;
@@ -3298,7 +4045,7 @@
 
             toRender.forEach((att, idx) => {
                 const initials = att.student.fullName.split(' ').slice(-2).map(n => n[0]).join('');
-                const isPresent = att.status === 'ATTENDED' || att.status === 'LATE_ARRIVED';
+                const isPresent = isPresentAttendance(att);
                 let statusText = '✕ Vắng';
                 let statusClass = 'badge-gray';
                 if (att.status === 'ATTENDED') { statusText = '✓ Có mặt'; statusClass = 'badge-success'; }
@@ -3315,14 +4062,8 @@
                     const hasDemoScore = !!demoArea;
                     const demoQuestions = demoArea?.demoQuestions || [];
 
-                    // Demo criteria config
-                    const demoConfig = [
-                        {id: '67074eb655bde44038504415', title: 'Tư duy máy tính, thuật toán', maxScore: 1.5},
-                        {id: '67074eb655bde44038504416', title: 'Tư duy sáng tạo', maxScore: 1},
-                        {id: '67074eb655bde44038504417', title: 'Kỹ năng giao tiếp, hợp tác', maxScore: 0.5},
-                        {id: '67074eb655bde44038504418', title: 'Giải quyết vấn đề', maxScore: 1},
-                        {id: '67074eb655bde44038504419', title: 'Kỹ năng sử dụng máy tính', maxScore: 1},
-                    ];
+                    // Demo criteria config comes from the selected class courseProcess.
+                    const demoConfig = getDemoConfig();
 
                     // Get existing scores or defaults
                     const studentScoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
@@ -3335,6 +4076,7 @@
                     });
 
                     const totalExisting = scores.reduce((s, q) => s + (parseFloat(q.score) || 0), 0);
+                    const totalMax = getDemoMaxTotal(demoConfig);
 
                     div.className = `student-card ${hasDemoScore ? 'has-comment' : 'no-comment'}`;
                     div.innerHTML = `
@@ -3363,7 +4105,7 @@
                                     <tbody>
                                         ${scores.map((q, qi) => `
                                             <tr>
-                                                <td class="demo-score-name">${q.title}</td>
+                                                <td class="demo-score-name">${escapeHtml(q.title)}</td>
                                                 <td style="text-align:center">
                                                     <input type="number" 
                                                         id="dscore-${studentScoreId}-${qi}" 
@@ -3374,7 +4116,7 @@
                                                         oninput="updateDemoTotal('${studentScoreId}')"
                                                     >
                                                 </td>
-                                                <td class="demo-score-max">/ ${q.maxScore}</td>
+                                                <td class="demo-score-max">/ ${formatScore(q.maxScore)}</td>
                                                 <td><div class="demo-score-bar"><div class="demo-score-bar-fill" id="dbar-${studentScoreId}-${qi}" style="width:${q.score ? (q.score/q.maxScore*100).toFixed(0) : 0}%"></div></div></td>
                                             </tr>
                                         `).join('')}
@@ -3382,7 +4124,7 @@
                                 </table>
                                 <div class="demo-total-row">
                                     <span class="demo-total-label">Tổng điểm</span>
-                                    <span class="demo-total-score" id="dtotal-${studentScoreId}">${totalExisting ? totalExisting.toFixed(1) : '?'} / 5</span>
+                                    <span class="demo-total-score" id="dtotal-${studentScoreId}">${totalExisting ? formatScore(totalExisting) : '?'} / ${formatScore(totalMax)}</span>
                                 </div>
                             </div>
                             <div style="margin-top:10px;margin-bottom:-4px">
@@ -3429,34 +4171,125 @@
                     const existingAverage = hasExistingCompleteScores ? ((parseFloat(existingTheory) + parseFloat(existingPractice)) / 2).toFixed(1) : '?';
                     const existingRank = hasExistingCompleteScores ? getCheckpointRank(existingTheory, existingPractice) : '';
 
-                    div.className = `student-card ${hasCheckpoint ? 'has-comment' : 'no-comment'}`;
+                    // Submission status from kiemtra (Cloudflare). Each student may have
+                    // a submission on the original checkpoint and/or the makeup ("Kiểm tra bù").
+                    const subStatus = checkpointSubmissionStatus[att.student.id] || null;
+                    const hasKiemtraExam = checkpointStatusOriginal !== null || checkpointStatusMakeup !== null;
+                    const origBranch = subStatus?.original || null;
+                    const makeupBranch = subStatus?.makeup || null;
+                    const hasBothBranches = !!origBranch && !!makeupBranch;
+                    // Selected branch: per-student toggle, defaulting to the most recent submission.
+                    const selectedBranchKey = checkpointBranchSelection[att.student.id]
+                        || (makeupBranch ? 'makeup' : origBranch ? 'original' : null);
+                    const activeBranch = selectedBranchKey === 'makeup' ? makeupBranch
+                        : selectedBranchKey === 'original' ? origBranch : null;
+                    const submittedAtRaw = activeBranch?.submittedAt || null;
+                    const submittedLabel = submittedAtRaw ? new Date(submittedAtRaw).toLocaleString('vi-VN') : '';
+                    const essayFiles = Array.isArray(activeBranch?.essayFiles) ? activeBranch.essayFiles : [];
+
+                    let submissionBadge = '';
+                    if (checkpointStatusLoading && !hasKiemtraExam) {
+                        submissionBadge = `<span class="badge" style="background:#E5E7EB;color:#6B7280;">⏳ Đang tải nộp bài...</span>`;
+                    } else if (hasKiemtraExam) {
+                        if (activeBranch) {
+                            const branchLabel = selectedBranchKey === 'makeup' ? ' (Bù)' : '';
+                            submissionBadge = `<span class="badge" style="background:#D1FAE5;color:#047857;border:1px solid #A7F3D0;">📤 Đã nộp${branchLabel}${submittedLabel ? ' • ' + escapeHtml(submittedLabel) : ''}</span>`;
+                        } else {
+                            submissionBadge = `<span class="badge" style="background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;">○ Chưa nộp bài</span>`;
+                        }
+                    }
+
+                    // Per-student toggle between the original checkpoint and the makeup exam,
+                    // shown only when the student submitted to both.
+                    let branchToggle = '';
+                    if (hasBothBranches) {
+                        const origActive = selectedBranchKey === 'original';
+                        const mkActive = selectedBranchKey === 'makeup';
+                        const baseStyle = 'cursor:pointer;text-decoration:none;';
+                        const onStyle = 'background:#1D4ED8;color:white;border:1px solid #1D4ED8;';
+                        const offStyle = 'background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;';
+                        branchToggle = `<span style="display:inline-flex;gap:4px;margin-left:4px;">`
+                            + `<span class="badge" style="${baseStyle}${origActive ? onStyle : offStyle}" onclick="event.stopPropagation(); setCheckpointBranch('${att.student.id}','original')">Gốc</span>`
+                            + `<span class="badge" style="${baseStyle}${mkActive ? onStyle : offStyle}" onclick="event.stopPropagation(); setCheckpointBranch('${att.student.id}','makeup')">Bù</span>`
+                            + `</span>`;
+                    }
+
+                    // Use the active branch's own exam id + practiceType (submissions may live
+                    // on a re-created exam or the makeup exam, not the newest original).
+                    const scratchViewUrl = (activeBranch && activeBranch.practiceType === 'SCRATCH' && activeBranch.hasScratchFinal && activeBranch.examId)
+                        ? `${KIEMTRA_BASE}/view/scratch/${encodeURIComponent(activeBranch.examId)}/${encodeURIComponent(att.student.id)}`
+                        : '';
+                    let submissionDetail = '';
+                    if (activeBranch) {
+                        const links = [];
+                        if (scratchViewUrl) {
+                            links.push(`<a href="${scratchViewUrl}" target="_blank" rel="noreferrer" class="badge" style="background:#DBEAFE;color:#1D4ED8;border:1px solid #BFDBFE;text-decoration:none;">🐱 Xem Scratch</a>`);
+                        }
+                        essayFiles.forEach(f => {
+                            links.push(`<a href="${f.url}" target="_blank" rel="noreferrer" class="badge" style="background:#EDE9FE;color:#6D28D9;border:1px solid #DDD6FE;text-decoration:none;">📎 ${escapeHtml(f.fileName || 'File')}</a>`);
+                        });
+                        if (links.length) {
+                            submissionDetail = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">${links.join('')}</div>`;
+                        }
+                    }
+
+                    // Accordion open/closed state persists across re-renders.
+                    // Default: expand ungraded students, collapse already-graded ones.
+                    const expandedState = checkpointExpanded[att.student.id];
+                    const isExpanded = expandedState === undefined ? !hasCheckpoint : expandedState;
+                    const collapsedClass = isExpanded ? '' : 'collapsed';
+
+                    // Compact score readout shown in the header (kept live by updateCheckpointTotal).
+                    const headScore = hasExistingCompleteScores
+                        ? `<span class="cp-head-score"><b id="cp-total-${studentScoreId}">${existingAverage}</b>/5</span><span class="checkpoint-rank ${existingRank}" id="cp-rank-${studentScoreId}">${existingRank}</span>`
+                        : `<span class="cp-head-score cp-head-score-empty"><b id="cp-total-${studentScoreId}">${existingAverage}</b>/5</span><span class="checkpoint-rank ${existingRank}" id="cp-rank-${studentScoreId}">${existingRank}</span>`;
+
+                    div.className = `student-card cp-accordion ${collapsedClass} ${hasCheckpoint ? 'has-comment' : 'no-comment'}`;
+                    div.id = `cp-card-${studentScoreId}`;
+
+                    if (!isPresent) {
+                        div.innerHTML = `
+                            <div class="student-header">
+                                <div class="student-info">
+                                    <div class="student-avatar">${initials}</div>
+                                    <div>
+                                        <div class="student-name">${escapeHtml(att.student.fullName)}</div>
+                                        <div class="student-meta"><span class="badge ${statusClass}">${statusText}</span></div>
+                                    </div>
+                                </div>
+                                <span class="badge badge-gray">Vắng — không chấm</span>
+                            </div>`;
+                        list.appendChild(div);
+                        return;
+                    }
+
                     div.innerHTML = `
-                        <div class="student-header">
-                            <div class="student-info">
+                        <div class="cp-head" onclick="toggleCheckpointCard('${att.student.id}', event)" role="button" tabindex="0"
+                             aria-expanded="${isExpanded}" aria-controls="cp-body-${studentScoreId}"
+                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCheckpointCard('${att.student.id}');}">
+                            <div class="cp-head-left">
                                 <div class="student-avatar">${initials}</div>
-                                <div>
+                                <div class="cp-head-info">
                                     <div class="student-name">${escapeHtml(att.student.fullName)}</div>
                                     <div class="student-meta">
                                         <span class="badge ${statusClass}">${statusText}</span>
-                                        ${hasRateScore ? `<span class="badge" style="background:#8b5cf6;color:white;">⭐ Đã có điểm NL</span>` : ''}
+                                        ${hasRateScore ? `<span class="badge badge-nl" title="Đã có điểm năng lực">⭐ NL</span>` : ''}
+                                        ${submissionBadge}
+                                        ${branchToggle}
                                     </div>
                                 </div>
                             </div>
-                            <span class="badge ${hasCheckpoint ? 'badge-checkpoint-done' : 'badge-checkpoint'}">
-                                ${hasCheckpoint ? '✓ Đã chấm' : '○ Chưa chấm'}
-                            </span>
+                            <div class="cp-head-right">
+                                ${headScore}
+                                <span class="badge ${hasCheckpoint ? 'badge-checkpoint-done' : 'badge-checkpoint'}">${hasCheckpoint ? '✓ Đã chấm' : '○ Chưa'}</span>
+                                <svg class="cp-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </div>
                         </div>
-                        ${isPresent ? `
+                        <div class="cp-body" id="cp-body-${studentScoreId}">
+                            ${submissionDetail}
                             <div class="checkpoint-score-card ${hasCheckpoint ? 'submitted' : ''}">
-                                <div class="checkpoint-score-title">
-                                    <span class="checkpoint-score-title-main">
-                                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z"/>
-                                        </svg>
-                                        ${hasCheckpoint ? 'Điểm checkpoint đã có — có thể sửa' : 'Chấm điểm checkpoint'}
-                                    </span>
-                                    <span class="checkpoint-score-hint">Để trống = auto 4–5</span>
-                                </div>
                                 <div class="checkpoint-score-row">
                                     <div class="checkpoint-score-input-group">
                                         <label>Điểm lý thuyết <span class="checkpoint-auto-chip">0–5</span></label>
@@ -3481,61 +4314,58 @@
                                     <div class="checkpoint-total-row" aria-live="polite">
                                         <span class="checkpoint-total-label">Trung bình</span>
                                         <span>
-                                            <span class="checkpoint-total-score" id="cp-total-${studentScoreId}">
-                                                ${existingAverage}
-                                            </span>
+                                            <span class="checkpoint-total-score" id="cp-bodytotal-${studentScoreId}">${existingAverage}</span>
                                             / 5
-                                            <span class="checkpoint-rank ${existingRank}" id="cp-rank-${studentScoreId}">${existingRank}</span>
+                                            <span class="checkpoint-rank ${existingRank}" id="cp-bodyrank-${studentScoreId}">${existingRank}</span>
                                         </span>
                                     </div>
                                 </div>
+                                <p class="checkpoint-inline-hint">Để trống = tự động random 4–5 điểm</p>
                             </div>
-                            <div class="checkpoint-comment-grid">
-                                <div class="checkpoint-comment-section">
+                            ${existingContent ? `
+                                <details class="cp-existing-details">
+                                    <summary>Xem nhận xét hiện tại</summary>
+                                    <div class="checkpoint-existing-comment">${existingContent}</div>
+                                </details>
+                            ` : ''}
+                            <div class="cp-comment-stack">
+                                <div class="checkpoint-comment-section cp-note-compact">
                                     <label class="checkpoint-label">
                                         <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                         </svg>
                                         Ghi chú cho AI
                                     </label>
-                                    <textarea id="cp-desc-${studentScoreId}" placeholder="VD: Hoàn thành sản phẩm, tư duy logic tốt; cần luyện thuyết trình hoặc debug độc lập hơn...">${getLocalNote(att.student.id)}</textarea>
+                                    <textarea id="cp-desc-${studentScoreId}" rows="2" placeholder="VD: Hoàn thành sản phẩm, tư duy logic tốt; cần luyện thuyết trình...">${getLocalNote(att.student.id)}</textarea>
                                 </div>
-                                <div>
-                                    ${generatedComments[att.student.id] ? `
-                                        <div class="checkpoint-ai-comment">
-                                            <div class="comment-box-label">
-                                                <span class="checkpoint-ai-title">
-                                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
-                                                    </svg>
-                                                    AI nhận xét checkpoint
-                                                </span>
-                                                <button class="btn-icon" onclick="deleteComment('${att.student.id}')" title="Xóa nhận xét">
-                                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                            <textarea class="comment-edit" id="comment-${att.student.id}" oninput="updateComment('${att.student.id}', this.value)">${generatedComments[att.student.id].replace(/<[^>]*>/g, '')}</textarea>
-                                        </div>
-                                    ` : `
-                                        ${existingContent ? `
-                                            <div class="comment-box checkpoint-existing-comment" style="margin-top:0">
-                                                <div class="comment-box-label">Nhận xét hiện tại</div>
-                                                ${existingContent}
-                                            </div>
-                                        ` : ''}
-                                        <div class="checkpoint-comment-section" style="margin-top:${existingContent ? '8px' : '0'}">
-                                            <label class="checkpoint-label">
+                                ${generatedComments[att.student.id] ? `
+                                    <div class="checkpoint-ai-comment">
+                                        <div class="comment-box-label">
+                                            <span class="checkpoint-ai-title">
                                                 <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
                                                 </svg>
-                                                Nhận xét gửi phụ huynh
-                                            </label>
-                                            <textarea class="comment-edit" id="comment-${att.student.id}" placeholder="Nhập nhận xét thủ công, hoặc bấm AI nhận xét để tạo tự động..." oninput="updateComment('${att.student.id}', this.value)">${manualComments[att.student.id] || ''}</textarea>
+                                                Nhận xét gửi phụ huynh (AI)
+                                            </span>
+                                            <button class="btn-icon" onclick="deleteComment('${att.student.id}')" title="Xóa nhận xét">
+                                                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
+                                            </button>
                                         </div>
-                                    `}
-                                </div>
+                                        <textarea class="comment-edit" id="comment-${att.student.id}" oninput="updateComment('${att.student.id}', this.value)">${generatedComments[att.student.id].replace(/<[^>]*>/g, '')}</textarea>
+                                    </div>
+                                ` : `
+                                    <div class="checkpoint-comment-section">
+                                        <label class="checkpoint-label">
+                                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                                            </svg>
+                                            Nhận xét gửi phụ huynh
+                                        </label>
+                                        <textarea class="comment-edit" id="comment-${att.student.id}" placeholder="Nhập nhận xét thủ công, hoặc bấm AI nhận xét để tạo tự động..." oninput="updateComment('${att.student.id}', this.value)">${manualComments[att.student.id] || ''}</textarea>
+                                    </div>
+                                `}
                             </div>
                             <div class="student-actions checkpoint-actions">
                                 <button class="btn btn-sm btn-primary" onclick="generateCheckpointComment('${att.student.id}', '${escapeAttr(att.student.fullName)}', '${studentScoreId}')" id="cp-gen-btn-${studentScoreId}">
@@ -3554,21 +4384,17 @@
                                     <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                                     </svg>
-                                    ${hasCheckpoint ? 'Re-submit checkpoint' : 'Submit checkpoint'}
+                                    ${hasCheckpoint ? 'Re-submit' : 'Submit checkpoint'}
                                 </button>
                             </div>
-                        ` : `
-                            <div class="checkpoint-score-card" style="opacity:0.5">
-                                <div class="checkpoint-score-title">Học sinh vắng — không chấm Checkpoint</div>
-                            </div>
-                        `}
+                        </div>
                     `;
                     list.appendChild(div);
                     return;
                 }
 
                 // ===== DEFAULT UI (regular sessions) =====
-                const hasComment = att.commentByAreas?.some(a => a.type === 'CONTENT' && a.content);
+                const hasComment = hasContentComment(att);
                 const existingComment = att.commentByAreas?.find(a => a.type === 'CONTENT')?.content || '';
                 const generatedComment = generatedComments[att.student.id] || '';
 
@@ -3776,7 +4602,7 @@
             }
 
             // Include both ATTENDED and LATE_ARRIVED students (not ABSENT)
-            const presentStudents = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+            const presentStudents = students.filter(isPresentAttendance);
             
             // Batch size for parallel requests
             const BATCH_SIZE = 3;
@@ -3848,7 +4674,7 @@
 
         // Fill random scores for a student
         function randomDemoScores(scoreId) {
-            DEMO_CONFIG.forEach((cfg, i) => {
+            getDemoConfig().forEach((cfg, i) => {
                 const input = document.getElementById(`dscore-${scoreId}-${i}`);
                 if (input) input.value = randomScore75(cfg.maxScore);
             });
@@ -3858,7 +4684,8 @@
         // Update total score display and progress bars
         function updateDemoTotal(scoreId) {
             let total = 0;
-            DEMO_CONFIG.forEach((cfg, i) => {
+            const demoConfig = getDemoConfig();
+            demoConfig.forEach((cfg, i) => {
                 const input = document.getElementById(`dscore-${scoreId}-${i}`);
                 const val = parseFloat(input?.value) || 0;
                 total += val;
@@ -3867,12 +4694,12 @@
                 if (bar) bar.style.width = `${Math.min((val / cfg.maxScore * 100), 100).toFixed(0)}%`;
             });
             const totalEl = document.getElementById(`dtotal-${scoreId}`);
-            if (totalEl) totalEl.textContent = `${total.toFixed(1)} / 5`;
+            if (totalEl) totalEl.textContent = `${formatScore(total)} / ${formatScore(getDemoMaxTotal(demoConfig))}`;
         }
 
         // Read scores from input fields for a student
         function getDemoScores(scoreId) {
-            return DEMO_CONFIG.map((cfg, i) => {
+            return getDemoConfig().map((cfg, i) => {
                 const input = document.getElementById(`dscore-${scoreId}-${i}`);
                 return {
                     id: cfg.courseProcessDemoDetailId,
@@ -3951,7 +4778,7 @@
             const progressFill = document.getElementById('progressFill');
             const progressText = document.getElementById('progressText');
 
-            const toSubmit = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+            const toSubmit = students.filter(isPresentAttendance);
             if (toSubmit.length === 0) {
                 showToast('Không có học sinh có mặt!', 'error');
                 return;
@@ -4036,7 +4863,7 @@
         function saveCheckpointScoresToCache() {
             if (!students || !isCheckpointSession()) return;
             students.forEach(att => {
-                if (att.status !== 'ATTENDED' && att.status !== 'LATE_ARRIVED') return;
+                if (!isPresentAttendance(att)) return;
                 const scoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
                 const theoryEl = document.getElementById(`cp-theory-${scoreId}`);
                 const practiceEl = document.getElementById(`cp-practice-${scoreId}`);
@@ -4061,14 +4888,19 @@
             const total = hasCompleteScores ? ((theory + practice) / 2).toFixed(1) : '?';
             const rank = hasCompleteScores ? getCheckpointRank(theory, practice) : '';
 
-            const totalEl = document.getElementById(`cp-total-${scoreId}`);
-            if (totalEl) totalEl.textContent = total;
-
-            const rankEl = document.getElementById(`cp-rank-${scoreId}`);
-            if (rankEl) {
-                rankEl.textContent = rank;
-                rankEl.className = `checkpoint-rank ${rank}`;
-            }
+            // Update both the header readout (cp-total/cp-rank) and the body
+            // readout (cp-bodytotal/cp-bodyrank) so they stay in sync live.
+            [`cp-total-${scoreId}`, `cp-bodytotal-${scoreId}`].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = total;
+            });
+            [`cp-rank-${scoreId}`, `cp-bodyrank-${scoreId}`].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.textContent = rank;
+                    el.className = `checkpoint-rank ${rank}`;
+                }
+            });
 
             // Save to cache when user changes score
             checkpointScoresCache[scoreId] = {
@@ -4140,7 +4972,7 @@
             btn.disabled = true;
             progressContainer.classList.add('show');
 
-            const presentStudents = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+            const presentStudents = students.filter(isPresentAttendance);
             const BATCH_SIZE = 3;
             let completed = 0;
 
@@ -4357,7 +5189,7 @@
             const progressContainer = document.getElementById('progressContainer');
             const progressFill = document.getElementById('progressFill');
             const progressText = document.getElementById('progressText');
-            const toSubmit = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+            const toSubmit = students.filter(isPresentAttendance);
 
             if (toSubmit.length === 0) {
                 showToast('Không có học sinh có mặt!', 'error');
@@ -4457,7 +5289,7 @@
             const progressFill = document.getElementById('progressFill');
             const progressText = document.getElementById('progressText');
 
-            const toSubmit = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+            const toSubmit = students.filter(isPresentAttendance);
             if (toSubmit.length === 0) {
                 showToast('Không có học sinh có mặt!', 'error');
                 return;
@@ -4814,7 +5646,7 @@ MindX Technology School`;
             
             // Collect all comments from present students (both AI generated and existing from server)
             const allComments = [];
-            const presentStudents = students.filter(s => s.status === 'ATTENDED' || s.status === 'LATE_ARRIVED');
+            const presentStudents = students.filter(isPresentAttendance);
             
             presentStudents.forEach(student => {
                 const studentId = student.student.id;

@@ -1,8 +1,7 @@
-export const GET_CLASSES_QUERY = `query GetClasses($pageIndex: Int!, $itemsPerPage: Int!, $statusIn: [String]) {
+export const GET_CLASSES_QUERY = `query GetClasses($pageIndex: Int!, $itemsPerPage: Int!) {
   classes(payload: {
     pageIndex: $pageIndex,
     itemsPerPage: $itemsPerPage,
-    status_in: $statusIn,
     orderBy: "createdAt_desc"
   }) {
     data {
@@ -24,6 +23,32 @@ export const GET_CLASS_DETAIL_QUERY = `query GetClassById($id: ID!) {
     id
     name
     courseProcessId
+    course { id name shortName }
+    courseProcess {
+      id
+      name
+      finalSession {
+        finalEvaluations {
+          id
+          title
+          commentAreas {
+            id
+            name
+            type
+            rates { value commentSamples }
+          }
+        }
+        demoScore {
+          id
+          commentAreas {
+            id
+            name
+            type
+            demo { id title maxScore }
+          }
+        }
+      }
+    }
     classSites { _id name }
     slots {
       _id

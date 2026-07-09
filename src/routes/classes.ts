@@ -7,14 +7,19 @@ import { requireSession, readJsonBody, saveUpdatedSession } from "./helpers";
 export const classesRoutes = new Hono<{ Bindings: Env }>();
 
 function orderClasses(classes: any[]): any[] {
-  const twoMonthsAgo = Date.now() - 60 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const twoWeeksAgo = now - 14 * 24 * 60 * 60 * 1000;
   const running: any[] = [];
   const recentlyEnded: any[] = [];
   for (const cls of classes) {
-    if (cls.status === "RUNNING") running.push(cls);
-    else if (cls.status === "FINISHED" && cls.endDate) {
-      const end = Date.parse(cls.endDate);
-      if (Number.isFinite(end) && end >= twoMonthsAgo) recentlyEnded.push({ ...cls, recentlyEnded: true });
+    const end = cls.endDate ? Date.parse(cls.endDate) : NaN;
+    const hasValidEnd = Number.isFinite(end);
+    const endedByDate = hasValidEnd && end < now;
+
+    if (cls.status === "RUNNING" && !endedByDate) {
+      running.push(cls);
+    } else if ((cls.status === "FINISHED" || endedByDate) && hasValidEnd && end >= twoWeeksAgo) {
+      recentlyEnded.push({ ...cls, recentlyEnded: true });
     }
   }
   recentlyEnded.sort((a, b) => String(b.endDate || "").localeCompare(String(a.endDate || "")));
@@ -26,8 +31,7 @@ classesRoutes.get("/classes", async (c) => {
   if (session instanceof Response) return session;
   const result = await new LmsClient(c.env).callApi(session, "GetClasses", GET_CLASSES_QUERY, {
     pageIndex: 0,
-    itemsPerPage: 50,
-    statusIn: ["RUNNING", "FINISHED"],
+    itemsPerPage: 200,
   });
   await saveUpdatedSession(c.env, session, result.session);
   if (result.body.error) return c.json({ error: result.body.error }, { status: 401 });

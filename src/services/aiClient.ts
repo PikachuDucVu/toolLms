@@ -199,6 +199,8 @@ export async function gradeHomeworkWithAi(
     studentName: string;
     attachments: string[];
     imageUrls: string[];
+    textFiles?: Array<{ name: string; content: string }>;
+    otherFiles?: string[];
     modelId?: string;
     customModelId?: string;
     apiKey?: string;
@@ -207,13 +209,28 @@ export async function gradeHomeworkWithAi(
   const model = resolveModelId(input.modelId, input.customModelId, String(config.ai_model || DEFAULT_AI_MODEL));
   const provider = getModelProvider(input.modelId || model);
   const fileList = input.attachments.map((item) => item.split("/").at(-1) || item).join(", ");
+  const textFiles = input.textFiles ?? [];
+  const otherFiles = input.otherFiles ?? [];
+
+  const codeSection = textFiles.length
+    ? `\n\nNỘI DUNG CÁC TỆP CODE/VĂN BẢN HỌC SINH NỘP:\n${textFiles
+        .map((file) => `===== ${file.name} =====\n${file.content}`)
+        .join("\n\n")}`
+    : "";
+  const otherSection = otherFiles.length
+    ? `\n\nCÁC TỆP KHÔNG ĐỌC ĐƯỢC NỘI DUNG (chỉ có tên, ví dụ file nhị phân/thiết kế): ${otherFiles.join(", ")}`
+    : "";
+  const evidenceHint = input.imageUrls.length
+    ? "hình ảnh đính kèm và nội dung tệp code bên dưới (nếu có)"
+    : "nội dung các tệp code/văn bản bên dưới";
+
   const promptText = `Bạn là giáo viên chấm bài tập lập trình cho học sinh tại MindX Technology School.
 
 Bài học: ${input.lessonName}
 Học sinh: ${input.studentName}
 Tệp nộp: ${fileList}
 
-Hãy đánh giá bài làm của học sinh dựa trên hình ảnh đính kèm.
+Hãy đánh giá bài làm của học sinh dựa trên ${evidenceHint}.
 Tiêu chí chấm:
 - Hoàn thành yêu cầu bài tập (có làm đúng theo đề bài không)
 - Chất lượng code/project (gọn gàng, logic)
@@ -223,7 +240,7 @@ Cho điểm từ 0 đến 100 và nhận xét ngắn gọn bằng tiếng Việt
 
 Trả về kết quả CHÍNH XÁC theo định dạng JSON:
 {"score": <điểm_số>, "note": "<nhận_xét>"}
-Chỉ trả về JSON, không thêm gì khác.`;
+Chỉ trả về JSON, không thêm gì khác.${codeSection}${otherSection}`;
 
   const content = input.imageUrls.length
     ? [{ type: "text", text: promptText }, ...input.imageUrls.map((url) => ({ type: "image_url", image_url: { url } }))]
