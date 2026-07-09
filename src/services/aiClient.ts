@@ -81,11 +81,35 @@ export async function generateCommentWithAi(
     commentLength?: string;
     customPrompt?: string;
     aiApiKey?: string;
+    homeworkStatus?: {
+      shouldMention?: boolean;
+      previousSession?: number;
+      previous_session?: number;
+      submitted?: boolean;
+      marked?: boolean;
+      score?: string | number | null;
+      status?: string;
+      lessonName?: string;
+      lesson_name?: string;
+    };
   },
 ): Promise<string> {
   const model = resolveModelId(input.modelId, input.customModelId ?? String(config.custom_model_id || ""), String(config.ai_model || DEFAULT_AI_MODEL));
   const shortName = input.studentName ? input.studentName.split(/\s+/).at(-1) || "em" : "em";
   const lengthGuide = input.commentLength === "short" ? "2-3 câu ngắn gọn" : input.commentLength === "long" ? "4-5 câu chi tiết" : "3-4 câu";
+  const homeworkStatus = input.homeworkStatus;
+  const previousSession = homeworkStatus?.previousSession ?? homeworkStatus?.previous_session;
+  const previousSessionLabel = previousSession ? `buổi ${previousSession}` : "buổi trước";
+  let homeworkStatusText = "";
+  if (homeworkStatus && homeworkStatus.shouldMention !== false) {
+    if (homeworkStatus.submitted === true) {
+      const markedText = homeworkStatus.marked ? "Bài đã được chấm/ghi nhận trên LMS." : "Bài đã được ghi nhận đã nộp trên LMS.";
+      const scoreText = homeworkStatus.score != null && String(homeworkStatus.score).trim() !== "" ? ` Điểm hiện có: ${homeworkStatus.score}.` : "";
+      homeworkStatusText = `Học sinh ĐÃ NỘP BTVN ${previousSessionLabel}. ${markedText}${scoreText}`;
+    } else if (homeworkStatus.submitted === false) {
+      homeworkStatusText = `Chưa thấy học sinh nộp BTVN ${previousSessionLabel} trên LMS.`;
+    }
+  }
 
   const prompt = `Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét ngắn gọn cho học sinh gửi phụ huynh.
 
@@ -93,53 +117,64 @@ HỌC SINH: ${input.studentName} (gọi: ${shortName})
 NỘI DUNG BUỔI HỌC: ${input.sessionSummary || "Thực hành lập trình"}
 NHẬN XÉT BUỔI TRƯỚC: ${input.pastComments || "Buổi đầu tiên"}
 GHI CHÚ BUỔI NÀY: ${input.notes || "Học bình thường, không có gì đặc biệt"}
-
+${homeworkStatusText ? `TÌNH TRẠNG BTVN BUỔI TRƯỚC: ${homeworkStatusText}\n` : ""}
 HƯỚNG DẪN VIẾT:
-1. Viết ${lengthGuide}, mỗi câu nối tiếp tự nhiên
+1. Viết ${lengthGuide}, mỗi câu nối tiếp tự nhiên, văn phong giống giáo viên nhắn phụ huynh trong nhóm Zalo.
 2. CẤU TRÚC BẮT BUỘC theo thứ tự:
-   - Câu 1: Đi học đúng giờ/muộn + tuân thủ nội quy (nếu có)
-   - Câu 2-3: Tập trung nghe giảng + thao tác lập trình (nhanh/chậm/có vướng mắc)
-   - Câu cuối: BTVN (đầy đủ/chưa làm) + động viên hoặc nhắc nhở
+   - Câu 1: Học sinh đi học đúng giờ/muộn + mức độ tuân thủ nội quy lớp học.
+   - Câu 2-3: Nhận xét chi tiết thái độ học trong buổi học: mức độ tập trung, hiểu bài, nắm nội dung được học, thao tác thực hành/lập trình nhanh hay chậm, chính xác hay còn vướng mắc, theo kịp tiến độ lớp hay chưa.
+   - Câu cuối: Động viên nếu học tốt; hoặc nhắc phụ huynh hỗ trợ/nhắc nhở nếu học sinh còn vấn đề. Chỉ nhắc BTVN/ôn lại bài khi ghi chú cho thấy học sinh cần ôn thêm, chưa hoàn thành bài hoặc cần phụ huynh nhắc thêm. KHÔNG bắt buộc nhắc BTVN ở mọi nhận xét vì tin nhắn Zalo đã có mục BTVN riêng.
 
-3. CÁCH DIỄN ĐẠT:
-   - Dùng "em" hoặc "${shortName}" để gọi học sinh
-   - Dùng "con" khi nói về học sinh với phụ huynh
-   - Nối câu bằng: "Trong lớp...", "Quá trình học...", "Tuy nhiên...", "Cần chú ý..."
-   - Kết thúc: "Cố gắng tiếp tục phát huy!" hoặc "Cần cố gắng hơn"
+3. KHÔNG LẶP CHI TIẾT NỘI DUNG BUỔI HỌC TRONG NHẬN XÉT CÁ NHÂN:
+   - "NỘI DUNG BUỔI HỌC" chỉ dùng để hiểu bối cảnh, KHÔNG đưa nguyên văn vào nhận xét từng học sinh.
+   - Tuyệt đối KHÔNG viết kiểu: "Trong buổi học về ...", "Trong buổi học về xây dựng ...", "với 2 thể loại game ...", hoặc nhắc lại tên bài/chủ đề cụ thể.
+   - Thay bằng các câu chung như:
+     + "Trong buổi học, con luôn tập trung tốt, hiểu và nắm rõ các nội dung được học, con thực hành nhanh chóng và chính xác, không gặp vướng mắc gì."
+     + "Trong buổi học, con tập trung theo dõi bài, nắm được nội dung chính và thao tác lập trình theo hướng dẫn."
+     + "Trong buổi học, con theo kịp tiến độ chung của lớp, thực hành ở mức ổn và cần ôn lại thêm để nắm chắc kiến thức hơn."
 
-4. NẾU CÓ VẤN ĐỀ (từ ghi chú):
-   - Nói chuyện riêng → "đôi lúc em còn nói chuyện riêng trong giờ, cần chú ý khắc phục"
-   - Chơi game → "thầy hay phải nhắc nhở em tập trung, hạn chế làm việc riêng"
-   - Trầm/ít tương tác → "em hơi trầm, cần chú ý tương tác với lớp nhiều hơn"
-   - Code chậm → "tốc độ code còn chậm, cần luyện tập thêm"
-   - Thiếu BTVN → "em chưa hoàn thành BTVN, nhờ phụ huynh nhắc nhở con"
+4. CÁCH DIỄN ĐẠT:
+   - Có thể mở đầu bằng tên ngắn "${shortName}" hoặc "em".
+   - Dùng "con" khi nói về học sinh với phụ huynh.
+   - Ưu tiên các cụm tự nhiên: "đi học đúng giờ và tuân thủ tốt nội quy lớp học", "nhìn chung tuân thủ nội quy lớp học", "giữ mức độ tập trung ổn", "nắm được nội dung chính", "thao tác lập trình theo hướng dẫn", "thực hành nhanh chóng và chính xác", "theo kịp tiến độ bài học", "hoàn thành nội dung bài học theo tiến độ chung của lớp", "không có vấn đề đặc biệt", "phụ huynh giúp em nhắc nhở con".
+   - Nối câu bằng: "Trong buổi học...", "Tuy nhiên...", "Về nhà...", "Phụ huynh giúp em...", "Cần chú ý...".
+   - Tránh giọng quá máy móc, không viết markdown, không bullet list, không tiêu đề.
 
-5. BUỔI HỌC LÀM SẢN PHẨM CUỐI KHÓA (SPCK) - Từ buổi 9-10 trở đi:
+5. NẾU CÓ VẤN ĐỀ (từ ghi chú):
+   - Nói chuyện riêng/mất tập trung → "Tuy nhiên, đôi lúc con còn nói chuyện riêng và mất tập trung nên thầy cần nhắc nhở thêm trong giờ học."
+   - Mất trật tự/nói leo/làm việc riêng → "con chưa giữ được sự tập trung ổn định, thường xuyên mất trật tự, nói leo và làm việc riêng nên thầy phải nhắc nhở khá nhiều."
+   - Chơi game/làm việc riêng → "thầy phải nhắc nhở con tập trung hơn và hạn chế làm việc riêng trong giờ học."
+   - Trầm/ít tương tác → "con hơi trầm, cần chủ động tương tác với thầy và các bạn nhiều hơn."
+   - Code chậm/thực hành chậm → "tốc độ thực hành còn chậm, con cần luyện tập thêm để thao tác tự tin hơn."
+   - Thiếu BTVN → "con chưa hoàn thành BTVN, nhờ phụ huynh nhắc nhở con hoàn thiện bài đầy đủ hơn."
+
+6. TÌNH TRẠNG BTVN BUỔI TRƯỚC:
+   - Chỉ nhận xét BTVN khi prompt có dòng "TÌNH TRẠNG BTVN BUỔI TRƯỚC".
+   - Nếu học sinh ĐÃ NỘP BTVN: có thể khen nhẹ hoặc ghi nhận ngắn gọn, không cần nhắc quá dài.
+   - Nếu "Chưa thấy học sinh nộp BTVN": cần nhắc rõ phụ huynh hỗ trợ nhắc con bổ sung/hoàn thiện bài đầy đủ hơn.
+   - Nếu không có dòng tình trạng BTVN thì KHÔNG tự bịa và KHÔNG đề cập BTVN.
+
+7. BUỔI HỌC LÀM SẢN PHẨM CUỐI KHÓA (SPCK) - Từ buổi 9-10 trở đi:
    Nếu nội dung buổi học có liên quan đến "sản phẩm cuối khóa", "SPCK", "thiết kế app", "tích hợp giao diện":
-   - Thay phần "thao tác lập trình" bằng nhận xét về TIẾN ĐỘ SẢN PHẨM
+   - Vẫn KHÔNG nhắc lại chi tiết tên bài/chủ đề từ NỘI DUNG BUỔI HỌC.
+   - Có thể nhận xét chung về tiến độ sản phẩm nếu ghi chú có thông tin cụ thể.
    - Các mức tiến độ:
-     + Tốt: "nghiêm túc thực hiện làm SPCK, đạt kết quả đúng tiến độ đề ra"
-     + Khá: "hoàn thiện khá tốt phần thiết kế giao diện"
-     + Chậm: "tiến độ sản phẩm còn chậm, cần đẩy nhanh tiến độ"
-   - Mô tả cụ thể tiến độ (nếu có trong ghi chú):
-     + "em hoàn thành tốt các khâu thiết kế app"
-     + "đang áp dụng các giao diện vào phần code Python"
-     + "đã lập trình được đăng ký/đăng nhập, tích hợp giao diện màn hình Home"
-     + "chưa tích hợp được vào code"
-     + "các tính năng app chưa hoạt động"
-   - Kết thúc: "Cố gắng tiếp tục hoàn thiện thêm ở nhà" hoặc "Chú ý hoàn thiện tại nhà, tích hợp giao diện vào Python"
-   - KHÔNG đề cập BTVN trong các buổi làm SPCK (thay bằng "tiếp tục hoàn thiện sản phẩm ở nhà")
-${input.customPrompt ? `6. YÊU CẦU THÊM: ${input.customPrompt}` : ""}
+     + Tốt: "con nghiêm túc thực hiện làm SPCK, đạt kết quả đúng tiến độ đề ra"
+     + Khá: "con hoàn thiện khá tốt phần sản phẩm được giao"
+     + Chậm: "tiến độ sản phẩm còn chậm, con cần chú ý đẩy nhanh tiến độ"
+   - Kết thúc: "Cố gắng tiếp tục hoàn thiện thêm ở nhà" hoặc "Chú ý hoàn thiện thêm tại nhà để theo kịp tiến độ lớp".
+   - KHÔNG đề cập BTVN trong các buổi làm SPCK, thay bằng việc tiếp tục hoàn thiện sản phẩm ở nhà.
+${input.customPrompt ? `8. YÊU CẦU THÊM: ${input.customPrompt}` : ""}
 
 VÍ DỤ NHẬN XÉT THÔNG THƯỜNG:
-- "Buổi hôm nay ${shortName} đến lớp rất đúng giờ, tuân thủ tốt nội quy lớp học. Trong lớp em luôn tập trung nghe giảng, thao tác lập trình nhanh chóng, không gặp vướng mắc gì. Em hoàn thành BTVN đầy đủ. Cố gắng tiếp tục phát huy ở các buổi học tới!"
-- "Buổi hôm nay em đi học hơi muộn so với giờ học, cần chú ý. Trong lớp em luôn tập trung nghe giảng, thực hành bài tập khá tốt. Tuy nhiên em chưa hoàn thành BTVN đầy đủ, nhờ phụ huynh nhắc nhở con."
-- "Buổi học hôm nay em đến lớp đúng giờ. Quá trình học em luôn tập trung, thao tác lập trình rất tốt và có được điểm từ thầy. Tuy nhiên đôi lúc em còn nói chuyện riêng với bạn, cần chú ý khắc phục. Em hoàn thành BTVN đầy đủ."
+- "${shortName} đi học đúng giờ và tuân thủ tốt nội quy lớp học. Trong buổi học, con luôn tập trung tốt, hiểu và nắm rõ các nội dung được học, con thực hành nhanh chóng và chính xác, không gặp vướng mắc gì. ${shortName} hoàn thành nội dung bài học theo đúng tiến độ của lớp. Cố gắng phát huy ở các buổi học tiếp theo."
+- "${shortName} đi học đúng giờ và nhìn chung tuân thủ nội quy lớp học. Trong buổi học, con tập trung theo dõi bài, nắm được nội dung chính và thao tác lập trình theo hướng dẫn. Tuy nhiên, đôi lúc con còn nói chuyện riêng và mất tập trung nên thầy cần nhắc nhở thêm trong giờ học. Về nhà, ${shortName} nên ôn lại bài và cố gắng tập trung hơn trong các buổi học tới."
+- "${shortName} đi học đúng giờ, tuy nhiên con cần cố gắng tuân thủ nội quy lớp học nghiêm túc hơn. Trong buổi học, con chưa giữ được sự tập trung ổn định, thường xuyên mất trật tự, nói leo và làm việc riêng nên thầy phải nhắc nhở khá nhiều. Phụ huynh giúp em nhắc nhở con cần chú ý rút kinh nghiệm ở buổi học sau."
+- "${shortName} đi học đúng giờ và tuân thủ tốt nội quy lớp học. Trong buổi học, con tập trung theo dõi bài và thao tác lập trình ổn. Con hoàn thành tiến độ bài học ở mức bình thường, không có vấn đề đặc biệt. ${shortName} cần ôn lại bài ở nhà để nắm chắc kiến thức hơn."
 
 VÍ DỤ NHẬN XÉT BUỔI LÀM SPCK:
-- "Buổi hôm nay em vào lớp rất đúng giờ, thực hiện tốt nội quy lớp học. Trong lớp em rất nghiêm túc thực hiện làm SPCK, đạt kết quả đúng tiến độ, em hoàn thành tốt các khâu thiết kế app và đang áp dụng các giao diện vào phần code Python. Cố gắng tiếp tục hoàn thiện phần tích hợp ở nhà."
-- "Buổi hôm nay ${shortName} đến lớp đúng giờ. Con hoàn thiện khá tốt phần thiết kế giao diện, tuy nhiên chưa tích hợp được vào code, tiến độ còn chậm so với lớp. Cần chú ý đẩy nhanh tiến độ và hoàn thiện tại nhà."
-- "Buổi hôm nay em đến lớp đúng giờ, tuân thủ tốt nội quy. Trong lớp em rất nghiêm túc thực hiện làm SPCK, em đã hoàn thiện được sản phẩm và đang xây dựng slide thuyết trình, tiến độ đạt với đề ra của lớp. Cố gắng tiếp tục hoàn thiện Slide tại nhà."
+- "${shortName} đi học đúng giờ và tuân thủ tốt nội quy lớp học. Trong buổi học, con nghiêm túc thực hiện làm SPCK, đạt kết quả đúng tiến độ đề ra và hoàn thành tốt phần sản phẩm được giao. Cố gắng tiếp tục hoàn thiện thêm ở nhà."
+- "${shortName} đi học đúng giờ và nhìn chung tuân thủ nội quy lớp học. Trong buổi học, con hoàn thiện khá tốt phần sản phẩm được giao, tuy nhiên tiến độ vẫn cần được đẩy nhanh hơn để theo kịp kế hoạch của lớp. Chú ý hoàn thiện thêm tại nhà để sản phẩm tốt hơn."
 
 CHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH.`;
 

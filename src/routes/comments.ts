@@ -47,6 +47,7 @@ commentsRoutes.post("/generate_comment", async (c) => {
     commentLength: data.comment_length || "medium",
     customPrompt: data.custom_prompt || "",
     aiApiKey: data.ai_api_key || data.api_key || "",
+    homeworkStatus: data.homework_status || data.homeworkStatus,
   });
   return c.json({ comment });
 });

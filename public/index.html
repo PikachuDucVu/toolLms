@@ -598,6 +598,233 @@
             padding-right: 4px;
         }
 
+        .student-workspace {
+            display: grid;
+            grid-template-columns: minmax(250px, 0.82fr) minmax(0, 1.45fr);
+            gap: 16px;
+            align-items: start;
+        }
+
+        .student-compact-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 620px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .student-list-entry {
+            min-width: 0;
+        }
+
+        .student-list-item {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 12px;
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            background: white;
+            cursor: pointer;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+            text-align: left;
+        }
+
+        .student-list-item:hover {
+            border-color: rgba(8, 145, 178, 0.28);
+            box-shadow: var(--shadow-sm);
+            background: var(--gray-50);
+        }
+
+        .student-list-item:focus-visible {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.14);
+        }
+
+        .student-list-item.active {
+            border-color: rgba(8, 145, 178, 0.55);
+            background: linear-gradient(180deg, #FFFFFF 0%, #ECFEFF 100%);
+            box-shadow: var(--shadow-md);
+        }
+
+        .student-list-main {
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .student-list-text {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .student-list-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .student-list-preview {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--gray-500);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .student-list-chevron {
+            width: 18px;
+            height: 18px;
+            color: var(--gray-400);
+            flex-shrink: 0;
+            transition: transform var(--transition-fast), color var(--transition-fast);
+        }
+
+        .student-list-item.active .student-list-chevron {
+            color: var(--primary);
+            transform: rotate(90deg);
+        }
+
+        .student-detail-panel,
+        .student-detail-inline {
+            background: white;
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius);
+            padding: 18px;
+            box-shadow: var(--shadow-sm);
+            min-width: 0;
+        }
+
+        .student-detail-panel {
+            position: sticky;
+            top: 16px;
+        }
+
+        .student-detail-inline {
+            display: none;
+            margin-top: 10px;
+        }
+
+        .student-detail-empty {
+            text-align: center;
+            color: var(--gray-500);
+            padding: 44px 20px;
+            border: 1px dashed var(--gray-200);
+            border-radius: var(--radius-sm);
+            background: var(--gray-50);
+        }
+
+        .student-detail-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--gray-200);
+            margin-bottom: 14px;
+        }
+
+        .student-detail-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .student-detail-title .student-name {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--gray-900);
+        }
+
+        .student-detail-section {
+            margin-top: 14px;
+        }
+
+        .student-detail-section-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .student-detail-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .student-detail-actions .btn-primary {
+            margin-left: auto;
+        }
+
+        .badge-generated {
+            background: #DBEAFE;
+            color: #1D4ED8;
+            border: 1px solid #BFDBFE;
+        }
+
+        @media (max-width: 900px) {
+            .student-workspace {
+                grid-template-columns: 1fr;
+            }
+
+            .student-compact-list {
+                max-height: none;
+                padding-right: 0;
+            }
+
+            .student-detail-panel {
+                display: none;
+            }
+
+            .student-detail-inline {
+                display: block;
+            }
+
+            .student-list-item {
+                min-height: 64px;
+            }
+
+            .student-detail-actions .btn,
+            .student-actions .btn {
+                min-height: 44px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .student-detail-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .student-detail-actions {
+                flex-direction: column;
+            }
+
+            .student-detail-actions .btn-primary {
+                margin-left: 0;
+            }
+        }
+
         .student-card {
             background: white;
             border: 1.5px solid var(--gray-200);
@@ -2273,6 +2500,8 @@
         let manualComments = {}; // {studentId: comment text} for manual checkpoint comments
         let classData = null;
         let classesCache = null;
+        let homeworkDataCache = {}; // {classId: {students, lessons, submissions}}
+        let homeworkDataPromises = {}; // {classId: Promise}
 
         // ===== Kiemtra (Cloudflare) checkpoint submission status =====
         const KIEMTRA_BASE = 'https://kiemtra.ducvu.io.vn';
@@ -2372,6 +2601,21 @@
             return { comment: cleanDirectAiResponse(content) };
         }
 
+        function formatHomeworkStatusForPrompt(homeworkStatus) {
+            if (!homeworkStatus || homeworkStatus.shouldMention === false) return '';
+            const previousSession = homeworkStatus.previous_session || homeworkStatus.previousSession;
+            const previousSessionLabel = previousSession ? `buổi ${previousSession}` : 'buổi trước';
+            if (homeworkStatus.submitted === true) {
+                const markedText = homeworkStatus.marked ? 'Bài đã được chấm/ghi nhận trên LMS.' : 'Bài đã được ghi nhận đã nộp trên LMS.';
+                const scoreText = homeworkStatus.score != null && String(homeworkStatus.score).trim() !== '' ? ` Điểm hiện có: ${homeworkStatus.score}.` : '';
+                return `Học sinh ĐÃ NỘP BTVN ${previousSessionLabel}. ${markedText}${scoreText}`;
+            }
+            if (homeworkStatus.submitted === false) {
+                return `Chưa thấy học sinh nộp BTVN ${previousSessionLabel} trên LMS.`;
+            }
+            return '';
+        }
+
         function buildDirectCommentPrompt(body) {
             const studentName = body.student_name || '';
             const shortName = studentName ? studentName.trim().split(/\s+/).pop() : 'em';
@@ -2382,7 +2626,8 @@
             const localNote = body.student_id ? getLocalNote(body.student_id) : '';
             const notes = `${body.is_late ? 'Học sinh đi học muộn buổi này.\n' : ''}${localNote || 'Học bình thường, không có gì đặc biệt'}`;
             const lengthGuide = body.comment_length === 'short' ? '2-3 câu ngắn gọn' : body.comment_length === 'long' ? '4-5 câu chi tiết' : '3-4 câu';
-            return `Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét ngắn gọn cho học sinh gửi phụ huynh.\n\nHỌC SINH: ${studentName} (gọi: ${shortName})\nNỘI DUNG BUỔI HỌC: ${body.session_summary || 'Thực hành lập trình'}\nNHẬN XÉT BUỔI TRƯỚC: ${pastComments}\nGHI CHÚ BUỔI NÀY: ${notes}\n\nHƯỚNG DẪN VIẾT:\n- Viết ${lengthGuide}, mỗi câu nối tiếp tự nhiên.\n- Câu 1: đi học đúng giờ/muộn và tuân thủ nội quy.\n- Câu tiếp theo: mức độ tập trung, thao tác lập trình, tiến độ bài học.\n- Câu cuối: BTVN hoặc việc cần hoàn thiện ở nhà, kèm động viên/nhắc nhở.\n- Dùng em hoặc ${shortName} để gọi học sinh, dùng con khi nói với phụ huynh.\n- Nếu ghi chú có vấn đề, diễn đạt nhẹ nhàng và mang tính xây dựng.\n${body.custom_prompt ? `\nYÊU CẦU THÊM: ${body.custom_prompt}\n` : ''}\nCHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH.`;
+            const homeworkStatusLine = formatHomeworkStatusForPrompt(body.homework_status || body.homeworkStatus);
+            return `Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét ngắn gọn cho học sinh gửi phụ huynh, theo văn phong giáo viên nhắn trong nhóm Zalo.\n\nHỌC SINH: ${studentName} (gọi: ${shortName})\nNỘI DUNG BUỔI HỌC: ${body.session_summary || 'Thực hành lập trình'}\nNHẬN XÉT BUỔI TRƯỚC: ${pastComments}\nGHI CHÚ BUỔI NÀY: ${notes}\n${homeworkStatusLine ? `TÌNH TRẠNG BTVN BUỔI TRƯỚC: ${homeworkStatusLine}\n` : ''}\nHƯỚNG DẪN VIẾT:\n- Viết ${lengthGuide}, mỗi câu nối tiếp tự nhiên.\n- Câu 1: học sinh đi học đúng giờ/muộn và mức độ tuân thủ nội quy lớp học.\n- Câu tiếp theo: nhận xét chi tiết thái độ học trong buổi học: tập trung, hiểu bài, nắm nội dung được học, thao tác thực hành/lập trình nhanh hay chậm, chính xác hay còn vướng mắc, theo kịp tiến độ lớp hay chưa.\n- Câu cuối: động viên nếu học tốt; hoặc nhắc phụ huynh hỗ trợ/nhắc nhở nếu còn vấn đề. Chỉ nhắc BTVN/ôn bài khi có dòng TÌNH TRẠNG BTVN BUỔI TRƯỚC hoặc ghi chú cho thấy cần, không bắt buộc nhắc BTVN ở mọi nhận xét.\n- Nếu có dòng TÌNH TRẠNG BTVN BUỔI TRƯỚC: học sinh ĐÃ NỘP thì có thể ghi nhận ngắn gọn; nếu chưa thấy nộp thì nhắc rõ phụ huynh hỗ trợ con bổ sung/hoàn thiện bài đầy đủ hơn.\n- Nếu không có dòng TÌNH TRẠNG BTVN BUỔI TRƯỚC thì không tự bịa và không đề cập BTVN.\n- KHÔNG lặp lại chi tiết nội dung buổi học trong nhận xét cá nhân. Nội dung buổi học chỉ dùng để hiểu bối cảnh. Tuyệt đối không viết kiểu: \"Trong buổi học về ...\", \"về xây dựng ...\", hoặc nhắc lại tên bài/chủ đề cụ thể.\n- Thay bằng câu chung như: \"Trong buổi học, con luôn tập trung tốt, hiểu và nắm rõ các nội dung được học, con thực hành nhanh chóng và chính xác, không gặp vướng mắc gì.\"\n- Dùng em hoặc ${shortName} để gọi học sinh; dùng con khi nói về học sinh với phụ huynh.\n- Nếu ghi chú có vấn đề, diễn đạt nhẹ nhàng nhưng rõ ràng: nói chuyện riêng/mất tập trung, làm việc riêng, thực hành chậm, thiếu BTVN, thầy phải nhắc nhở.\n- Không viết markdown, không bullet list, không tiêu đề.\n\nVÍ DỤ:\n${shortName} đi học đúng giờ và tuân thủ tốt nội quy lớp học. Trong buổi học, con luôn tập trung tốt, hiểu và nắm rõ các nội dung được học, con thực hành nhanh chóng và chính xác, không gặp vướng mắc gì. ${shortName} hoàn thành nội dung bài học theo đúng tiến độ của lớp. Cố gắng phát huy ở các buổi học tiếp theo.\n\n${shortName} đi học đúng giờ và nhìn chung tuân thủ nội quy lớp học. Trong buổi học, con tập trung theo dõi bài, nắm được nội dung chính và thao tác lập trình theo hướng dẫn. Tuy nhiên, đôi lúc con còn nói chuyện riêng và mất tập trung nên thầy cần nhắc nhở thêm trong giờ học. Về nhà, ${shortName} nên ôn lại bài và cố gắng tập trung hơn trong các buổi học tới.\n${body.custom_prompt ? `\nYÊU CẦU THÊM: ${body.custom_prompt}\n` : ''}\nCHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH.`;
         }
 
         function buildDirectCheckpointPrompt(body) {
@@ -3752,6 +3997,7 @@
                 }
 
                 mergeClassDetailIntoCache(classData);
+                prefetchHomeworkData(classData.id);
 
                 const slotSelect = document.getElementById('slotSelect');
                 slotSelect.innerHTML = '<option value="">-- Chọn buổi --</option>';
@@ -3797,6 +4043,7 @@
                 const result = await lmsApiCall("GetClassById", CLASS_DETAIL_QUERY, {id: selectedClass.id});
                 classData = result?.data?.classesById;
                 mergeClassDetailIntoCache(classData);
+                if (classData?.id) prefetchHomeworkData(classData.id);
 
                 const slotSelect = document.getElementById('slotSelect');
                 slotSelect.innerHTML = '<option value="">-- Chọn buổi --</option>';
@@ -3845,6 +4092,153 @@
         // Check if current session is Checkpoint (session 5 or 9)
         function isCheckpointSession() {
             return [5, 9].includes(getCurrentSessionNumber());
+        }
+
+        function shouldMentionPreviousHomework(sessionNumber = getCurrentSessionNumber()) {
+            // Chỉ nhận xét BTVN ở các buổi thường trước checkpoint 2.
+            // Bỏ qua buổi 1, buổi 6 (ngay sau checkpoint 1), checkpoint 9 và từ buổi 10 trở đi.
+            return [2, 3, 4, 7, 8].includes(Number(sessionNumber));
+        }
+
+        async function loadHomeworkDataForClass(classId, silent = true) {
+            if (!classId) return null;
+            if (homeworkDataCache[classId]) return homeworkDataCache[classId];
+            if (homeworkDataPromises[classId]) return homeworkDataPromises[classId];
+
+            homeworkDataPromises[classId] = fetch(`/api/homework/${encodeURIComponent(classId)}`)
+                .then(async resp => {
+                    if (!resp.ok) throw new Error(`Không thể tải BTVN (${resp.status})`);
+                    const data = await resp.json();
+                    if (data.error) throw new Error(data.error);
+                    homeworkDataCache[classId] = {
+                        students: Array.isArray(data.students) ? data.students : [],
+                        lessons: Array.isArray(data.lessons) ? data.lessons : [],
+                        submissions: Array.isArray(data.submissions) ? data.submissions : []
+                    };
+                    return homeworkDataCache[classId];
+                })
+                .catch(error => {
+                    delete homeworkDataPromises[classId];
+                    if (!silent) showToast('Không thể tải dữ liệu BTVN: ' + error.message, 'error');
+                    console.warn('Failed to load homework data:', error);
+                    return null;
+                });
+
+            return homeworkDataPromises[classId];
+        }
+
+        function prefetchHomeworkData(classId) {
+            loadHomeworkDataForClass(classId, true).catch(() => null);
+        }
+
+        function normalizeVietnameseText(value) {
+            return String(value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/đ/g, 'd')
+                .replace(/Đ/g, 'D')
+                .toLowerCase()
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function findHomeworkStudent(attendance, homeworkData) {
+            const lmsStudent = attendance?.student || {};
+            const studentId = String(lmsStudent.id || '');
+            const fullName = normalizeVietnameseText(lmsStudent.fullName || '');
+            const hwStudents = homeworkData?.students || [];
+
+            return hwStudents.find(student => String(student.studentUid || '') === studentId || String(student.id || '') === studentId)
+                || hwStudents.find(student => normalizeVietnameseText(student.displayName || '') === fullName)
+                || null;
+        }
+
+        function lessonNameLooksLikeSession(lesson, sessionNumber) {
+            const name = normalizeVietnameseText(lesson?.name || '');
+            if (!name) return false;
+            const n = String(Number(sessionNumber));
+            return new RegExp(`\\b(buoi|bai|lesson|session)\\s*(tap\\s*)?0?${n}\\b`).test(name)
+                || new RegExp(`\\b0?${n}\\s*[-:]`).test(name);
+        }
+
+        function findHomeworkLessonForSession(homeworkData, sessionNumber) {
+            const lessons = (homeworkData?.lessons || []).filter(lesson => lesson && lesson.isActive !== false);
+            if (!lessons.length) return null;
+
+            const byName = lessons.find(lesson => lessonNameLooksLikeSession(lesson, sessionNumber));
+            if (byName) return byName;
+
+            const orders = lessons
+                .map(lesson => Number(lesson.displayOrder))
+                .filter(order => Number.isFinite(order));
+            if (orders.length) {
+                const minOrder = Math.min(...orders);
+                const expectedOrder = minOrder === 0 ? Number(sessionNumber) - 1 : Number(sessionNumber);
+                const byExpectedOrder = lessons.find(lesson => Number(lesson.displayOrder) === expectedOrder);
+                if (byExpectedOrder) return byExpectedOrder;
+            }
+
+            return lessons.find(lesson => Number(lesson.displayOrder) === Number(sessionNumber))
+                || lessons.find(lesson => Number(lesson.displayOrder) === Number(sessionNumber) - 1)
+                || null;
+        }
+
+        function isSubmittedHomework(submission) {
+            if (!submission) return false;
+            const status = String(submission.status || '').toUpperCase();
+            const attachments = Array.isArray(submission.content?.attachments) ? submission.content.attachments : [];
+            return ['SUBMITTED', 'MARKED', 'GRADED', 'DONE', 'COMPLETED'].includes(status)
+                || Boolean(submission.submittedAt)
+                || Number(submission.submittedCount || 0) > 0
+                || attachments.length > 0;
+        }
+
+        function findHomeworkSubmission(homeworkData, homeworkStudent, lesson, attendance) {
+            const lessonId = String(lesson?.id || '');
+            const studentIds = new Set([
+                String(homeworkStudent?.studentUid || ''),
+                String(homeworkStudent?.id || ''),
+                String(attendance?.student?.id || '')
+            ].filter(Boolean));
+
+            const candidates = (homeworkData?.submissions || []).filter(submission => {
+                return String(submission.lessonId || '') === lessonId && studentIds.has(String(submission.studentUid || ''));
+            });
+            if (!candidates.length) return null;
+
+            return candidates.sort((a, b) => {
+                const aSubmitted = isSubmittedHomework(a) ? 1 : 0;
+                const bSubmitted = isSubmittedHomework(b) ? 1 : 0;
+                if (aSubmitted !== bSubmitted) return bSubmitted - aSubmitted;
+                return String(b.submittedAt || b.markedAt || '').localeCompare(String(a.submittedAt || a.markedAt || ''));
+            })[0];
+        }
+
+        async function getPreviousHomeworkStatusForStudent(attendance) {
+            const sessionNumber = getCurrentSessionNumber();
+            if (!shouldMentionPreviousHomework(sessionNumber)) return null;
+            const previousSession = sessionNumber - 1;
+            const homeworkData = await loadHomeworkDataForClass(classData?.id, true);
+            if (!homeworkData) return null;
+
+            const lesson = findHomeworkLessonForSession(homeworkData, previousSession);
+            if (!lesson) return null;
+
+            const homeworkStudent = findHomeworkStudent(attendance, homeworkData);
+            if (!homeworkStudent) return null;
+
+            const submission = findHomeworkSubmission(homeworkData, homeworkStudent, lesson, attendance);
+            const submitted = isSubmittedHomework(submission);
+            return {
+                shouldMention: true,
+                previous_session: previousSession,
+                lesson_id: lesson.id,
+                lesson_name: lesson.name || `BTVN buổi ${previousSession}`,
+                submitted,
+                marked: String(submission?.status || '').toUpperCase() === 'MARKED',
+                score: submission?.score ?? null,
+                status: submission?.status || (submitted ? 'SUBMITTED' : 'NOT_SUBMITTED')
+            };
         }
 
         // Map checkpoint session (5 -> checkpoint 1, 9 -> checkpoint 2) for kiemtra
@@ -4548,12 +4942,14 @@
                 const customPrompt = document.getElementById('customPrompt')?.value || '';
                 const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
 
+                const homeworkStatus = await getPreviousHomeworkStatusForStudent(att);
                 const data = await fetchJSON('/api/generate_comment', {
                         student_id: studentId,
                         student_name: studentName,
                         past_slots: pastSlots,
                         session_summary: summary,
                         is_late: isLate,
+                        homework_status: homeworkStatus,
                         model_id: aiModel,
                         custom_model_id: customModelId,
                         comment_length: commentLength,
@@ -4620,12 +5016,14 @@
                         const customPrompt = document.getElementById('customPrompt')?.value || '';
                         const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
 
+                        const homeworkStatus = await getPreviousHomeworkStatusForStudent(att);
                         const data = await fetchJSON('/api/generate_comment', {
                             student_id: att.student.id,
                             student_name: att.student.fullName,
                             past_slots: getPastComments(att.student.id),
                             session_summary: summary,
                             is_late: att.status === 'LATE_ARRIVED',
+                            homework_status: homeworkStatus,
                             model_id: aiModel,
                             custom_model_id: customModelId,
                             comment_length: commentLength,
@@ -5702,9 +6100,14 @@ MindX Technology School`;
                 allText += `- ${shortName}: ${cleanComment}\n\n`;
             });
             
-            // Section 3: Homework
-            allText += `3. BTVN:\n`;
-            allText += `- Làm bài tập buổi ${sessionNumber} trên Denise.\n\n`;
+            // Section 3: Homework / SPCK follow-up
+            if (sessionNumber >= 10) {
+                allText += `3. Công việc cần hoàn thiện:\n`;
+                allText += `- Tiếp tục hoàn thiện sản phẩm cuối khóa theo hướng dẫn của thầy.\n\n`;
+            } else {
+                allText += `3. BTVN:\n`;
+                allText += `- Làm bài tập buổi ${sessionNumber} trên Denise.\n\n`;
+            }
             
             // Closing
             allText += `Trên đây là một vài lời nhận xét của em về buổi học vừa rồi. Em xin chúc quý phụ huynh có buổi tối vui vẻ ạ. @All`;
