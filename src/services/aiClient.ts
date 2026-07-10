@@ -1,4 +1,13 @@
-import { AI_MODELS, ANTIGRAVITY_API_URL, CUSTOM_MODEL_OPTION_ID, DEFAULT_AI_MODEL } from "../constants/aiModels";
+import {
+  AI_MODELS,
+  ANTIGRAVITY_API_URL,
+  CUSTOM_MODEL_OPTION_ID,
+  DEFAULT_AI_MODEL,
+  DEFAULT_THINKING_LEVEL,
+  clampThinkingLevel,
+  modelSupportsReasoning,
+  type ThinkingLevel,
+} from "../constants/aiModels";
 import type { AppConfig, Env } from "../types";
 
 interface ChatResult {
@@ -28,6 +37,19 @@ export function getModelProvider(modelId: string): string {
   return AI_MODELS.find((model) => model.id === modelId)?.provider ?? "antigravity";
 }
 
+export function resolveThinkingLevel(modelId: string, thinkingLevel?: string, configLevel?: string): ThinkingLevel {
+  return clampThinkingLevel(modelId, thinkingLevel || configLevel || DEFAULT_THINKING_LEVEL);
+}
+
+function applyThinkingToBody(body: Record<string, unknown>, model: string, thinkingLevel: ThinkingLevel): void {
+  if (!modelSupportsReasoning(model) || thinkingLevel === "off") return;
+
+  // Chat Completions-compatible gateways commonly accept reasoning_effort.
+  // Keep both nested reasoning.effort for gateways that mirror Responses-style payloads.
+  body.reasoning_effort = thinkingLevel;
+  body.reasoning = { effort: thinkingLevel };
+}
+
 async function callChatCompletion(
   env: Env,
   provider: string,
@@ -35,6 +57,7 @@ async function callChatCompletion(
   content: unknown,
   apiKey?: string,
   openrouterKey?: string,
+  thinkingLevel: ThinkingLevel = DEFAULT_THINKING_LEVEL,
 ): Promise<ChatResult> {
   const url = provider === "antigravity" ? ANTIGRAVITY_API_URL : "https://openrouter.ai/api/v1/chat/completions";
   const key = provider === "antigravity" ? apiKey || env.ANTIGRAVITY_API_KEY : apiKey || openrouterKey || env.OPENROUTER_API_KEY;
@@ -44,6 +67,7 @@ async function callChatCompletion(
     model,
     messages: [{ role: "user", content }],
   };
+  applyThinkingToBody(body, model, thinkingLevel);
   if (provider !== "antigravity") body.provider = { data_collection: "allow" };
 
   const response = await fetch(url, {
@@ -78,6 +102,7 @@ export async function generateCommentWithAi(
     sessionSummary?: string;
     modelId?: string;
     customModelId?: string;
+    thinkingLevel?: string;
     commentLength?: string;
     customPrompt?: string;
     aiApiKey?: string;
@@ -95,6 +120,7 @@ export async function generateCommentWithAi(
   },
 ): Promise<string> {
   const model = resolveModelId(input.modelId, input.customModelId ?? String(config.custom_model_id || ""), String(config.ai_model || DEFAULT_AI_MODEL));
+  const thinkingLevel = resolveThinkingLevel(model, input.thinkingLevel, String(config.thinking_level || ""));
   const shortName = input.studentName ? input.studentName.split(/\s+/).at(-1) || "em" : "em";
   const lengthGuide = input.commentLength === "short" ? "2-3 câu ngắn gọn" : input.commentLength === "long" ? "4-5 câu chi tiết" : "3-4 câu";
   const homeworkStatus = input.homeworkStatus;
@@ -179,7 +205,7 @@ VÍ DỤ NHẬN XÉT BUỔI LÀM SPCK:
 CHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH.`;
 
   const provider = getModelProvider(model);
-  const result = await callChatCompletion(env, provider, model, prompt, input.aiApiKey, String(config.openrouter_key || ""));
+  const result = await callChatCompletion(env, provider, model, prompt, input.aiApiKey, String(config.openrouter_key || ""), thinkingLevel);
   if (result.error) return `<p>Lỗi AI (${model}): ${result.error}</p>`;
   if (!result.content) return `<p>Lỗi AI (${model}): Không nhận được phản hồi</p>`;
   return cleanAiResponse(result.content);
@@ -188,9 +214,10 @@ CHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH.`;
 export async function generateCheckpointCommentWithAi(
   env: Env,
   config: AppConfig,
-  input: { studentName: string; teacherDescription?: string; modelId?: string; customModelId?: string; aiApiKey?: string },
+  input: { studentName: string; teacherDescription?: string; modelId?: string; customModelId?: string; thinkingLevel?: string; aiApiKey?: string },
 ): Promise<string> {
   const model = resolveModelId(input.modelId, input.customModelId ?? String(config.custom_model_id || ""), String(config.ai_model || DEFAULT_AI_MODEL));
+  const thinkingLevel = resolveThinkingLevel(model, input.thinkingLevel, String(config.thinking_level || ""));
   const shortName = input.studentName ? input.studentName.split(/\s+/).at(-1) || "em" : "em";
   const prompt = `Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét checkpoint (kiểm tra giữa khóa) cho học sinh gửi phụ huynh.
 
@@ -221,7 +248,7 @@ VÍ DỤ:
 CHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT THUẦN VĂN BẢN, KHÔNG GIẢI THÍCH, KHÔNG MARKDOWN.`;
 
   const provider = getModelProvider(model);
-  const result = await callChatCompletion(env, provider, model, prompt, input.aiApiKey, String(config.openrouter_key || ""));
+  const result = await callChatCompletion(env, provider, model, prompt, input.aiApiKey, String(config.openrouter_key || ""), thinkingLevel);
   if (result.error) return `<p>Lỗi AI (${model}): ${result.error}</p>`;
   return cleanAiResponse(result.content || "");
 }
@@ -238,10 +265,12 @@ export async function gradeHomeworkWithAi(
     otherFiles?: string[];
     modelId?: string;
     customModelId?: string;
+    thinkingLevel?: string;
     apiKey?: string;
   },
 ): Promise<{ success: true; score: number; note: string } | { success: false; error: string; raw?: string }> {
   const model = resolveModelId(input.modelId, input.customModelId, String(config.ai_model || DEFAULT_AI_MODEL));
+  const thinkingLevel = resolveThinkingLevel(model, input.thinkingLevel, String(config.thinking_level || ""));
   const provider = getModelProvider(input.modelId || model);
   const fileList = input.attachments.map((item) => item.split("/").at(-1) || item).join(", ");
   const textFiles = input.textFiles ?? [];
@@ -280,7 +309,7 @@ Chỉ trả về JSON, không thêm gì khác.${codeSection}${otherSection}`;
   const content = input.imageUrls.length
     ? [{ type: "text", text: promptText }, ...input.imageUrls.map((url) => ({ type: "image_url", image_url: { url } }))]
     : promptText;
-  const result = await callChatCompletion(env, provider, model, content, input.apiKey, String(config.openrouter_key || ""));
+  const result = await callChatCompletion(env, provider, model, content, input.apiKey, String(config.openrouter_key || ""), thinkingLevel);
   if (result.error) return { success: false, error: `AI lỗi: ${result.error}` };
   const raw = result.content || "";
   const match = raw.match(/\{[^{}]*"score"\s*:\s*\d+[^{}]*\}/);

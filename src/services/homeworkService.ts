@@ -160,6 +160,7 @@ export async function aiGradeHomework(
     studentName: string;
     modelId?: string;
     customModelId?: string;
+    thinkingLevel?: string;
     apiKey?: string;
   },
 ): Promise<{ success: true; score: number; note: string } | { success: false; error: string; raw?: string }> {

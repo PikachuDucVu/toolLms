@@ -70,6 +70,7 @@ export async function processGradingMessage(env: Env, message: GradingQueueMessa
     studentName: message.studentName,
     modelId: message.modelId,
     customModelId: message.customModelId,
+    thinkingLevel: message.thinkingLevel,
     apiKey: message.apiKey,
   });
   if (!grade.success) {

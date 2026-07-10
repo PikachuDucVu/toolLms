@@ -2840,17 +2840,29 @@
                         </h3>
                         <div class="form-group">
                             <label class="form-label" for="aiModel">Model AI</label>
-                            <select class="form-select" id="aiModel" onchange="toggleCustomModelInput()">
-                                <option value="claude-opus-4-6-thinking" data-provider="antigravity">Claude Opus 4.6 Thinking</option>
-                                <option value="claude-sonnet-4-6" data-provider="antigravity" selected>Claude Sonnet 4.6</option>
-                                <option value="gemini-3.1-pro-high" data-provider="antigravity">Gemini 3.1 Pro High</option>
-                                <option value="gpt-5.4" data-provider="antigravity">GPT-5.4</option>
-                                <option value="__custom__" data-provider="antigravity">Tự nhập model</option>
-                            </select>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <select class="form-select" id="aiModel" onchange="onAiModelChange()" style="flex:1;">
+                                    <option value="gpt-5.4" selected>Đang tải models...</option>
+                                </select>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="refreshAiModels()" title="Tải lại danh sách model">↻</button>
+                            </div>
+                            <div id="aiModelSource" style="font-size:12px; color:var(--text-muted, #888); margin-top:4px;"></div>
                         </div>
                         <div class="form-group" id="customModelGroup" style="display: none;">
                             <label class="form-label" for="customModelId">Tên model custom</label>
-                            <input class="form-input" id="customModelId" value="" placeholder="VD: gpt-5.4, gemini-2.5-pro, claude-sonnet-4-6">
+                            <input class="form-input" id="customModelId" value="" placeholder="VD: gpt-5.4, gemini-2.5-pro, grok-4.5" oninput="onAiModelChange()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="thinkingLevel">Thinking level</label>
+                            <select class="form-select" id="thinkingLevel">
+                                <option value="off">off</option>
+                                <option value="minimal">minimal</option>
+                                <option value="low">low</option>
+                                <option value="medium">medium</option>
+                                <option value="high" selected>high</option>
+                                <option value="xhigh">xhigh</option>
+                            </select>
+                            <div id="thinkingLevelHint" style="font-size:12px; color:var(--text-muted, #888); margin-top:4px;"></div>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="commentLength">Độ dài nhận xét</label>
@@ -3266,15 +3278,20 @@
             return data?.comment && /error code:\s*522|Lỗi AI .*522/.test(data.comment);
         }
 
-        async function callDirectAntigravity(model, apiKey, prompt) {
+        async function callDirectAntigravity(model, apiKey, prompt, thinkingLevel = 'high') {
             if (!apiKey) throw new Error('Vui lòng nhập API Key trong phần Cấu hình');
+            const body = { model, messages: [{ role: 'user', content: prompt }] };
+            if (thinkingLevel && thinkingLevel !== 'off') {
+                body.reasoning_effort = thinkingLevel;
+                body.reasoning = { effort: thinkingLevel };
+            }
             const resp = await fetch('https://ai.ducvu.io.vn/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}`
                 },
-                body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] })
+                body: JSON.stringify(body)
             });
             const text = await resp.text();
             let payload;
@@ -3330,7 +3347,12 @@
             if (!shouldUseDirectAiFallback(data)) return data;
             const model = body.model_id === '__custom__' ? (body.custom_model_id || 'claude-sonnet-4-6') : (body.model_id || 'claude-sonnet-4-6');
             const prompt = url.includes('generate_checkpoint_comment') ? buildDirectCheckpointPrompt(body) : buildDirectCommentPrompt(body);
-            return callDirectAntigravity(model, body.ai_api_key || body.api_key || localStorage.getItem('ai_api_key') || '', prompt);
+            return callDirectAntigravity(
+                model,
+                body.ai_api_key || body.api_key || localStorage.getItem('ai_api_key') || '',
+                prompt,
+                body.thinking_level || 'high'
+            );
         }
 
         /** Get list of present students (ATTENDED or LATE_ARRIVED) */
@@ -4532,6 +4554,46 @@
             }
         }
 
+        let aiModelsCache = [];
+        let savedThinkingLevel = 'high';
+
+        function getThinkingLevelsForModelId(modelId) {
+            const lowerId = String(modelId || '').toLowerCase();
+            const cached = aiModelsCache.find(m => m.id === modelId);
+            if (cached?.thinking_levels?.length) return cached.thinking_levels;
+
+            const isGrok = lowerId.includes('grok');
+            const isGrokNonReasoning = lowerId.includes('non-reasoning') || lowerId.includes('imagine') || lowerId.includes('image') || lowerId.includes('video');
+            const isGrokMultiAgent = lowerId.includes('multi-agent');
+            const isReasoning =
+                (isGrok && !isGrokNonReasoning) ||
+                lowerId.includes('claude') ||
+                lowerId.includes('gemini') ||
+                lowerId.includes('gpt-5') ||
+                lowerId.includes('o1') ||
+                lowerId.includes('o3') ||
+                lowerId.includes('thinking') ||
+                (lowerId.includes('reasoning') && !lowerId.includes('non-reasoning'));
+
+            if (!isReasoning) return ['off'];
+            if (isGrok) return isGrokMultiAgent ? ['low', 'medium', 'high', 'xhigh'] : ['low', 'medium', 'high'];
+            return ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
+        }
+
+        function clampThinkingForModel(modelId, preferred) {
+            const levels = getThinkingLevelsForModelId(modelId);
+            if (preferred && levels.includes(preferred)) return preferred;
+            for (const level of ['high', 'medium', 'low', 'minimal', 'xhigh', 'off']) {
+                if (levels.includes(level)) return level;
+            }
+            return levels[0] || 'off';
+        }
+
+        function resolveEffectiveModelId(aiModel, customModelId) {
+            if (aiModel === '__custom__') return (customModelId || '').trim() || 'gpt-5.4';
+            return aiModel || 'gpt-5.4';
+        }
+
         function toggleCustomModelInput() {
             const aiModel = document.getElementById('aiModel')?.value;
             const customGroup = document.getElementById('customModelGroup');
@@ -4540,35 +4602,133 @@
             }
         }
 
+        function updateThinkingLevelOptions(preferredLevel) {
+            const select = document.getElementById('thinkingLevel');
+            const hint = document.getElementById('thinkingLevelHint');
+            if (!select) return;
+
+            const { aiModel, customModelId } = getSelectedModelConfig();
+            const modelId = resolveEffectiveModelId(aiModel, customModelId);
+            const levels = getThinkingLevelsForModelId(modelId);
+            const current = preferredLevel || select.value || savedThinkingLevel || 'high';
+            const next = clampThinkingForModel(modelId, current);
+
+            select.innerHTML = '';
+            for (const level of ['off', 'minimal', 'low', 'medium', 'high', 'xhigh']) {
+                const opt = document.createElement('option');
+                opt.value = level;
+                opt.textContent = level;
+                opt.disabled = !levels.includes(level);
+                if (level === next) opt.selected = true;
+                select.appendChild(opt);
+            }
+            select.value = next;
+            savedThinkingLevel = next;
+
+            if (hint) {
+                if (levels.length === 1 && levels[0] === 'off') {
+                    hint.textContent = 'Model này không hỗ trợ thinking.';
+                } else {
+                    hint.textContent = `Hỗ trợ: ${levels.join(', ')}`;
+                }
+            }
+        }
+
+        function onAiModelChange() {
+            toggleCustomModelInput();
+            updateThinkingLevelOptions(savedThinkingLevel);
+        }
+
+        function populateAiModelSelect(models, preferredId) {
+            const select = document.getElementById('aiModel');
+            if (!select) return;
+            const previous = preferredId || select.value;
+            select.innerHTML = '';
+
+            const list = Array.isArray(models) && models.length
+                ? models
+                : [
+                    { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 Thinking' },
+                    { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
+                    { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro High' },
+                    { id: 'gpt-5.4', name: 'GPT-5.4' },
+                    { id: 'grok-4.5', name: 'Grok 4.5' },
+                    { id: '__custom__', name: 'Tự nhập tên model' }
+                ];
+
+            for (const model of list) {
+                const opt = document.createElement('option');
+                opt.value = model.id;
+                opt.textContent = model.name || model.id;
+                if (model.owned_by) opt.dataset.ownedBy = model.owned_by;
+                select.appendChild(opt);
+            }
+
+            if (previous && [...select.options].some(o => o.value === previous)) {
+                select.value = previous;
+            } else if ([...select.options].some(o => o.value === 'gpt-5.4')) {
+                select.value = 'gpt-5.4';
+            }
+        }
+
+        async function refreshAiModels(preferredId) {
+            const sourceEl = document.getElementById('aiModelSource');
+            const apiKey = document.getElementById('proxyApiKey')?.value?.trim() || localStorage.getItem('ai_api_key') || '';
+            try {
+                if (sourceEl) sourceEl.textContent = 'Đang tải danh sách model...';
+                const resp = await fetch('/api/ai/models', {
+                    headers: apiKey ? { 'x-ai-api-key': apiKey } : {}
+                });
+                const data = await resp.json();
+                aiModelsCache = data.models || [];
+                populateAiModelSelect(aiModelsCache, preferredId);
+                onAiModelChange();
+                if (sourceEl) {
+                    const count = aiModelsCache.filter(m => m.id !== '__custom__').length;
+                    if (data.source === 'remote') {
+                        sourceEl.textContent = `Đã tải ${count} models từ gateway`;
+                    } else if (data.source === 'cache') {
+                        const when = data.cached_at ? ` · ${new Date(data.cached_at).toLocaleString('vi-VN')}` : '';
+                        sourceEl.textContent = `Dùng list đã cache (${count} models${when})` +
+                            (data.error ? ` · key lỗi: ${String(data.error).slice(0, 60)}` : '');
+                    } else {
+                        sourceEl.textContent = `Dùng list dự phòng (${data.error || 'chưa có cache'})`;
+                    }
+                }
+            } catch (e) {
+                populateAiModelSelect([], preferredId);
+                onAiModelChange();
+                if (sourceEl) sourceEl.textContent = 'Không tải được models: ' + (e.message || e);
+            }
+        }
+
         async function loadSavedConfig() {
             try {
                 const resp = await fetch('/api/config');
                 if (!resp.ok) return;
                 const config = await resp.json();
-                const modelSelect = document.getElementById('aiModel');
                 const customInput = document.getElementById('customModelId');
-                if (modelSelect && config.ai_model) {
-                    modelSelect.value = config.ai_model;
-                }
-                if (customInput) {
-                    customInput.value = config.custom_model_id || '';
-                }
-                toggleCustomModelInput();
+                if (customInput) customInput.value = config.custom_model_id || '';
+                savedThinkingLevel = config.thinking_level || 'high';
+                await refreshAiModels(config.ai_model || 'gpt-5.4');
+                updateThinkingLevelOptions(savedThinkingLevel);
             } catch (e) {
                 console.warn('Failed to load saved config:', e);
+                await refreshAiModels();
             }
         }
 
         function getSelectedModelConfig() {
-            const aiModel = document.getElementById('aiModel')?.value || 'claude-sonnet-4-6';
+            const aiModel = document.getElementById('aiModel')?.value || 'gpt-5.4';
             const customModelId = document.getElementById('customModelId')?.value?.trim() || '';
-            const aiApiKey = localStorage.getItem('ai_api_key') || '';
-            return { aiModel, customModelId, aiApiKey };
+            const thinkingLevel = document.getElementById('thinkingLevel')?.value || savedThinkingLevel || 'high';
+            const aiApiKey = document.getElementById('proxyApiKey')?.value?.trim() || localStorage.getItem('ai_api_key') || '';
+            return { aiModel, customModelId, thinkingLevel, aiApiKey };
         }
 
         // Save config
         async function saveConfig() {
-            const { aiModel, customModelId } = getSelectedModelConfig();
+            const { aiModel, customModelId, thinkingLevel } = getSelectedModelConfig();
 
             // Save AI API key to localStorage only
             const aiKey = document.getElementById('proxyApiKey')?.value?.trim() || '';
@@ -4576,14 +4736,18 @@
                 localStorage.setItem('ai_api_key', aiKey);
             }
 
+            savedThinkingLevel = thinkingLevel;
             await fetch('/api/save_config', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     ai_model: aiModel,
-                    custom_model_id: aiModel === '__custom__' ? customModelId : ''
+                    custom_model_id: aiModel === '__custom__' ? customModelId : '',
+                    thinking_level: thinkingLevel
                 })
             });
+            // Refresh models after key save
+            await refreshAiModels(aiModel);
             showToast('Đã lưu cấu hình!');
         }
 
@@ -6105,7 +6269,7 @@
                 
                 const commentLength = document.getElementById('commentLength')?.value || 'medium';
                 const customPrompt = document.getElementById('customPrompt')?.value || '';
-                const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
+                const { aiModel, customModelId, thinkingLevel, aiApiKey } = getSelectedModelConfig();
 
                 const homeworkStatus = await getPreviousHomeworkStatusForStudent(att);
                 const data = await fetchJSON('/api/generate_comment', {
@@ -6118,6 +6282,7 @@
                         homework_status: homeworkStatus,
                         model_id: aiModel,
                         custom_model_id: customModelId,
+                        thinking_level: thinkingLevel,
                         comment_length: commentLength,
                         custom_prompt: customPrompt,
                         ai_api_key: aiApiKey
@@ -6190,7 +6355,7 @@
                     try {
                         const commentLength = document.getElementById('commentLength')?.value || 'medium';
                         const customPrompt = document.getElementById('customPrompt')?.value || '';
-                        const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
+                        const { aiModel, customModelId, thinkingLevel, aiApiKey } = getSelectedModelConfig();
 
                         const homeworkStatus = await getPreviousHomeworkStatusForStudent(att);
                         const data = await fetchJSON('/api/generate_comment', {
@@ -6203,6 +6368,7 @@
                             homework_status: homeworkStatus,
                             model_id: aiModel,
                             custom_model_id: customModelId,
+                            thinking_level: thinkingLevel,
                             comment_length: commentLength,
                             custom_prompt: customPrompt,
                             ai_api_key: aiApiKey
@@ -6535,12 +6701,13 @@
             }
 
             try {
-                const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
+                const { aiModel, customModelId, thinkingLevel, aiApiKey } = getSelectedModelConfig();
                 const data = await fetchJSON('/api/generate_checkpoint_comment', {
                     student_name: studentName,
                     teacher_description: desc,
                     model_id: aiModel,
                     custom_model_id: customModelId,
+                    thinking_level: thinkingLevel,
                     ai_api_key: aiApiKey
                 });
                 if (data.error) {
@@ -6595,12 +6762,13 @@
                     const desc = document.getElementById(`cp-desc-${scoreId}`)?.value ?? getCheckpointDescriptionDraft(att.student.id);
 
                     try {
-                        const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
+                        const { aiModel, customModelId, thinkingLevel, aiApiKey } = getSelectedModelConfig();
                         const data = await fetchJSON('/api/generate_checkpoint_comment', {
                             student_name: att.student.fullName,
                             teacher_description: desc,
                             model_id: aiModel,
                             custom_model_id: customModelId,
+                            thinking_level: thinkingLevel,
                             ai_api_key: aiApiKey
                         });
                         if (!data.error) {
@@ -6922,12 +7090,13 @@
                         const scoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
                         const desc = document.getElementById(`cp-desc-${scoreId}`)?.value ?? getCheckpointDescriptionDraft(att.student.id);
                         try {
-                            const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
+                            const { aiModel, customModelId, thinkingLevel, aiApiKey } = getSelectedModelConfig();
                             const data = await fetchJSON('/api/generate_checkpoint_comment', {
                                 student_name: att.student.fullName,
                                 teacher_description: desc,
                                 model_id: aiModel,
                                 custom_model_id: customModelId,
+                                thinking_level: thinkingLevel,
                                 ai_api_key: aiApiKey
                             });
                             if (!data.error) {

@@ -47,6 +47,7 @@ commentsRoutes.post("/generate_comment", async (c) => {
     sessionSummary: String(data.session_summary || ""),
     modelId: data.model_id,
     customModelId: data.custom_model_id,
+    thinkingLevel: data.thinking_level,
     commentLength: data.comment_length || "medium",
     customPrompt: data.custom_prompt || "",
     aiApiKey: data.ai_api_key || data.api_key || "",
@@ -63,6 +64,7 @@ commentsRoutes.post("/generate_checkpoint_comment", async (c) => {
     teacherDescription: String(data.teacher_description || ""),
     modelId: data.model_id,
     customModelId: data.custom_model_id,
+    thinkingLevel: data.thinking_level,
     aiApiKey: data.ai_api_key || data.api_key || "",
   });
   return c.json({ comment });

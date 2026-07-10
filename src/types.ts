@@ -36,6 +36,7 @@ export interface AppConfig {
   openrouter_key?: string;
   ai_model?: string;
   custom_model_id?: string;
+  thinking_level?: string;
   firebase_key?: string;
   [key: string]: unknown;
 }
@@ -63,5 +64,6 @@ export interface GradingQueueMessage {
   lessonName: string;
   modelId?: string;
   customModelId?: string;
+  thinkingLevel?: string;
   apiKey?: string;
 }

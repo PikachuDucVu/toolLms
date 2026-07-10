@@ -69,6 +69,7 @@ homeworkRoutes.post("/homework/ai-grade", async (c) => {
     studentName: body.student_name || "",
     modelId: body.model_id || "",
     customModelId: body.custom_model_id || "",
+    thinkingLevel: body.thinking_level || "",
     apiKey: body.api_key || "",
   });
   return c.json(result, { status: result.success ? 200 : 400 });
@@ -86,6 +87,7 @@ homeworkRoutes.post("/homework/batch-grade", async (c) => {
     lessons?: Record<string, { name?: string }>;
     model_id?: string;
     custom_model_id?: string;
+    thinking_level?: string;
     api_key?: string;
   }>(c);
   const classId = body.class_id || body.submissions?.[0]?.classId || "";
@@ -119,6 +121,7 @@ homeworkRoutes.post("/homework/batch-grade", async (c) => {
       lessonName,
       modelId: body.model_id,
       customModelId: body.custom_model_id,
+      thinkingLevel: body.thinking_level,
       apiKey: body.api_key,
     };
     await c.env.GRADING_QUEUE.send(message);
@@ -153,6 +156,7 @@ homeworkRoutes.post("/homework/jobs/:jobId/retry-failed", async (c) => {
     lessons?: Record<string, { name?: string }>;
     model_id?: string;
     custom_model_id?: string;
+    thinking_level?: string;
     api_key?: string;
   }>(c);
   const submissions = body.submissions || [];
@@ -178,6 +182,7 @@ homeworkRoutes.post("/homework/jobs/:jobId/retry-failed", async (c) => {
       lessonName: body.lessons?.[String(submission.lessonId || "")]?.name || "",
       modelId: body.model_id,
       customModelId: body.custom_model_id,
+      thinkingLevel: body.thinking_level,
       apiKey: body.api_key,
     });
     queued++;

@@ -16,7 +16,7 @@ export async function getConfig(env: Env): Promise<AppConfig> {
 export async function saveConfig(env: Env, patch: AppConfig): Promise<AppConfig> {
   const current = await getConfig(env);
   const next: AppConfig = { ...current };
-  for (const key of ["openrouter_key", "ai_model", "custom_model_id", "firebase_key"] as const) {
+  for (const key of ["openrouter_key", "ai_model", "custom_model_id", "thinking_level", "firebase_key"] as const) {
     if (Object.prototype.hasOwnProperty.call(patch, key)) {
       next[key] = patch[key];
       await env.DB.prepare(
