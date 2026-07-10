@@ -1389,10 +1389,6 @@
                 width: 100% !important;
             }
             
-            .card-header #filterStatus {
-                flex: 1;
-            }
-            
             .action-bar {
                 flex-direction: column;
                 gap: 8px;
@@ -2108,6 +2104,646 @@
             .cp-head-right { gap: 6px; }
             .cp-head-score b { font-size: 16px; }
         }
+        /* ===== Regular student master-detail workspace ===== */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .student-card-heading {
+            min-width: 0;
+        }
+
+        .student-card-heading h2 {
+            flex-wrap: wrap;
+        }
+
+        .student-count-badge {
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: white;
+            border: 1px solid var(--gray-200);
+            color: var(--gray-600);
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .student-toolbar {
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .student-search-control {
+            position: relative;
+            display: block;
+        }
+
+        .student-search-control > svg {
+            position: absolute;
+            left: 10px;
+            bottom: 9px;
+            width: 16px;
+            height: 16px;
+            color: var(--gray-400);
+            pointer-events: none;
+        }
+
+        .student-search-control .form-input {
+            width: 210px;
+            height: 38px;
+            padding: 8px 10px 8px 34px;
+            font-size: 13px;
+        }
+
+        .student-filter-field {
+            display: grid;
+            gap: 3px;
+            min-width: 122px;
+        }
+
+        .student-filter-field > span {
+            padding-left: 2px;
+            color: var(--gray-500);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            line-height: 1;
+            text-transform: uppercase;
+        }
+
+        .student-filter-field .form-select {
+            height: 38px;
+            padding: 7px 30px 7px 10px;
+            font-size: 12px;
+        }
+
+        .toolbar-menu,
+        .quick-template-menu,
+        .detail-overflow,
+        .batch-overflow {
+            position: relative;
+        }
+
+        .toolbar-menu > summary,
+        .quick-template-menu > summary,
+        .detail-overflow > summary,
+        .batch-overflow > summary {
+            list-style: none;
+        }
+
+        .toolbar-menu > summary::-webkit-details-marker,
+        .quick-template-menu > summary::-webkit-details-marker,
+        .detail-overflow > summary::-webkit-details-marker,
+        .batch-overflow > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .toolbar-icon-button {
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-xs);
+            background: white;
+            color: var(--gray-600);
+            cursor: pointer;
+            transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+        }
+
+        .toolbar-icon-button:hover,
+        .toolbar-menu[open] .toolbar-icon-button {
+            color: var(--primary-dark);
+            border-color: rgba(8, 145, 178, 0.4);
+            background: var(--primary-lighter);
+        }
+
+        .toolbar-icon-button:focus-visible,
+        details > summary.btn:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.16);
+        }
+
+        .toolbar-menu-popover,
+        .detail-menu-popover,
+        .quick-template-popover {
+            position: absolute;
+            z-index: 40;
+            min-width: 190px;
+            padding: 6px;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            background: white;
+            box-shadow: var(--shadow-lg);
+            max-height: min(280px, calc(100vh - 24px));
+            overflow-y: auto;
+        }
+
+        .toolbar-menu-popover,
+        .quick-template-popover {
+            top: calc(100% + 8px);
+            right: 0;
+        }
+
+        .detail-menu-popover {
+            right: 0;
+            bottom: calc(100% + 8px);
+        }
+
+        .menu-action {
+            width: 100%;
+            min-height: 38px;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 8px 10px;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            color: var(--gray-700);
+            font: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            transition: background var(--transition-fast), color var(--transition-fast);
+        }
+
+        .menu-action:hover,
+        .menu-action:focus-visible {
+            outline: none;
+            background: var(--gray-100);
+            color: var(--gray-900);
+        }
+
+        .menu-action.danger {
+            color: var(--danger-dark);
+        }
+
+        .menu-action.danger:hover,
+        .menu-action.danger:focus-visible {
+            background: var(--danger-light);
+        }
+
+        .student-grid.regular-mode {
+            max-height: none;
+            overflow: visible;
+            padding-right: 0;
+        }
+
+        .student-grid.regular-mode .student-workspace {
+            grid-template-columns: minmax(270px, 0.8fr) minmax(0, 1.45fr);
+            gap: 18px;
+        }
+
+        .student-grid.regular-mode .student-compact-list {
+            gap: 8px;
+            max-height: min(650px, calc(100vh - 170px));
+            overscroll-behavior: contain;
+        }
+
+        .student-list-item {
+            min-height: 72px;
+            padding: 11px 12px;
+            border-width: 1px;
+        }
+
+        .student-list-item.active {
+            border-color: rgba(8, 145, 178, 0.65);
+            box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.08), var(--shadow-sm);
+        }
+
+        .student-list-name {
+            overflow: hidden;
+            color: var(--gray-900);
+            font-size: 13px;
+            font-weight: 800;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .student-list-preview.is-empty {
+            color: var(--gray-500);
+            font-style: italic;
+        }
+
+        .student-detail-panel {
+            max-height: min(650px, calc(100vh - 32px));
+            overflow-y: auto;
+        }
+
+        .student-detail-header {
+            align-items: center;
+        }
+
+        .student-detail-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 5px;
+        }
+
+        .student-detail-section-title .btn-link {
+            padding: 3px 0;
+            border: 0;
+            background: transparent;
+            color: var(--primary-dark);
+            font: inherit;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: none;
+            letter-spacing: 0;
+            cursor: pointer;
+        }
+
+        .student-detail-section-title .btn-link:hover,
+        .student-detail-section-title .btn-link:focus-visible {
+            outline: none;
+            text-decoration: underline;
+        }
+
+        .regular-note-editor {
+            display: grid;
+            gap: 8px;
+        }
+
+        .regular-note-editor textarea,
+        .student-detail-panel .comment-edit {
+            width: 100%;
+            resize: vertical;
+        }
+
+        .regular-note-editor textarea {
+            min-height: 76px;
+            padding: 10px 12px;
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            background: white;
+            color: var(--gray-800);
+            font: inherit;
+            font-size: 13px;
+            line-height: 1.55;
+            transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        .regular-note-editor textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.12);
+        }
+
+        .regular-note-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .regular-note-toolbar-left,
+        .regular-note-toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .quick-template-popover {
+            left: 0;
+            right: auto;
+            min-width: 205px;
+        }
+
+        .regular-existing-comment {
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            background: var(--gray-50);
+        }
+
+        .regular-existing-comment > summary {
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 9px 12px;
+            color: var(--gray-700);
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            list-style: none;
+        }
+
+        .regular-existing-comment > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .regular-existing-comment > summary::after {
+            content: '›';
+            color: var(--gray-400);
+            font-size: 18px;
+            transform: rotate(90deg);
+            transition: transform var(--transition-fast);
+        }
+
+        .regular-existing-comment[open] > summary::after {
+            transform: rotate(270deg);
+        }
+
+        .regular-existing-comment-body {
+            padding: 0 12px 12px;
+            color: var(--gray-700);
+            font-size: 13px;
+            line-height: 1.65;
+        }
+
+        .regular-ai-empty,
+        .regular-absent-note {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            border: 1px dashed var(--gray-300);
+            border-radius: var(--radius-sm);
+            background: var(--gray-50);
+            color: var(--gray-600);
+            font-size: 13px;
+        }
+
+        .regular-absent-note {
+            margin-top: 14px;
+            border-style: solid;
+            border-color: #FDE68A;
+            background: #FFFBEB;
+            color: #92400E;
+        }
+
+        .student-detail-actions {
+            align-items: center;
+        }
+
+        .student-detail-actions .detail-primary {
+            margin-left: auto;
+        }
+
+        .batch-action-copy {
+            min-width: 180px;
+            display: grid;
+            gap: 1px;
+            margin-right: auto;
+        }
+
+        .batch-action-copy strong {
+            color: var(--gray-800);
+            font-size: 13px;
+        }
+
+        .batch-action-copy span {
+            color: var(--gray-500);
+            font-size: 11px;
+        }
+
+        .batch-action-buttons {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .action-bar .batch-action-buttons > .btn,
+        .action-bar .batch-overflow > summary.btn {
+            flex: 0 0 auto;
+        }
+
+        .batch-overflow .detail-menu-popover {
+            min-width: 220px;
+        }
+
+        @media (max-width: 1100px) {
+            .student-card-header {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            .student-toolbar {
+                justify-content: flex-start;
+                width: 100%;
+            }
+
+            .student-card-heading {
+                width: 100%;
+            }
+
+            .student-grid.regular-mode .student-workspace {
+                grid-template-columns: minmax(245px, 0.72fr) minmax(0, 1.28fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .student-grid.regular-mode .student-workspace {
+                grid-template-columns: 1fr;
+            }
+
+            .student-grid.regular-mode .student-compact-list {
+                max-height: none;
+                overflow: visible;
+                padding-right: 0;
+            }
+
+            .student-detail-panel {
+                position: static;
+                display: block;
+                max-height: none;
+                margin-top: 8px;
+                overflow: visible;
+                padding: 16px;
+                box-shadow: var(--shadow-md);
+            }
+
+            .student-list-entry:has(.student-detail-panel) {
+                padding-bottom: 4px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                padding-bottom: 92px;
+            }
+
+            .student-toolbar {
+                display: grid;
+                grid-template-columns: 1fr 1fr auto;
+                align-items: end;
+            }
+
+            .student-search-control {
+                grid-column: 1 / -1;
+            }
+
+            .student-search-control .form-input {
+                width: 100%;
+                height: 44px;
+                font-size: 16px;
+            }
+
+            .student-search-control > svg {
+                bottom: 14px;
+            }
+
+            .student-filter-field {
+                min-width: 0;
+            }
+
+            .student-filter-field .form-select {
+                height: 44px;
+                font-size: 16px;
+            }
+
+            .toolbar-icon-button {
+                width: 44px;
+                height: 44px;
+            }
+
+            .action-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            #defaultActionBar {
+                position: fixed;
+                z-index: 80;
+                right: 10px;
+                bottom: 10px;
+                left: 10px;
+                padding: 10px;
+                border: 1px solid var(--gray-200);
+                border-radius: var(--radius-sm);
+                background: rgba(248, 250, 252, 0.97);
+                box-shadow: var(--shadow-xl);
+                backdrop-filter: blur(12px);
+            }
+
+            .batch-action-copy {
+                width: 100%;
+            }
+
+            .batch-action-buttons {
+                display: grid;
+                grid-template-columns: 1fr 1fr auto;
+                width: 100%;
+            }
+
+            .action-bar .batch-action-buttons > .btn,
+            .action-bar .batch-overflow > summary.btn {
+                width: 100%;
+                min-height: 44px;
+            }
+
+            .stats-bar {
+                justify-content: flex-start;
+            }
+
+            .student-detail-section-title .btn-link,
+            .regular-note-toolbar .btn,
+            .quick-template-menu > summary,
+            .menu-action,
+            .regular-existing-comment > summary {
+                min-height: 44px;
+            }
+
+            .student-detail-section-title .btn-link {
+                display: inline-flex;
+                align-items: center;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .card-body {
+                padding: 14px;
+            }
+
+            .student-list-item {
+                min-height: 68px;
+            }
+
+            .student-list-badges .badge:nth-child(n+3) {
+                display: none;
+            }
+
+            .student-detail-header {
+                align-items: flex-start;
+            }
+
+            .regular-note-toolbar,
+            .regular-note-toolbar-left,
+            .regular-note-toolbar-right {
+                align-items: stretch;
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .regular-note-toolbar .btn,
+            .quick-template-menu,
+            .quick-template-menu > summary {
+                width: 100%;
+            }
+
+            .regular-note-toolbar .btn,
+            .quick-template-menu > summary {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .quick-template-popover {
+                left: 0;
+                right: 0;
+                min-width: 100%;
+            }
+
+            .student-detail-actions {
+                align-items: stretch;
+            }
+
+            .student-detail-actions .btn,
+            .student-detail-actions .detail-primary,
+            .detail-overflow,
+            .detail-overflow > summary {
+                width: 100%;
+                margin-left: 0;
+            }
+
+            .batch-action-copy {
+                display: none;
+            }
+
+            .batch-action-buttons {
+                grid-template-columns: 1fr 1fr 44px;
+            }
+
+            .batch-action-buttons .btn {
+                padding-left: 9px;
+                padding-right: 9px;
+                font-size: 11px;
+            }
+
+            .batch-action-buttons .btn .icon-sm {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -2323,44 +2959,59 @@
 
             <!-- Main Content -->
             <div class="card">
-                <div class="card-header">
+                <div class="card-header student-card-header">
+                    <div class="student-card-heading">
                     <h2>
                         <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
                         Danh sách học sinh
+                        <span class="student-count-badge" id="studentCount">0 học sinh</span>
                     </h2>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="text" class="form-input" id="searchStudent" placeholder="Tìm học sinh..." style="width: 150px; padding: 6px 10px; font-size: 12px;" oninput="debouncedFilterStudents()">
-                        <select class="form-select" id="filterStatus" style="padding: 6px 10px; font-size: 12px;" onchange="filterStudents()">
-                            <option value="all">Tất cả</option>
-                            <option value="present">Có mặt</option>
-                            <option value="absent">Vắng</option>
-                            <option value="commented">Đã nhận xét</option>
-                            <option value="not_commented">Chưa nhận xét</option>
-                        </select>
-                        <button class="btn btn-sm btn-outline" onclick="refreshClassData()" title="Refresh">
-                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                            </svg>
-                        </button>
-                        <button class="btn btn-sm btn-outline" onclick="exportToCSV()" title="Export CSV">
-                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                            </svg>
-                        </button>
-                        <span class="badge badge-gray" id="studentCount">0 học sinh</span>
+                    </div>
+                    <div class="student-toolbar" aria-label="Công cụ danh sách học sinh">
+                        <label class="student-search-control" for="searchStudent">
+                            <span class="sr-only">Tìm học sinh theo tên</span>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35m1.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/></svg>
+                            <input type="search" class="form-input" id="searchStudent" placeholder="Tìm học sinh..." autocomplete="off" oninput="debouncedFilterStudents()">
+                        </label>
+                        <label class="student-filter-field" for="filterAttendance">
+                            <span>Điểm danh</span>
+                            <select class="form-select" id="filterAttendance" onchange="filterStudents()">
+                                <option value="all">Tất cả</option>
+                                <option value="present">Có mặt</option>
+                                <option value="absent">Vắng</option>
+                            </select>
+                        </label>
+                        <label class="student-filter-field" for="filterProgress">
+                            <span>Tiến độ</span>
+                            <select class="form-select" id="filterProgress" onchange="filterStudents()">
+                                <option value="all">Tất cả</option>
+                                <option value="pending" id="filterProgressPending">Chưa xử lý</option>
+                                <option value="draft" id="filterProgressDraft">Bản nháp AI</option>
+                                <option value="submitted" id="filterProgressSubmitted">Đã gửi LMS</option>
+                            </select>
+                        </label>
+                        <details class="toolbar-menu">
+                            <summary class="toolbar-icon-button" aria-label="Mở thêm công cụ" title="Thêm công cụ">
+                                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 6a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 6a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"/></svg>
+                            </summary>
+                            <div class="toolbar-menu-popover">
+                                <button type="button" class="menu-action" onclick="closeDetailsMenu(this); refreshClassData()">
+                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 0 0 4.582 9M4 20v-5h.581m0 0a8.003 8.003 0 0 0 15.357-2M4.581 15H9"/></svg>
+                                    Làm mới dữ liệu
+                                </button>
+                                <button type="button" class="menu-action" onclick="closeDetailsMenu(this); exportToCSV()">
+                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4-4 4m0 0-4-4m4 4V4"/></svg>
+                                    Xuất file CSV
+                                </button>
+                            </div>
+                        </details>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="stats-bar" id="statsBar" style="display: none;">
-                        <div class="stat-item">
-                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                            </svg>
-                            Tổng: <span class="stat-value" id="statTotal">0</span>
-                        </div>
-                        <div class="stat-item">
+                    <div class="stats-bar" id="statsBar" style="display: none;" aria-label="Tổng quan tiến độ">
+                        <div class="stat-item" id="statGeneratedItem">
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
@@ -2370,20 +3021,20 @@
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
-                            Đã tạo: <span class="stat-value" id="statGenerated">0</span>
+                            <span id="statGeneratedLabel">Bản nháp AI</span>: <span class="stat-value" id="statGenerated">0</span>
                         </div>
                         <div class="stat-item">
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
-                            Đã submit: <span class="stat-value" id="statSubmitted">0</span>
+                            <span id="statSubmittedLabel">Đã gửi LMS</span>: <span class="stat-value" id="statSubmitted">0</span>
                         </div>
                     </div>
                     <div class="loading" id="studentLoading" role="status" aria-live="polite">
                         <div class="spinner" aria-hidden="true"></div>
                         <div class="loading-text">Đang tải...</div>
                     </div>
-                    <div class="student-grid" id="studentList" role="list" aria-label="Danh sách học sinh">
+                    <div class="student-grid" id="studentList" role="region" aria-label="Danh sách học sinh">
                         <div class="empty-state">
                             <div class="empty-state-icon" aria-hidden="true">
                                 <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:48px;height:48px;opacity:0.5">
@@ -2400,25 +3051,36 @@
                         <div class="progress-text" id="progressText">0%</div>
                     </div>
                 </div>
-                <div class="action-bar" id="defaultActionBar">
-                    <button class="btn btn-primary" onclick="autoCommentAll()" id="autoCommentBtn" disabled>
-                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
-                        </svg>
-                        Auto nhận xét tất cả
-                    </button>
-                    <button class="btn btn-success" onclick="showConfirmModal()" id="submitAllBtn" disabled>
-                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                        </svg>
-                        Submit tất cả
-                    </button>
-                    <button class="btn btn-outline" onclick="copyAllZalo()" id="copyZaloBtn" disabled>
-                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
-                        </svg>
-                        Copy Zalo tất cả
-                    </button>
+                <div class="action-bar" id="defaultActionBar" style="display:none;">
+                    <div class="batch-action-copy">
+                        <strong>Thao tác cả lớp</strong>
+                        <span id="batchActionHint">Chọn lớp và buổi học để bắt đầu</span>
+                    </div>
+                    <div class="batch-action-buttons">
+                        <button class="btn btn-primary" onclick="autoCommentAll()" id="autoCommentBtn" disabled>
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.591-2.591L3.5 12.5l2.096-.813a4.5 4.5 0 0 0 2.591-2.591L9 7l.813 2.096a4.5 4.5 0 0 0 2.591 2.591l2.096.813-2.096.813a4.5 4.5 0 0 0-2.591 2.591Z"/>
+                            </svg>
+                            <span id="autoCommentBtnLabel">Tạo AI cho cả lớp</span>
+                        </button>
+                        <button class="btn btn-success" onclick="showConfirmModal()" id="submitAllBtn" disabled>
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-8-4-4m0 0L8 8m4-4v12"/>
+                            </svg>
+                            <span id="submitAllBtnLabel">Gửi lên LMS</span>
+                        </button>
+                        <details class="batch-overflow">
+                            <summary class="btn btn-outline" aria-label="Mở thêm thao tác cả lớp" title="Thêm thao tác">
+                                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 6a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 6a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"/></svg>
+                            </summary>
+                            <div class="detail-menu-popover">
+                                <button type="button" class="menu-action" onclick="closeDetailsMenu(this); copyAllZalo()" id="copyZaloBtn" disabled>
+                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1M8 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M8 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m0 0h2a2 2 0 0 1 2 2v3m2 4H10m0 0 3-3m-3 3 3 3"/></svg>
+                                    <span id="copyZaloBtnLabel">Sao chép Zalo cả lớp</span>
+                                </button>
+                            </div>
+                        </details>
+                    </div>
                 </div>
                 <div class="action-bar" id="demoActionBar" style="display:none;">
                     <button class="btn btn-demo" onclick="submitDemoAll()" id="submitDemoAllBtn" disabled>
@@ -2457,12 +3119,12 @@
     <!-- Confirm Modal -->
     <div class="confirm-modal hidden" id="confirmModal">
         <div class="confirm-content">
-            <div class="confirm-title">📤 Xác nhận Submit</div>
-            <p style="margin-bottom: 12px; color: var(--gray-600);">Bạn sắp submit nhận xét cho các học sinh sau:</p>
+            <div class="confirm-title">Xác nhận gửi nhận xét</div>
+            <p style="margin-bottom: 12px; color: var(--gray-600);">Bạn sắp gửi nhận xét lên LMS cho các học sinh sau:</p>
             <div class="confirm-preview" id="confirmPreview"></div>
             <div class="confirm-actions">
                 <button class="btn btn-outline" onclick="hideConfirmModal()">Hủy</button>
-                <button class="btn btn-success" onclick="confirmSubmitAll()">✓ Xác nhận Submit</button>
+                <button class="btn btn-success" onclick="confirmSubmitAll()">Gửi lên LMS</button>
             </div>
         </div>
     </div>
@@ -2497,6 +3159,9 @@
         let students = [];
         let generatedComments = {};
         let checkpointScoresCache = {}; // {studentScoreId: {theory: val, practice: val}}
+        let checkpointDescriptionDrafts = {}; // {studentId: teacher description}
+        let demoScoresCache = {}; // {studentScoreId: [score values]}
+        let demoAutoRateCache = {}; // {studentScoreId: boolean}
         let manualComments = {}; // {studentId: comment text} for manual checkpoint comments
         let classData = null;
         let classesCache = null;
@@ -2515,6 +3180,15 @@
         let checkpointStatusKey = null; // `${classId}:${checkpointNum}` currently loaded
         let checkpointExpanded = {};    // {studentId: true} — which checkpoint cards are open (persists across re-render)
 
+        // ===== Regular-session master-detail state =====
+        let selectedRegularStudentId = null;
+        let regularUiSlotId = null;
+        let regularNoteDrafts = {};      // Preserve unsaved notes across selection/filter renders.
+        let regularServerSyncedNotes = {};
+        let regularListScrollTop = 0;
+        let regularBatchBusy = false;
+        let regularStudentBusy = new Set();
+
         // ============== UTILITY HELPERS ==============
 
         /** Escape HTML entities to prevent XSS */
@@ -2529,6 +3203,22 @@
         function escapeAttr(str) {
             if (!str) return '';
             return String(str).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\/g,'\\\\');
+        }
+
+        /** Escape a value embedded in a single-quoted inline JS argument inside a double-quoted HTML attribute. */
+        function escapeInlineJsAttr(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\r/g, '\\r')
+                .replace(/\n/g, '\\n')
+                .replace(/\u2028/g, '\\u2028')
+                .replace(/\u2029/g, '\\u2029')
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
         }
 
         /** Sanitize an ID for use as a DOM element id */
@@ -2623,7 +3313,7 @@
                 const content = (slot.commentByAreas || []).find(area => area.type === 'CONTENT' && area.content)?.content || '';
                 return content ? `- Buổi ${slot.index || '?'}: ${content}` : '';
             }).filter(Boolean).join('\n') || 'Buổi đầu tiên';
-            const localNote = body.student_id ? getLocalNote(body.student_id) : '';
+            const localNote = body.teacher_note || body.teacherNote || (body.student_id ? getRegularNoteValue(body.student_id) : '');
             const notes = `${body.is_late ? 'Học sinh đi học muộn buổi này.\n' : ''}${localNote || 'Học bình thường, không có gì đặc biệt'}`;
             const lengthGuide = body.comment_length === 'short' ? '2-3 câu ngắn gọn' : body.comment_length === 'long' ? '4-5 câu chi tiết' : '3-4 câu';
             const homeworkStatusLine = formatHomeworkStatusForPrompt(body.homework_status || body.homeworkStatus);
@@ -3273,28 +3963,100 @@
             localStorage.setItem('studentNotes', JSON.stringify(notes));
         }
 
-        // Filter students
+        // Student filters and workflow-aware progress state.
         let filteredStudents = [];
         const debouncedFilterStudents = debounce(filterStudents, 200);
-        function filterStudents() {
-            const search = document.getElementById('searchStudent').value.toLowerCase();
-            const status = document.getElementById('filterStatus').value;
-            
-            filteredStudents = students.filter(s => {
-                const matchName = s.student.fullName.toLowerCase().includes(search);
-                const isPresent = isPresentAttendance(s);
-                const hasComment = hasContentComment(s);
-                
-                let matchStatus = true;
-                if (status === 'present') matchStatus = isPresent;
-                else if (status === 'absent') matchStatus = !isPresent;
-                else if (status === 'commented') matchStatus = hasComment;
-                else if (status === 'not_commented') matchStatus = !hasComment;
-                
-                return matchName && matchStatus;
+
+        function getCurrentStudentMode() {
+            if (isFinalSession()) return 'demo';
+            if (isCheckpointSession()) return 'checkpoint';
+            return 'regular';
+        }
+
+        function closeDetailsMenu(trigger) {
+            const details = trigger?.closest?.('details');
+            const summary = details?.querySelector(':scope > summary');
+            details?.removeAttribute('open');
+            requestAnimationFrame(() => summary?.focus());
+        }
+
+        function hasModeSubmission(att, mode = getCurrentStudentMode()) {
+            if (mode === 'demo') return hasAreaType(att, 'DEMO') || hasContentComment(att);
+            if (mode === 'checkpoint') return hasAreaType(att, 'CHECKPOINT') || hasContentComment(att);
+            return hasContentComment(att);
+        }
+
+        function getStudentProgressState(att, mode = getCurrentStudentMode()) {
+            const studentId = att?.student?.id;
+            if (mode !== 'demo' && (generatedComments[studentId] || String(manualComments[studentId] || '').trim())) {
+                return 'draft';
+            }
+            return hasModeSubmission(att, mode) ? 'submitted' : 'pending';
+        }
+
+        function configureStudentFilters() {
+            const mode = getCurrentStudentMode();
+            const pendingOption = document.getElementById('filterProgressPending');
+            const draftOption = document.getElementById('filterProgressDraft');
+            const submittedOption = document.getElementById('filterProgressSubmitted');
+            const progressSelect = document.getElementById('filterProgress');
+
+            if (!pendingOption || !draftOption || !submittedOption || !progressSelect) return;
+
+            pendingOption.textContent = mode === 'regular' ? 'Chưa xử lý' : 'Chưa chấm';
+            draftOption.textContent = 'Bản nháp AI';
+            submittedOption.textContent = mode === 'demo' ? 'Đã chấm Demo' : mode === 'checkpoint' ? 'Đã chấm' : 'Đã gửi LMS';
+            draftOption.hidden = mode === 'demo';
+            draftOption.disabled = mode === 'demo';
+            if (mode === 'demo' && progressSelect.value === 'draft') progressSelect.value = 'all';
+        }
+
+        function getVisibleStudents() {
+            const search = normalizeVietnameseText(document.getElementById('searchStudent')?.value || '');
+            const attendance = document.getElementById('filterAttendance')?.value || 'all';
+            const progress = document.getElementById('filterProgress')?.value || 'all';
+            const mode = getCurrentStudentMode();
+
+            filteredStudents = students.filter(att => {
+                const matchName = normalizeVietnameseText(att?.student?.fullName || '').includes(search);
+                const isPresent = isPresentAttendance(att);
+                const matchAttendance = attendance === 'all'
+                    || (attendance === 'present' && isPresent)
+                    || (attendance === 'absent' && !isPresent);
+                const matchProgress = progress === 'all' || getStudentProgressState(att, mode) === progress;
+                return matchName && matchAttendance && matchProgress;
             });
-            
-            renderStudents(filteredStudents);
+
+            return filteredStudents;
+        }
+
+        function updateStudentCount(visibleCount = students.length) {
+            const count = document.getElementById('studentCount');
+            if (!count) return;
+            count.textContent = visibleCount === students.length
+                ? `${students.length} học sinh`
+                : `${visibleCount}/${students.length} học sinh`;
+        }
+
+        function filterStudents() {
+            if (isCheckpointSession()) {
+                saveCheckpointScoresToCache();
+                saveCheckpointDescriptionsToCache();
+            } else if (isFinalSession()) {
+                saveDemoInputsToCache();
+            }
+            regularListScrollTop = 0;
+            renderStudents();
+        }
+
+        function resetStudentFilters() {
+            const search = document.getElementById('searchStudent');
+            const attendance = document.getElementById('filterAttendance');
+            const progress = document.getElementById('filterProgress');
+            if (search) search.value = '';
+            if (attendance) attendance.value = 'all';
+            if (progress) progress.value = 'all';
+            filterStudents();
         }
 
         // Refresh class data
@@ -3560,20 +4322,54 @@
         function updateStats() {
             const total = students.length;
             const present = students.filter(isPresentAttendance).length;
-            const generated = Object.keys(generatedComments).length;
-            const submitted = students.filter(hasContentComment).length;
-            
-            document.getElementById('statTotal').textContent = total;
+            const mode = getCurrentStudentMode();
+            const generated = students.filter(att => !!generatedComments[att.student.id]).length;
+            const batchGenerated = students.filter(att => isPresentAttendance(att) && !!generatedComments[att.student.id]).length;
+            const submitted = students.filter(att => hasModeSubmission(att, mode)).length;
+            const availableZalo = students.filter(att => isPresentAttendance(att) && (
+                generatedComments[att.student.id] || att.commentByAreas?.some(area => area.type === 'CONTENT' && area.content?.trim())
+            )).length;
+
             document.getElementById('statPresent').textContent = present;
             document.getElementById('statGenerated').textContent = generated;
             document.getElementById('statSubmitted').textContent = submitted;
+            document.getElementById('statGeneratedItem').style.display = mode === 'demo' ? 'none' : 'flex';
+            document.getElementById('statGeneratedLabel').textContent = 'Bản nháp AI';
+            document.getElementById('statSubmittedLabel').textContent = mode === 'demo'
+                ? 'Đã chấm Demo'
+                : mode === 'checkpoint' ? 'Đã chấm' : 'Đã gửi LMS';
             document.getElementById('statsBar').style.display = total > 0 ? 'flex' : 'none';
+
+            if (mode === 'regular') {
+                const autoBtn = document.getElementById('autoCommentBtn');
+                const submitBtn = document.getElementById('submitAllBtn');
+                const copyBtn = document.getElementById('copyZaloBtn');
+                const autoLabel = document.getElementById('autoCommentBtnLabel');
+                const submitLabel = document.getElementById('submitAllBtnLabel');
+                const copyLabel = document.getElementById('copyZaloBtnLabel');
+                const hint = document.getElementById('batchActionHint');
+
+                if (autoLabel) autoLabel.textContent = `Tạo AI cho ${present} học sinh`;
+                if (submitLabel) submitLabel.textContent = `Gửi lên LMS (${batchGenerated})`;
+                if (copyLabel) copyLabel.textContent = `Sao chép Zalo (${availableZalo})`;
+                if (hint) hint.textContent = `${present} có mặt · ${generated} bản nháp · ${submitted} đã gửi`;
+                if (autoBtn) autoBtn.disabled = regularBatchBusy || present === 0;
+                if (submitBtn) submitBtn.disabled = regularBatchBusy || batchGenerated === 0;
+                if (copyBtn) copyBtn.disabled = regularBatchBusy || availableZalo === 0;
+            }
         }
 
         // Delete comment
         function deleteComment(studentId) {
+            if (!generatedComments[studentId]) return;
+            if (getCurrentStudentMode() === 'regular' && (regularBatchBusy || regularStudentBusy.has(studentId))) {
+                showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
+                return;
+            }
+            if (!window.confirm('Xóa bản nháp AI của học sinh này?')) return;
             delete generatedComments[studentId];
             saveCheckpointScoresToCache();
+            saveCheckpointDescriptionsToCache();
             renderStudents();
             updateStats();
             showToast('Đã xóa nhận xét');
@@ -3591,20 +4387,29 @@
         // Apply note template
         function applyTemplate(studentId, templateKey) {
             const note = NOTE_TEMPLATES[templateKey];
-            const input = document.getElementById(`note-${studentId}`);
+            const input = document.getElementById(`note-${getRegularStudentDomId(studentId)}`);
             if (input) {
                 input.value = note;
-                setLocalNote(studentId, note);
+                onRegularNoteInput(studentId, note);
             }
+            setLocalNote(studentId, note);
+            showToast('Đã áp dụng mẫu ghi chú');
         }
 
         // Confirm modal
         function showConfirmModal() {
+            if (regularBatchBusy) {
+                showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
+                return;
+            }
             const preview = document.getElementById('confirmPreview');
-            const comments = Object.entries(generatedComments);
+            const comments = Object.entries(generatedComments).filter(([studentId]) => {
+                const att = students.find(item => item.student.id === studentId);
+                return att && isPresentAttendance(att);
+            });
             
             if (comments.length === 0) {
-                showToast('Chưa có nhận xét nào để submit', 'error');
+                showToast('Chưa có nhận xét nào để gửi', 'error');
                 return;
             }
             
@@ -3614,7 +4419,7 @@
                 return `
                     <div class="confirm-preview-item">
                         <div class="confirm-preview-name">${escapeHtml(student?.student.fullName || studentId)}</div>
-                        <div class="confirm-preview-comment">${cleanComment}...</div>
+                        <div class="confirm-preview-comment">${escapeHtml(cleanComment)}...</div>
                     </div>
                 `;
             }).join('');
@@ -4292,6 +5097,7 @@
                 // Only re-render if we're still on a checkpoint session for this class
                 if (isCheckpointSession() && classData?.id === classId) {
                     saveCheckpointScoresToCache();
+                    saveCheckpointDescriptionsToCache();
                     renderStudents();
                 }
             }
@@ -4303,6 +5109,7 @@
         function setCheckpointBranch(studentId, branch) {
             checkpointBranchSelection[studentId] = branch;
             saveCheckpointScoresToCache();
+            saveCheckpointDescriptionsToCache();
             renderStudents();
         }
 
@@ -4336,11 +5143,25 @@
             const slotIdx = document.getElementById('slotSelect').value;
             if (!slotIdx || !classData) return;
             
-            selectedSlot = classData.slots[parseInt(slotIdx)];
+            const nextSlot = classData.slots[parseInt(slotIdx)];
+            const slotChanged = regularUiSlotId !== nextSlot?._id;
+            selectedSlot = nextSlot;
             students = selectedSlot.studentAttendance || [];
             generatedComments = {};
             checkpointScoresCache = {};
+            checkpointDescriptionDrafts = {};
+            demoScoresCache = {};
+            demoAutoRateCache = {};
             manualComments = {};
+
+            if (slotChanged) {
+                selectedRegularStudentId = null;
+                regularNoteDrafts = {};
+                regularServerSyncedNotes = {};
+                regularStudentBusy.clear();
+                regularListScrollTop = 0;
+            }
+            regularUiSlotId = selectedSlot?._id || null;
             
             // Set summary if exists, otherwise clear it
             if (selectedSlot.summary) {
@@ -4357,6 +5178,7 @@
             document.getElementById('demoActionBar').style.display = isFinal ? 'flex' : 'none';
             document.getElementById('checkpointActionBar').style.display = isCheckpoint ? 'flex' : 'none';
 
+            configureStudentFilters();
             renderStudents();
             updateStats();
 
@@ -4372,24 +5194,331 @@
             } else if (isFinal) {
                 // Enable demo submit for all present students (allows re-submit)
                 document.getElementById('submitDemoAllBtn').disabled = presentStudents.length === 0;
-            } else {
-                // Check if any present student has existing comment
-                const hasAnyComment = presentStudents.some(hasContentComment);
-                
-                document.getElementById('autoCommentBtn').disabled = presentStudents.length === 0;
-                document.getElementById('submitAllBtn').disabled = true;
-                document.getElementById('copyZaloBtn').disabled = !hasAnyComment;
             }
             document.getElementById('submitSummaryBtn').disabled = false;
-            document.getElementById('studentCount').textContent = `${students.length} học sinh`;
+        }
+
+        function getRegularStudentDomId(studentId) {
+            return `student_${Array.from(String(studentId || '')).map(char => char.codePointAt(0).toString(16)).join('_')}`;
+        }
+
+        function stripHtmlText(value) {
+            const container = document.createElement('div');
+            container.innerHTML = String(value || '');
+            return (container.textContent || container.innerText || '').replace(/\s+/g, ' ').trim();
+        }
+
+        function getRegularNoteValue(studentId) {
+            return Object.prototype.hasOwnProperty.call(regularNoteDrafts, studentId)
+                ? regularNoteDrafts[studentId]
+                : getLocalNote(studentId);
+        }
+
+        function getAttendancePresentation(att) {
+            if (att.status === 'ATTENDED') return { text: 'Có mặt', badgeClass: 'badge-success' };
+            if (att.status === 'LATE_ARRIVED') return { text: 'Đi muộn', badgeClass: 'badge-warning' };
+            if (att.status === 'ABSENT_WITH_NOTICE') return { text: 'Vắng có phép', badgeClass: 'badge-gray' };
+            return { text: 'Vắng', badgeClass: 'badge-gray' };
+        }
+
+        function getRegularStudentUiState(att) {
+            const studentId = att.student.id;
+            const fullName = att.student.fullName || '';
+            const initials = fullName.split(' ').filter(Boolean).slice(-2).map(part => part[0]).join('').toUpperCase();
+            const attendance = getAttendancePresentation(att);
+            const existingComment = att.commentByAreas?.find(area => area.type === 'CONTENT')?.content || '';
+            const generatedComment = generatedComments[studentId] || '';
+            const note = getRegularNoteValue(studentId);
+            const progressState = getStudentProgressState(att, 'regular');
+            const progress = progressState === 'draft'
+                ? { text: 'Bản nháp AI', badgeClass: 'badge-generated' }
+                : progressState === 'submitted'
+                    ? { text: 'Đã gửi LMS', badgeClass: 'badge-success' }
+                    : { text: 'Chưa xử lý', badgeClass: 'badge-warning' };
+
+            return {
+                studentId,
+                fullName,
+                initials,
+                attendance,
+                existingComment,
+                generatedComment,
+                note,
+                progress,
+                progressState,
+                isPresent: isPresentAttendance(att),
+                hasRateScore: !!att.commentByAreas?.some(area => area.type === 'RATE')
+            };
+        }
+
+        function getRegularStudentPreview(att) {
+            const state = getRegularStudentUiState(att);
+            const preview = [state.note, state.generatedComment, state.existingComment]
+                .map(stripHtmlText)
+                .find(Boolean);
+            return preview || 'Chưa có ghi chú hoặc nhận xét';
+        }
+
+        function buildRegularStudentListItem(att, inlineDetail = '') {
+            const state = getRegularStudentUiState(att);
+            const domId = getRegularStudentDomId(state.studentId);
+            const studentIdAttr = escapeAttr(state.studentId);
+            const studentIdJs = escapeInlineJsAttr(state.studentId);
+            const isSelected = state.studentId === selectedRegularStudentId;
+            const preview = getRegularStudentPreview(att);
+            const previewIsEmpty = preview === 'Chưa có ghi chú hoặc nhận xét';
+
+            return `
+                <div class="student-list-entry" id="student-entry-${domId}" role="listitem" data-student-id="${studentIdAttr}">
+                    <button type="button" class="student-list-item ${isSelected ? 'active' : ''}"
+                        aria-selected="${isSelected}" aria-controls="regularStudentDetail"
+                        onclick="selectRegularStudent('${studentIdJs}')">
+                        <span class="student-list-main">
+                            <span class="student-avatar" aria-hidden="true">${escapeHtml(state.initials)}</span>
+                            <span class="student-list-text">
+                                <span class="student-list-name">${escapeHtml(state.fullName)}</span>
+                                <span class="student-list-badges">
+                                    <span class="badge ${state.attendance.badgeClass}">${state.attendance.text}</span>
+                                    <span class="badge ${state.progress.badgeClass}">${state.progress.text}</span>
+                                    ${state.hasRateScore ? '<span class="badge badge-gray">Điểm NL</span>' : ''}
+                                </span>
+                                <span class="student-list-preview ${previewIsEmpty ? 'is-empty' : ''}" id="student-preview-${domId}">${escapeHtml(preview)}</span>
+                            </span>
+                        </span>
+                        <svg class="student-list-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18 6-6-6-6"/>
+                        </svg>
+                    </button>
+                    ${inlineDetail}
+                </div>
+            `;
+        }
+
+        function buildRegularStudentDetail(att, idx) {
+            const state = getRegularStudentUiState(att);
+            const domId = getRegularStudentDomId(state.studentId);
+            const studentIdJs = escapeInlineJsAttr(state.studentId);
+            const studentNameJs = escapeInlineJsAttr(state.fullName);
+            const studentNameAttr = escapeAttr(state.fullName);
+            const attendanceIdJs = escapeInlineJsAttr(att._id);
+            const cleanGeneratedComment = stripHtmlText(state.generatedComment);
+            const hasAnyCopyableComment = !!(state.generatedComment || state.existingComment);
+            const actionsDisabled = regularBatchBusy || regularStudentBusy.has(state.studentId);
+            const generateLabel = state.generatedComment
+                ? 'Tạo lại nhận xét'
+                : state.isPresent ? 'Tạo nhận xét' : 'Tạo nhận xét cho học sinh vắng';
+
+            return `
+                <div class="student-detail-header">
+                    <div class="student-detail-title">
+                        <div class="student-avatar" aria-hidden="true">${escapeHtml(state.initials)}</div>
+                        <div>
+                            <div class="student-name" id="regular-student-title-${domId}">${escapeHtml(state.fullName)}</div>
+                            <div class="student-detail-meta">
+                                <span class="badge ${state.attendance.badgeClass}">${state.attendance.text}</span>
+                                <span class="badge ${state.progress.badgeClass}">${state.progress.text}</span>
+                                ${state.hasRateScore ? '<span class="badge badge-gray">Đã có điểm năng lực</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                ${!state.isPresent ? `
+                    <div class="regular-absent-note" role="note">
+                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+                        Học sinh vắng nên không nằm trong thao tác hàng loạt. Bạn vẫn có thể tạo nhận xét riêng khi cần.
+                    </div>
+                ` : ''}
+
+                ${state.existingComment ? `
+                    <div class="student-detail-section">
+                        <details class="regular-existing-comment" ${state.generatedComment ? '' : 'open'}>
+                            <summary>Nhận xét hiện tại trên LMS</summary>
+                            <div class="regular-existing-comment-body">${escapeHtml(stripHtmlText(state.existingComment))}</div>
+                        </details>
+                    </div>
+                ` : ''}
+
+                <div class="student-detail-section">
+                    <div class="student-detail-section-title">
+                        <span>Ghi chú cho AI</span>
+                        <button type="button" class="btn-link" onclick="showPastComments('${studentIdJs}', '${studentNameJs}')">Xem buổi trước</button>
+                    </div>
+                    <div class="regular-note-editor">
+                        <label class="sr-only" for="note-${domId}">Ghi chú về ${escapeHtml(state.fullName)}</label>
+                        <textarea id="note-${domId}" rows="2" placeholder="Ví dụ: tập trung tốt, hoàn thành bài; cần luyện thêm vòng lặp..."
+                            oninput="onRegularNoteInput('${studentIdJs}', this.value)">${escapeHtml(state.note)}</textarea>
+                        <div class="regular-note-toolbar">
+                            <div class="regular-note-toolbar-left">
+                                <details class="quick-template-menu">
+                                    <summary class="btn btn-sm btn-outline">Mẫu nhanh</summary>
+                                    <div class="quick-template-popover">
+                                        <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'good'); closeDetailsMenu(this)">Học tập tốt</button>
+                                        <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'normal'); closeDetailsMenu(this)">Mức độ bình thường</button>
+                                        <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'needwork'); closeDetailsMenu(this)">Cần cố gắng thêm</button>
+                                        <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'naughty'); closeDetailsMenu(this)">Hay mất tập trung</button>
+                                    </div>
+                                </details>
+                            </div>
+                            <div class="regular-note-toolbar-right">
+                                <button type="button" class="btn btn-sm btn-outline" id="save-note-${domId}" onclick="saveNote('${studentIdJs}')">
+                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.5 12.75 10.5 18l9-13.5"/></svg>
+                                    Lưu ghi chú
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="student-detail-section">
+                    <div class="student-detail-section-title">
+                        <span>Nhận xét gửi phụ huynh</span>
+                        ${state.generatedComment ? '<span class="badge badge-generated">Bản nháp AI</span>' : ''}
+                    </div>
+                    ${state.generatedComment ? `
+                        <label class="sr-only" for="comment-${domId}">Chỉnh sửa nhận xét của ${escapeHtml(state.fullName)}</label>
+                        <textarea class="comment-edit" id="comment-${domId}" oninput="updateComment('${studentIdJs}', this.value)">${escapeHtml(cleanGeneratedComment)}</textarea>
+                    ` : `
+                        <div class="regular-ai-empty">
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.591-2.591L3.5 12.5l2.096-.813a4.5 4.5 0 0 0 2.591-2.591L9 7l.813 2.096a4.5 4.5 0 0 0 2.591 2.591l2.096.813-2.096.813a4.5 4.5 0 0 0-2.591 2.591Z"/></svg>
+                            <span>Chưa có bản nháp AI. Thêm ghi chú ngắn để nhận xét sát với tình hình học tập hơn.</span>
+                        </div>
+                    `}
+                </div>
+
+                <div class="student-detail-actions">
+                    <button type="button" class="btn btn-sm ${state.generatedComment ? 'btn-outline' : 'btn-primary'}" onclick="generateSingle('${studentIdJs}', '${studentNameJs}', ${idx})" id="gen-btn-${domId}" ${actionsDisabled ? 'disabled' : ''}>
+                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.591-2.591L3.5 12.5l2.096-.813a4.5 4.5 0 0 0 2.591-2.591L9 7l.813 2.096a4.5 4.5 0 0 0 2.591 2.591l2.096.813-2.096.813a4.5 4.5 0 0 0-2.591 2.591Z"/></svg>
+                        ${generateLabel}
+                    </button>
+                    ${state.generatedComment ? `
+                        <button type="button" class="btn btn-sm btn-success detail-primary" id="submit-btn-${domId}" onclick="submitSingle('${studentIdJs}', '${attendanceIdJs}')" ${actionsDisabled ? 'disabled' : ''}>
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-8-4-4m0 0L8 8m4-4v12"/></svg>
+                            Gửi lên LMS
+                        </button>
+                    ` : ''}
+                    ${hasAnyCopyableComment ? `
+                        <details class="detail-overflow">
+                            <summary class="btn btn-sm btn-outline" aria-label="Thêm thao tác với ${studentNameAttr}">
+                                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 6a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 6a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"/></svg>
+                                Thêm
+                            </summary>
+                            <div class="detail-menu-popover">
+                                <button type="button" class="menu-action" onclick="closeDetailsMenu(this); copyZaloComment('${studentNameJs}', '${studentIdJs}')">
+                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1M8 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M8 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/></svg>
+                                    Sao chép cho Zalo
+                                </button>
+                                ${state.generatedComment ? `
+                                    <button type="button" class="menu-action danger" onclick="closeDetailsMenu(this); deleteComment('${studentIdJs}')">
+                                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673A2.25 2.25 0 0 1 15.916 21H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0V4.477c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                                        Xóa bản nháp AI
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </details>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderRegularStudents(toRender, list) {
+            if (!toRender.some(att => att.student.id === selectedRegularStudentId)) {
+                selectedRegularStudentId = toRender[0]?.student?.id || null;
+            }
+
+            const selectedAtt = toRender.find(att => att.student.id === selectedRegularStudentId);
+            const selectedIdx = selectedAtt ? students.findIndex(att => att.student.id === selectedAtt.student.id) : -1;
+            const isMobileLayout = window.matchMedia('(max-width: 900px)').matches;
+            const detailMarkup = `
+                <section class="student-detail-panel" id="regularStudentDetail"
+                    aria-labelledby="regular-student-title-${getRegularStudentDomId(selectedRegularStudentId)}">
+                    ${selectedAtt ? buildRegularStudentDetail(selectedAtt, selectedIdx) : '<div class="student-detail-empty">Chọn học sinh để xem chi tiết</div>'}
+                </section>
+            `;
+
+            list.innerHTML = `
+                <div class="student-workspace">
+                    <div class="student-compact-list" role="list" aria-label="Học sinh phù hợp bộ lọc">
+                        ${toRender.map(att => buildRegularStudentListItem(
+                            att,
+                            isMobileLayout && att.student.id === selectedRegularStudentId ? detailMarkup : ''
+                        )).join('')}
+                    </div>
+                    ${isMobileLayout ? '' : detailMarkup}
+                </div>
+            `;
+
+            requestAnimationFrame(() => {
+                const compactList = list.querySelector('.student-compact-list');
+                if (compactList) compactList.scrollTop = regularListScrollTop;
+            });
+        }
+
+        function selectRegularStudent(studentId) {
+            const compactList = document.querySelector('#studentList .student-compact-list');
+            if (compactList) regularListScrollTop = compactList.scrollTop;
+            const selectedAtt = getVisibleStudents().find(att => att.student.id === studentId);
+            if (!selectedAtt) return;
+
+            selectedRegularStudentId = studentId;
+            document.querySelectorAll('#studentList .student-list-item').forEach(button => {
+                const isActive = button.parentElement?.dataset.studentId === studentId;
+                button.classList.toggle('active', isActive);
+                button.setAttribute('aria-selected', String(isActive));
+            });
+
+            const detail = document.getElementById('regularStudentDetail');
+            if (!detail) {
+                renderStudents();
+                return;
+            }
+
+            const selectedIdx = students.findIndex(att => att.student.id === studentId);
+            detail.setAttribute('aria-labelledby', `regular-student-title-${getRegularStudentDomId(studentId)}`);
+            detail.innerHTML = buildRegularStudentDetail(selectedAtt, selectedIdx);
+            syncRegularDetailPlacement();
+        }
+
+        function syncRegularDetailPlacement() {
+            const workspace = document.querySelector('#studentList .student-workspace');
+            const detail = document.getElementById('regularStudentDetail');
+            if (!workspace || !detail || !selectedRegularStudentId) return;
+
+            if (window.matchMedia('(max-width: 900px)').matches) {
+                const selectedEntry = document.getElementById(`student-entry-${getRegularStudentDomId(selectedRegularStudentId)}`);
+                if (selectedEntry && detail.parentElement !== selectedEntry) selectedEntry.appendChild(detail);
+            } else if (detail.parentElement !== workspace) {
+                workspace.appendChild(detail);
+            }
+        }
+
+        function onRegularNoteInput(studentId, value) {
+            regularNoteDrafts[studentId] = value;
+            const att = students.find(item => item.student.id === studentId);
+            const preview = document.getElementById(`student-preview-${getRegularStudentDomId(studentId)}`);
+            if (att && preview) {
+                const previewText = getRegularStudentPreview(att);
+                preview.textContent = previewText;
+                preview.classList.toggle('is-empty', previewText === 'Chưa có ghi chú hoặc nhận xét');
+            }
         }
 
         // Render students
         function renderStudents(studentList = null) {
             const list = document.getElementById('studentList');
-            const toRender = studentList || students;
+            const isFinal = isFinalSession();
+            const isCheckpoint = isCheckpointSession();
+            configureStudentFilters();
+            const toRender = studentList || getVisibleStudents();
+            const filtersActive = !!(document.getElementById('searchStudent')?.value
+                || document.getElementById('filterAttendance')?.value !== 'all'
+                || document.getElementById('filterProgress')?.value !== 'all');
+
+            list.classList.toggle('regular-mode', !isFinal && !isCheckpoint);
+            updateStudentCount(toRender.length);
 
             if (toRender.length === 0) {
+                if (!isFinal && !isCheckpoint) selectedRegularStudentId = null;
                 list.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon" aria-hidden="true">
@@ -4397,14 +5526,12 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
                             </svg>
                         </div>
-                        <div class="empty-state-text">${studentList ? 'Không tìm thấy học sinh' : 'Chưa có học sinh trong buổi này'}</div>
+                        <div class="empty-state-text">${students.length === 0 ? 'Chưa có học sinh trong buổi này' : 'Không tìm thấy học sinh phù hợp'}</div>
+                        ${filtersActive && students.length > 0 ? '<button type="button" class="btn btn-sm btn-outline" style="margin-top:12px" onclick="resetStudentFilters()">Xóa bộ lọc</button>' : ''}
                     </div>
                 `;
                 return;
             }
-
-            const isFinal = isFinalSession();
-            const isCheckpoint = isCheckpointSession();
 
             // Show demo banner for session 14
             if (isFinal) {
@@ -4434,7 +5561,8 @@
                     </div>
                 `;
             } else {
-                list.innerHTML = '';
+                renderRegularStudents(toRender, list);
+                return;
             }
 
             toRender.forEach((att, idx) => {
@@ -4461,11 +5589,11 @@
 
                     // Get existing scores or defaults
                     const studentScoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
-                    const scores = demoConfig.map(cfg => {
+                    const scores = demoConfig.map((cfg, scoreIndex) => {
                         const existing = demoQuestions.find(q => q.courseProcessDemoDetailId === cfg.id);
                         return {
                             ...cfg,
-                            score: existing ? existing.score : ''
+                            score: demoScoresCache[studentScoreId]?.[scoreIndex] ?? (existing ? existing.score : '')
                         };
                     });
 
@@ -4523,7 +5651,9 @@
                             </div>
                             <div style="margin-top:10px;margin-bottom:-4px">
                                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#4B5563">
-                                    <input type="checkbox" id="autoRate-${studentScoreId}" checked>
+                                    <input type="checkbox" id="autoRate-${studentScoreId}"
+                                        ${demoAutoRateCache[studentScoreId] === false ? '' : 'checked'}
+                                        onchange="cacheDemoInputs('${studentScoreId}')">
                                     Tự điền điểm năng lực (5 điểm)
                                 </label>
                             </div>
@@ -4730,7 +5860,8 @@
                                         </svg>
                                         Ghi chú cho AI
                                     </label>
-                                    <textarea id="cp-desc-${studentScoreId}" rows="2" placeholder="VD: Hoàn thành sản phẩm, tư duy logic tốt; cần luyện thuyết trình...">${getLocalNote(att.student.id)}</textarea>
+                                    <textarea id="cp-desc-${studentScoreId}" rows="2" placeholder="VD: Hoàn thành sản phẩm, tư duy logic tốt; cần luyện thuyết trình..."
+                                        oninput="updateCheckpointDescriptionDraft('${escapeInlineJsAttr(att.student.id)}', this.value)">${escapeHtml(getCheckpointDescriptionDraft(att.student.id))}</textarea>
                                 </div>
                                 ${generatedComments[att.student.id] ? `
                                     <div class="checkpoint-ai-comment">
@@ -4762,7 +5893,7 @@
                                 `}
                             </div>
                             <div class="student-actions checkpoint-actions">
-                                <button class="btn btn-sm btn-primary" onclick="generateCheckpointComment('${att.student.id}', '${escapeAttr(att.student.fullName)}', '${studentScoreId}')" id="cp-gen-btn-${studentScoreId}">
+                                <button class="btn btn-sm btn-primary" onclick="generateCheckpointComment('${escapeInlineJsAttr(att.student.id)}', '${escapeInlineJsAttr(att.student.fullName)}', '${studentScoreId}')" id="cp-gen-btn-${studentScoreId}">
                                     <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
                                     </svg>
@@ -4841,10 +5972,10 @@
                         <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'normal')">👌 Bình thường</button>
                         <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'needwork')">📝 Cần cố gắng</button>
                         <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'naughty')">😅 Hay nghịch</button>
-                        <button class="btn btn-xs btn-template" onclick="showPastComments('${att.student.id}', '${escapeAttr(att.student.fullName)}')">📜 Xem buổi trước</button>
+                        <button class="btn btn-xs btn-template" onclick="showPastComments('${escapeInlineJsAttr(att.student.id)}', '${escapeInlineJsAttr(att.student.fullName)}')">📜 Xem buổi trước</button>
                     </div>
                     <div class="student-actions">
-                        <button class="btn btn-sm btn-primary" onclick="generateSingle('${att.student.id}', '${escapeAttr(att.student.fullName)}', ${idx})" id="gen-btn-${att.student.id}">
+                        <button class="btn btn-sm btn-primary" onclick="generateSingle('${escapeInlineJsAttr(att.student.id)}', '${escapeInlineJsAttr(att.student.fullName)}', ${idx})" id="gen-btn-${att.student.id}">
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
                             </svg>
@@ -4857,7 +5988,7 @@
                                 </svg>
                                 Submit
                             </button>
-                            <button class="btn btn-sm btn-outline" onclick="copyZaloComment('${escapeAttr(att.student.fullName)}',' ${att.student.id}')">
+                            <button class="btn btn-sm btn-outline" onclick="copyZaloComment('${escapeInlineJsAttr(att.student.fullName)}','${escapeInlineJsAttr(att.student.id)}')">
                                 <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
                                 </svg>
@@ -4875,22 +6006,48 @@
             });
         }
 
-        // Save note
-        async function saveNote(studentId) {
-            const note = document.getElementById(`note-${studentId}`).value;
-            if (!note) return;
-            
-            // Save to localStorage
-            setLocalNote(studentId, note);
-            
-            // Also save to server
-            await fetch(`/api/notes/${studentId}`, {
+        async function persistStudentNote(studentId, note) {
+            const normalizedNote = String(note || '').trim();
+            if (!normalizedNote) throw new Error('Vui lòng nhập ghi chú trước khi lưu');
+            regularNoteDrafts[studentId] = normalizedNote;
+            setLocalNote(studentId, normalizedNote);
+            if (regularServerSyncedNotes[studentId] === normalizedNote) return false;
+
+            const response = await fetch(`/api/notes/${encodeURIComponent(studentId)}`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({note})
+                body: JSON.stringify({note: normalizedNote})
             });
-            
-            showToast('Đã lưu ghi chú!');
+
+            if (!response.ok) throw new Error(`Không thể lưu ghi chú (${response.status})`);
+            regularServerSyncedNotes[studentId] = normalizedNote;
+            return true;
+        }
+
+        // Save note
+        async function saveNote(studentId) {
+            const domId = getRegularStudentDomId(studentId);
+            const input = document.getElementById(`note-${domId}`);
+            const button = document.getElementById(`save-note-${domId}`);
+            if (!input) return;
+
+            const originalHtml = button?.innerHTML;
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Đang lưu...';
+            }
+
+            try {
+                await persistStudentNote(studentId, input.value);
+                showToast('Đã lưu ghi chú!');
+            } catch (error) {
+                showToast('Lỗi lưu ghi chú: ' + error.message, 'error');
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = originalHtml;
+                }
+            }
         }
 
         // Get past comments
@@ -4919,7 +6076,13 @@
         async function generateSingle(studentId, studentName, idx) {
             const summary = document.getElementById('sessionSummary').value;
             const pastSlots = getPastComments(studentId);
-            const btn = document.getElementById(`gen-btn-${studentId}`);
+            const btn = document.getElementById(`gen-btn-${getRegularStudentDomId(studentId)}`);
+            const originalButtonHtml = btn?.innerHTML;
+
+            if (regularBatchBusy || regularStudentBusy.has(studentId)) {
+                showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
+                return;
+            }
 
             // Check API key first
             const { aiApiKey } = getSelectedModelConfig();
@@ -4928,10 +6091,12 @@
                 return;
             }
 
+            regularStudentBusy.add(studentId);
+
             // Show loading
             if (btn) {
                 btn.disabled = true;
-                btn.innerHTML = '⏳ Đang tạo...';
+                btn.textContent = 'Đang tạo...';
             }
             
             try {
@@ -4948,6 +6113,7 @@
                         student_name: studentName,
                         past_slots: pastSlots,
                         session_summary: summary,
+                        teacher_note: getRegularNoteValue(studentId),
                         is_late: isLate,
                         homework_status: homeworkStatus,
                         model_id: aiModel,
@@ -4964,21 +6130,28 @@
                 generatedComments[studentId] = data.comment;
                 renderStudents();
                 updateStats();
-                document.getElementById('submitAllBtn').disabled = false;
-                document.getElementById('copyZaloBtn').disabled = false;
                 showToast('Đã tạo nhận xét!');
             } catch (e) {
                 showToast('Lỗi tạo nhận xét', 'error');
             } finally {
-                if (btn) {
+                regularStudentBusy.delete(studentId);
+                if (btn?.isConnected) {
                     btn.disabled = false;
-                    btn.innerHTML = '🤖 Tạo nhận xét';
+                    btn.innerHTML = originalButtonHtml;
                 }
+                const liveGenerateButton = document.getElementById(`gen-btn-${getRegularStudentDomId(studentId)}`);
+                const liveSubmitButton = document.getElementById(`submit-btn-${getRegularStudentDomId(studentId)}`);
+                if (liveGenerateButton) liveGenerateButton.disabled = regularBatchBusy;
+                if (liveSubmitButton) liveSubmitButton.disabled = regularBatchBusy;
             }
         }
 
         // Auto comment all
         async function autoCommentAll() {
+            if (regularBatchBusy) {
+                showToast('Đang có thao tác cả lớp khác chạy', 'info');
+                return;
+            }
             const summary = document.getElementById('sessionSummary').value;
             const btn = document.getElementById('autoCommentBtn');
             const progressContainer = document.getElementById('progressContainer');
@@ -4996,6 +6169,9 @@
                 progressContainer.classList.remove('show');
                 return;
             }
+
+            regularBatchBusy = true;
+            updateStats();
 
             // Include both ATTENDED and LATE_ARRIVED students (not ABSENT)
             const presentStudents = students.filter(isPresentAttendance);
@@ -5022,6 +6198,7 @@
                             student_name: att.student.fullName,
                             past_slots: getPastComments(att.student.id),
                             session_summary: summary,
+                            teacher_note: getRegularNoteValue(att.student.id),
                             is_late: att.status === 'LATE_ARRIVED',
                             homework_status: homeworkStatus,
                             model_id: aiModel,
@@ -5055,10 +6232,9 @@
                 updateStats();
             }
             
-            btn.disabled = false;
+            regularBatchBusy = false;
             progressContainer.classList.remove('show');
-            document.getElementById('submitAllBtn').disabled = false;
-            document.getElementById('copyZaloBtn').disabled = false;
+            updateStats();
             playSound('success');
             showToast(`Đã tạo ${Object.keys(generatedComments).length} nhận xét!`);
         }
@@ -5079,6 +6255,20 @@
             updateDemoTotal(scoreId);
         }
 
+        function cacheDemoInputs(scoreId) {
+            const inputs = getDemoConfig().map((cfg, i) => document.getElementById(`dscore-${scoreId}-${i}`));
+            if (inputs.some(Boolean)) demoScoresCache[scoreId] = inputs.map(input => input?.value || '');
+            const autoRate = document.getElementById(`autoRate-${scoreId}`);
+            if (autoRate) demoAutoRateCache[scoreId] = autoRate.checked;
+        }
+
+        function saveDemoInputsToCache() {
+            if (!students || !isFinalSession()) return;
+            students.filter(isPresentAttendance).forEach(att => {
+                cacheDemoInputs(att.student.id.replace(/[^a-zA-Z0-9]/g, '_'));
+            });
+        }
+
         // Update total score display and progress bars
         function updateDemoTotal(scoreId) {
             let total = 0;
@@ -5093,6 +6283,7 @@
             });
             const totalEl = document.getElementById(`dtotal-${scoreId}`);
             if (totalEl) totalEl.textContent = `${formatScore(total)} / ${formatScore(getDemoMaxTotal(demoConfig))}`;
+            cacheDemoInputs(scoreId);
         }
 
         // Read scores from input fields for a student
@@ -5101,7 +6292,7 @@
                 const input = document.getElementById(`dscore-${scoreId}-${i}`);
                 return {
                     id: cfg.courseProcessDemoDetailId,
-                    score: parseFloat(input?.value) || 0
+                    score: parseFloat(input?.value ?? demoScoresCache[scoreId]?.[i]) || 0
                 };
             });
         }
@@ -5274,6 +6465,25 @@
             });
         }
 
+        function saveCheckpointDescriptionsToCache() {
+            if (!students || !isCheckpointSession()) return;
+            students.filter(isPresentAttendance).forEach(att => {
+                const scoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
+                const description = document.getElementById(`cp-desc-${scoreId}`);
+                if (description) checkpointDescriptionDrafts[att.student.id] = description.value;
+            });
+        }
+
+        function updateCheckpointDescriptionDraft(studentId, value) {
+            checkpointDescriptionDrafts[studentId] = value;
+        }
+
+        function getCheckpointDescriptionDraft(studentId) {
+            return Object.prototype.hasOwnProperty.call(checkpointDescriptionDrafts, studentId)
+                ? checkpointDescriptionDrafts[studentId]
+                : getLocalNote(studentId);
+        }
+
         // Update checkpoint total display
         function updateCheckpointTotal(scoreId) {
             const theoryRaw = document.getElementById(`cp-theory-${scoreId}`)?.value || '';
@@ -5310,7 +6520,7 @@
         // Generate AI comment for checkpoint
         async function generateCheckpointComment(studentId, studentName, scoreId) {
             const btn = document.getElementById(`cp-gen-btn-${scoreId}`);
-            const desc = document.getElementById(`cp-desc-${scoreId}`)?.value || '';
+            const desc = document.getElementById(`cp-desc-${scoreId}`)?.value ?? getCheckpointDescriptionDraft(studentId);
 
             // Check API key first
             const { aiApiKey } = getSelectedModelConfig();
@@ -5340,6 +6550,7 @@
 
                 generatedComments[studentId] = data.comment;
                 saveCheckpointScoresToCache();
+                saveCheckpointDescriptionsToCache();
                 renderStudents();
                 updateStats();
                 showToast('Đã tạo nhận xét checkpoint!');
@@ -5371,6 +6582,8 @@
             progressContainer.classList.add('show');
 
             const presentStudents = students.filter(isPresentAttendance);
+            saveCheckpointScoresToCache();
+            saveCheckpointDescriptionsToCache();
             const BATCH_SIZE = 3;
             let completed = 0;
 
@@ -5379,7 +6592,7 @@
 
                 const promises = batch.map(async (att) => {
                     const scoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
-                    const desc = document.getElementById(`cp-desc-${scoreId}`)?.value || '';
+                    const desc = document.getElementById(`cp-desc-${scoreId}`)?.value ?? getCheckpointDescriptionDraft(att.student.id);
 
                     try {
                         const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
@@ -5707,7 +6920,7 @@
                     const batch = needsComment.slice(i, i + BATCH_SIZE);
                     const promises = batch.map(async (att) => {
                         const scoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
-                        const desc = document.getElementById(`cp-desc-${scoreId}`)?.value || '';
+                        const desc = document.getElementById(`cp-desc-${scoreId}`)?.value ?? getCheckpointDescriptionDraft(att.student.id);
                         try {
                             const { aiModel, customModelId, aiApiKey } = getSelectedModelConfig();
                             const data = await fetchJSON('/api/generate_checkpoint_comment', {
@@ -5729,6 +6942,7 @@
                     progressText.textContent = `Tạo nhận xét: ${completed}/${needsComment.length}`;
                 }
                 saveCheckpointScoresToCache();
+                saveCheckpointDescriptionsToCache();
                 renderStudents();
             }
 
@@ -5817,8 +7031,13 @@
             const sessionNumber = getCurrentSessionNumber();
             const isFinal = sessionNumber === 14;
 
+            if (!isFinal && (regularBatchBusy || regularStudentBusy.has(studentId))) {
+                showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
+                return;
+            }
+
             if (!isFinal && !comment) {
-                showToast('Chưa có nhận xét để submit', 'error');
+                showToast('Chưa có nhận xét để gửi', 'error');
                 return;
             }
 
@@ -5826,6 +7045,10 @@
                 showToast('Vui lòng nhập tổng kết buổi học', 'error');
                 return;
             }
+
+            const submitButton = document.getElementById(`submit-btn-${getRegularStudentDomId(studentId)}`);
+            if (!isFinal) regularStudentBusy.add(studentId);
+            if (submitButton) submitButton.disabled = true;
 
             try {
                 const baseData = {
@@ -5864,13 +7087,17 @@
                     const scores = Object.entries(resultInfo.demo_scores).map(([k,v]) => `${k}: ${v}`).join(', ');
                     showToast(`Đã submit Demo! Tổng: ${resultInfo.total_demo_score} điểm (${scores})`);
                 } else {
-                    showToast('Đã submit nhận xét!');
+                    showToast('Đã gửi nhận xét lên LMS!');
                 }
                 // Reload to get updated status
                 await reloadAndRestoreCurrentSlot();
             } catch (e) {
                 showToast('Lỗi submit: ' + e.message, 'error');
                 console.error(e);
+            } finally {
+                if (!isFinal) regularStudentBusy.delete(studentId);
+                const liveSubmitButton = document.getElementById(`submit-btn-${getRegularStudentDomId(studentId)}`);
+                if (liveSubmitButton) liveSubmitButton.disabled = regularBatchBusy;
             }
         }
 
@@ -6014,7 +7241,10 @@
 
         // Copy Zalo comment format
         function copyZaloComment(studentName, studentId) {
-            const comment = generatedComments[studentId];
+            studentId = String(studentId || '').trim();
+            const att = students.find(item => item.student.id === studentId);
+            const comment = generatedComments[studentId]
+                || att?.commentByAreas?.find(area => area.type === 'CONTENT')?.content;
             if (!comment) {
                 showToast('Chưa có nhận xét', 'error');
                 return;
@@ -6123,6 +7353,10 @@ MindX Technology School`;
 
         // Submit all
         async function submitAll() {
+            if (regularBatchBusy) {
+                showToast('Đang có thao tác cả lớp khác chạy', 'info');
+                return;
+            }
             const summary = document.getElementById('sessionSummary').value;
             const btn = document.getElementById('submitAllBtn');
             const progressContainer = document.getElementById('progressContainer');
@@ -6135,9 +7369,14 @@ MindX Technology School`;
             }
 
             btn.disabled = true;
+            regularBatchBusy = true;
+            updateStats();
             progressContainer.classList.add('show');
 
-            const toSubmit = Object.entries(generatedComments);
+            const toSubmit = Object.entries(generatedComments).filter(([studentId]) => {
+                const att = students.find(item => item.student.id === studentId);
+                return att && isPresentAttendance(att);
+            });
             let successCount = 0;
             let summarySubmitted = false;
 
@@ -6195,11 +7434,33 @@ MindX Technology School`;
                 await reloadAndRestoreCurrentSlot();
             }
 
+            regularBatchBusy = false;
+            updateStats();
+
             playSound('success');
-            showToast(`Đã submit ${successCount}/${toSubmit.length} nhận xét!`);
+            showToast(`Đã gửi ${successCount}/${toSubmit.length} nhận xét lên LMS!`);
         }
 
         // Init
+        const managedDetailsSelector = 'details.toolbar-menu, details.quick-template-menu, details.detail-overflow, details.batch-overflow';
+        const managedDetailsOpenSelector = managedDetailsSelector.split(',').map(selector => `${selector.trim()}[open]`).join(',');
+        document.addEventListener('click', event => {
+            const target = event.target instanceof Element ? event.target : null;
+            const clickedDetails = target?.closest(managedDetailsSelector) || null;
+            document.querySelectorAll(managedDetailsOpenSelector).forEach(details => {
+                if (details !== clickedDetails) details.removeAttribute('open');
+            });
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key !== 'Escape') return;
+            const opened = document.querySelector(managedDetailsOpenSelector);
+            if (!opened) return;
+            opened.removeAttribute('open');
+            opened.querySelector(':scope > summary')?.focus();
+            event.preventDefault();
+        });
+        window.addEventListener('resize', debounce(syncRegularDetailPlacement, 120));
+
         // Pre-fill login form from localStorage
         const savedEmail = localStorage.getItem('lms_email');
         const savedPassword = localStorage.getItem('lms_password');

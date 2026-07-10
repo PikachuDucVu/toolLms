@@ -34,7 +34,10 @@ commentsRoutes.post("/generate_comment", async (c) => {
   }
   const notes = await getNotes(c.env);
   const studentNotes = notes[String(data.student_id || "")] ?? [];
-  let notesText = studentNotes.map((note) => note.note).join("\n");
+  const noteLines = studentNotes.map((note) => note.note).filter(Boolean);
+  const currentTeacherNote = String(data.teacher_note || data.teacherNote || "").trim();
+  if (currentTeacherNote && !noteLines.includes(currentTeacherNote)) noteLines.push(currentTeacherNote);
+  let notesText = noteLines.join("\n");
   if (data.is_late) notesText = `Học sinh đi học muộn buổi này.\n${notesText}`;
 
   const comment = await generateCommentWithAi(c.env, config, {
