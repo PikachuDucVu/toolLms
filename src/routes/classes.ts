@@ -33,8 +33,8 @@ classesRoutes.get("/classes", async (c) => {
     pageIndex: 0,
     itemsPerPage: 200,
   });
-  await saveUpdatedSession(c.env, session, result.session);
-  if (result.body.error) return c.json({ error: result.body.error }, { status: 401 });
+  await saveUpdatedSession(c, session, result.session);
+  if (result.body.error) return c.json({ error: result.body.error }, { status: Number(result.body.status) >= 500 ? 502 : 400 });
   if (result.body.errors?.length) return c.json({ error: result.body.errors[0]?.message || "Unknown error" }, { status: 400 });
   const classes = (result.body.data as any)?.classes?.data ?? [];
   return c.json({ classes: orderClasses(classes) });
@@ -44,8 +44,8 @@ classesRoutes.get("/class/:classId", async (c) => {
   const session = await requireSession(c);
   if (session instanceof Response) return session;
   const result = await new LmsClient(c.env).callApi(session, "GetClassById", GET_CLASS_DETAIL_QUERY, { id: c.req.param("classId") });
-  await saveUpdatedSession(c.env, session, result.session);
-  if (result.body.error) return c.json({ error: result.body.error }, { status: 401 });
+  await saveUpdatedSession(c, session, result.session);
+  if (result.body.error) return c.json({ error: result.body.error }, { status: Number(result.body.status) >= 500 ? 502 : 400 });
   if (result.body.errors?.length) return c.json({ error: result.body.errors[0]?.message || "Unknown error" }, { status: 400 });
   return c.json({ class: (result.body.data as any)?.classesById ?? {} });
 });
@@ -58,6 +58,6 @@ classesRoutes.post("/lms/graphql", async (c) => {
   if (!ALLOWED_LMS_OPERATIONS.has(operationName)) return c.json({ errors: [{ message: "Operation not allowed" }] }, { status: 403 });
   if (!body.query) return c.json({ errors: [{ message: "Missing query" }] }, { status: 400 });
   const result = await new LmsClient(c.env).callApi(session, operationName, body.query, body.variables || {});
-  await saveUpdatedSession(c.env, session, result.session);
+  await saveUpdatedSession(c, session, result.session);
   return c.json(result.body);
 });

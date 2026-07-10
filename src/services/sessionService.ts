@@ -1,7 +1,7 @@
 import type { Env, SessionRecord } from "../types";
 
 export const SESSION_COOKIE = "lms_session";
-const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
+export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 function randomHex(bytes = 32): string {
   const data = new Uint8Array(bytes);
@@ -65,7 +65,10 @@ export async function getSessionFromRequest(env: Env, request: Request): Promise
   return getSessionById(env, getCookie(request, SESSION_COOKIE));
 }
 
-export async function destroySession(env: Env, request: Request): Promise<void> {
-  const sessionId = getCookie(request, SESSION_COOKIE);
+export async function destroySessionById(env: Env, sessionId: string | null): Promise<void> {
   if (sessionId) await env.SESSION_CACHE.delete(`session:${sessionId}`);
+}
+
+export async function destroySession(env: Env, request: Request): Promise<void> {
+  await destroySessionById(env, getCookie(request, SESSION_COOKIE));
 }

@@ -42,7 +42,7 @@ homeworkRoutes.post("/homework/mark", async (c) => {
   const body = await readJsonBody<{ id?: string; score?: string | number; note?: string }>(c);
   if (!body.id || body.score == null) return c.json({ error: "Missing id or score" }, { status: 400 });
   const result = await markHomework(new LmsClient(c.env), session, { id: body.id, score: body.score, note: body.note });
-  await saveUpdatedSession(c.env, session, result.session);
+  await saveUpdatedSession(c, session, result.session);
   const marked = result.body.data?.studentHomework?.markStudentSubmission;
   if (marked) return c.json({ success: true, result: marked });
   return c.json({ error: firstGraphqlError(result.body) }, { status: 400 });
@@ -55,7 +55,7 @@ homeworkRoutes.post("/homework/batch-mark", async (c) => {
   const submissions = body.submissions || [];
   if (!submissions.length) return c.json({ error: "No submissions to mark" }, { status: 400 });
   const result = await batchMarkHomework(new LmsClient(c.env), session, submissions);
-  await saveUpdatedSession(c.env, session, result.session);
+  await saveUpdatedSession(c, session, result.session);
   const successCount = result.results.filter((item) => item.success).length;
   return c.json({ success: true, total: submissions.length, success_count: successCount, results: result.results });
 });
@@ -197,8 +197,8 @@ homeworkRoutes.get("/homework/:classId", async (c) => {
   const session = await requireSession(c);
   if (session instanceof Response) return session;
   const result = await getHomeworkSubmissions(new LmsClient(c.env), session, c.req.param("classId"));
-  await saveUpdatedSession(c.env, session, result.session);
-  if (result.body.error) return c.json({ error: result.body.error }, { status: 401 });
+  await saveUpdatedSession(c, session, result.session);
+  if (result.body.error) return c.json({ error: result.body.error }, { status: Number(result.body.status) >= 500 ? 502 : 400 });
   if (result.body.errors?.length) return c.json({ error: result.body.errors[0]?.message || "Unknown error" }, { status: 400 });
   return c.json((result.body.data as any)?.findStudentSubmissionByClass ?? {});
 });

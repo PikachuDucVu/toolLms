@@ -1,8 +1,8 @@
 import type { Env, GradingQueueMessage } from "../types";
 import { getConfig } from "../services/configService";
 import { aiGradeHomework, firstGraphqlError, markHomework, submissionAttachments } from "../services/homeworkService";
-import { LmsClient } from "../services/lmsClient";
-import { getSessionById, saveSession } from "../services/sessionService";
+import { LmsAuthenticationError, LmsClient } from "../services/lmsClient";
+import { destroySessionById, getSessionById, saveSession } from "../services/sessionService";
 
 async function setItemStatus(
   env: Env,
@@ -79,11 +79,24 @@ export async function processGradingMessage(env: Env, message: GradingQueueMessa
     return;
   }
 
-  const mark = await markHomework(new LmsClient(env), session, {
-    id: message.submission.id,
-    score: grade.score,
-    note: grade.note,
-  });
+  let mark: Awaited<ReturnType<typeof markHomework>>;
+  try {
+    mark = await markHomework(new LmsClient(env), session, {
+      id: message.submission.id,
+      score: grade.score,
+      note: grade.note,
+    });
+  } catch (error) {
+    if (!(error instanceof LmsAuthenticationError)) throw error;
+    await destroySessionById(env, message.sessionId);
+    await setItemStatus(env, message.itemId, "failed", {
+      score: grade.score,
+      note: grade.note,
+      error: "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại rồi chạy lại các bài chưa chấm.",
+    });
+    await refreshJobCounters(env, message.jobId);
+    return;
+  }
   await saveSession(env, mark.session);
   const marked = mark.body.data?.studentHomework?.markStudentSubmission;
   if (!marked) {

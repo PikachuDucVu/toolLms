@@ -958,9 +958,9 @@
                         <span class="session-dot checking" id="sessionDot"></span>
                         <span id="sessionText">Đang kiểm tra phiên đăng nhập...</span>
                     </div>
-                    <button class="btn btn-outline btn-sm" id="reloginBtn" onclick="retryLogin()">
+                    <button class="btn btn-outline btn-sm" id="reloginBtn" onclick="goToLogin()">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13.8 12H3"/></svg>
-                        Đăng nhập lại
+                        Đăng nhập
                     </button>
                 </div>
                 <div class="config-grid">
@@ -1113,6 +1113,7 @@
         let students = {};
         let lessons = {};
         let selectedIds = new Set();
+        let sessionEmail = '';
 
         // ============== UTILITY HELPERS ==============
 
@@ -1135,6 +1136,10 @@
             const opts = { method, headers: {'Content-Type': 'application/json'} };
             if (body) opts.body = JSON.stringify(body);
             const resp = await fetch(url, method === 'GET' ? {} : opts);
+            if (resp.status === 401) {
+                goToLogin();
+                throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+            }
             if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
             return resp.json();
         }
@@ -1366,53 +1371,42 @@
             if (!bar || !dot || !text || !btn) return;
             bar.className = 'session-bar ' + state;
             dot.className = 'session-dot ' + state;
-            const email = localStorage.getItem('lms_email') || '';
+            const email = sessionEmail || localStorage.getItem('lms_email') || '';
             const messages = {
                 checking: 'Đang kiểm tra phiên đăng nhập...',
                 ok: email ? `Đã đăng nhập: ${email}` : 'Đã đăng nhập',
                 expired: 'Phiên đã hết hạn — cần đăng nhập lại',
                 error: detail || 'Không kết nối được máy chủ',
-                loggingin: 'Đang đăng nhập lại...',
             };
             text.textContent = messages[state] || '';
-            btn.style.display = (state === 'ok' || state === 'checking' || state === 'loggingin') ? 'none' : 'inline-flex';
+            btn.style.display = (state === 'ok' || state === 'checking') ? 'none' : 'inline-flex';
         }
 
-        async function retryLogin() {
-            const email = localStorage.getItem('lms_email');
-            const password = localStorage.getItem('lms_password');
-            if (!email || !password) {
-                showToast('Chưa lưu thông tin đăng nhập. Vui lòng đăng nhập từ trang Nhận xét.', 'error');
-                updateSessionBar('expired');
-                return false;
-            }
-            const btn = document.getElementById('reloginBtn');
-            const original = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;margin:0;"></div> Đang đăng nhập...';
-            updateSessionBar('loggingin');
+        function goToLogin() {
+            window.location.assign('/?return_to=/homework');
+        }
+
+        async function checkServerSession() {
             try {
-                const resp = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ email, password })
-                });
+                const resp = await fetch('/api/auth/me', { credentials: 'same-origin' });
                 const data = await resp.json().catch(() => ({}));
-                if (!resp.ok || !data.success) {
+                if (resp.status === 401) {
                     updateSessionBar('expired');
-                    showToast(data.error || 'Đăng nhập lại thất bại', 'error');
                     return false;
                 }
-                showToast('Đăng nhập lại thành công!');
-                await loadClasses();
+                if (!resp.ok) {
+                    updateSessionBar('error', data.error || `Không thể kiểm tra phiên: ${resp.status}`);
+                    return null;
+                }
+                if (!data.authenticated) {
+                    updateSessionBar('expired');
+                    return false;
+                }
+                sessionEmail = data.email || '';
                 return true;
             } catch (e) {
-                updateSessionBar('error', 'Lỗi mạng khi đăng nhập lại');
-                showToast('Lỗi: ' + e.message, 'error');
-                return false;
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = original;
+                updateSessionBar('error', 'Lỗi mạng khi kiểm tra phiên');
+                return null;
             }
         }
 
@@ -1421,7 +1415,11 @@
             try {
                 const resp = await fetch('/api/classes');
                 if (!resp.ok) {
-                    updateSessionBar(resp.status === 401 || resp.status === 403 ? 'expired' : 'error');
+                    if (resp.status === 401) {
+                        goToLogin();
+                        return false;
+                    }
+                    updateSessionBar('error');
                     return false;
                 }
                 const data = await resp.json();
@@ -1487,9 +1485,8 @@
 
             try {
                 const resp = await fetch(`/api/homework/${classId}`);
-                if (resp.status === 401 || resp.status === 403) {
-                    updateSessionBar('expired');
-                    showToast('Phiên đã hết hạn — bấm "Đăng nhập lại"', 'error');
+                if (resp.status === 401) {
+                    goToLogin();
                     return;
                 }
                 if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
@@ -1882,7 +1879,11 @@
                         api_key: aiApiKey
                     })
                 });
-                const data = await resp.json();
+                const data = await resp.json().catch(() => ({}));
+                if (resp.status === 401) {
+                    goToLogin();
+                    return;
+                }
                 if (!data.success) {
                     showToast(data.error || 'Không tạo được job AI', 'error');
                     return;
@@ -1953,13 +1954,16 @@
                 localStorage.setItem('ai_api_key', val);
             }
         });
-        // Check session on load: fetch classes; if unauthorized, try auto-relogin with saved credentials
+        // Restore the server-side session. An expired session returns to the shared login page.
         (async () => {
             updateSessionBar('checking');
-            const ok = await loadClasses();
-            if (!ok && localStorage.getItem('lms_email') && localStorage.getItem('lms_password')) {
-                await retryLogin();
+            const sessionReady = await checkServerSession();
+            if (sessionReady === false) {
+                goToLogin();
+                return;
             }
+            if (sessionReady !== true) return;
+            await loadClasses();
         })();
     </script>
 </body>

@@ -8,6 +8,7 @@ import {
   createSession,
   destroySession,
   getSessionFromRequest,
+  saveSession,
 } from "../services/sessionService";
 import { readJsonBody } from "./helpers";
 
@@ -25,9 +26,9 @@ async function loginHandler(c: any) {
 
   try {
     const login = await new LmsClient(c.env).login(email, password, firebaseKey);
+    await destroySession(c.env, c.req.raw);
     const session = await createSession(c.env, {
       email: login.email,
-      firebaseToken: login.firebaseToken,
       firebaseKey,
       lmsToken: login.lmsToken,
       refreshToken: login.refreshToken,
@@ -45,8 +46,14 @@ authRoutes.post("/login", loginHandler);
 
 authRoutes.get("/auth/me", async (c) => {
   const session = await getSessionFromRequest(c.env, c.req.raw);
-  if (!session) return c.json({ authenticated: false }, { status: 401 });
-  return c.json({ authenticated: true, email: session.email, token_expiry: session.tokenExpiry });
+  if (!session) {
+    c.header("Set-Cookie", buildExpiredSessionCookie(c.req.raw));
+    return c.json({ authenticated: false, code: "AUTH_REQUIRED" }, { status: 401 });
+  }
+  const activeSession = await new LmsClient(c.env).ensureSession(session);
+  await saveSession(c.env, activeSession);
+  c.header("Set-Cookie", buildSessionCookie(c.req.raw, activeSession.id));
+  return c.json({ authenticated: true, email: activeSession.email, token_expiry: activeSession.tokenExpiry });
 });
 
 authRoutes.post("/auth/logout", async (c) => {

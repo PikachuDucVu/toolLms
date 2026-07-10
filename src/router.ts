@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { AI_MODELS } from "./constants/aiModels";
+import { LmsAuthenticationError } from "./services/lmsClient";
+import { buildExpiredSessionCookie, destroySession } from "./services/sessionService";
 import type { Env } from "./types";
 import { authRoutes } from "./routes/auth";
 import { classesRoutes } from "./routes/classes";
@@ -11,7 +13,17 @@ import { notesRoutes } from "./routes/notes";
 
 export const app = new Hono<{ Bindings: Env }>();
 
-app.onError((error, c) => c.json({ success: false, error: error instanceof Error ? error.message : String(error) }, { status: 500 }));
+app.onError(async (error, c) => {
+  if (error instanceof LmsAuthenticationError) {
+    await destroySession(c.env, c.req.raw);
+    c.header("Set-Cookie", buildExpiredSessionCookie(c.req.raw));
+    return c.json(
+      { success: false, code: "AUTH_REQUIRED", error: "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại." },
+      { status: 401 },
+    );
+  }
+  return c.json({ success: false, error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+});
 
 app.route("/api", healthRoutes);
 app.route("/api", authRoutes);

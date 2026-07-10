@@ -3394,15 +3394,36 @@
         }
 
         async function checkServerSession() {
-            const resp = await fetch('/api/auth/me');
-            hasServerSession = resp.ok;
+            const resp = await fetch('/api/auth/me', { credentials: 'same-origin' });
+            const data = await resp.json().catch(() => ({}));
+            if (resp.status === 401) {
+                hasServerSession = false;
+                return false;
+            }
+            if (!resp.ok) {
+                throw new Error(data.error || `Không thể kiểm tra phiên: ${resp.status}`);
+            }
+            hasServerSession = resp.ok && data.authenticated === true;
             return hasServerSession;
+        }
+
+        function getReturnToPath() {
+            const value = new URLSearchParams(window.location.search).get('return_to');
+            return value === '/homework' ? value : null;
+        }
+
+        function showLoginRequired() {
+            clearTokens();
+            updateLoginStatus(false);
+            setConfigVisible(true);
+            document.getElementById('password')?.focus();
         }
 
         async function firebaseLogin(email, password) {
             const resp = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
+                credentials: 'same-origin',
                 body: JSON.stringify({email, password})
             });
             const text = await resp.text();
@@ -3427,18 +3448,16 @@
             const resp = await fetch(LMS_GRAPHQL_URL, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
+                credentials: 'same-origin',
                 body: JSON.stringify(body)
             });
-            let data;
-            try {
-                data = await resp.json();
-            } catch(e) {
-                throw new Error(`API error: ${resp.status}`);
+            const data = await resp.json().catch(() => ({}));
+            if (resp.status === 401 && data.code === 'AUTH_REQUIRED') {
+                showLoginRequired();
+                throw new Error(data.error || 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
             }
-            if (resp.status === 401 || resp.status === 403) {
-                clearTokens();
-                updateLoginStatus(false);
-                throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+            if (!resp.ok) {
+                throw new Error(data.error || `API error: ${resp.status}`);
             }
             return data;
         }
@@ -4528,7 +4547,7 @@
             }
         }
 
-        // Login - directly via Firebase Auth (no server round-trip)
+        // Login through the Worker so its HttpOnly session cookie can be reused by both pages.
         async function login() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -4544,10 +4563,18 @@
 
                 if (document.getElementById('rememberLogin').checked) {
                     localStorage.setItem('lms_email', email);
-                    // NOTE: Password NOT stored for security — user must re-enter on token expiry
+                    localStorage.setItem('lms_password', password);
+                } else {
+                    localStorage.removeItem('lms_email');
+                    localStorage.removeItem('lms_password');
                 }
                 updateLoginStatus(true);
                 showToast('Đăng nhập thành công!');
+                const returnTo = getReturnToPath();
+                if (returnTo) {
+                    window.location.assign(returnTo);
+                    return;
+                }
                 loadClasses();
             } catch (e) {
                 showToast('Lỗi đăng nhập: ' + e.message, 'error');
@@ -7630,7 +7657,7 @@ MindX Technology School`;
         });
         window.addEventListener('resize', debounce(syncRegularDetailPlacement, 120));
 
-        // Pre-fill login form from localStorage
+        // Restore remembered login details so an expired server session can be renewed quickly.
         const savedEmail = localStorage.getItem('lms_email');
         const savedPassword = localStorage.getItem('lms_password');
         if (savedEmail) document.getElementById('email').value = savedEmail;
@@ -7654,10 +7681,11 @@ MindX Technology School`;
                     updateLoginStatus(true);
                     loadClasses();
                 } else {
-                    updateLoginStatus(false);
+                    showLoginRequired();
                 }
             } catch(e) {
                 updateLoginStatus(false);
+                showToast(e.message || 'Không thể kiểm tra phiên đăng nhập. Vui lòng thử lại.', 'error');
             }
         })();
     </script>

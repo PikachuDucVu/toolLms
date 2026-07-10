@@ -18,7 +18,6 @@ const BROWSER_HEADERS = {
 
 interface LoginResult {
   email: string;
-  firebaseToken: string;
   lmsToken: string;
   refreshToken?: string;
   tokenExpiry: number;
@@ -27,6 +26,13 @@ interface LoginResult {
 export interface LmsCallResult<T = unknown> {
   body: LmsGraphqlResponse<T>;
   session: SessionRecord;
+}
+
+export class LmsAuthenticationError extends Error {
+  constructor(message = "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.") {
+    super(message);
+    this.name = "LmsAuthenticationError";
+  }
 }
 
 function firebaseKey(env: Env, override?: string): string {
@@ -74,7 +80,11 @@ function isTokenStillValid(session: SessionRecord): boolean {
 }
 
 function shouldRetryLmsResponse(status: number, text: string): boolean {
-  return status === 403 || /INVALID_TOKEN|Authentication failed|Failed to build auth user/.test(text);
+  return status === 401 || status === 403 || /INVALID_TOKEN|Authentication failed|Failed to build auth user/.test(text);
+}
+
+function isRefreshAuthenticationFailure(status: number, message: string): boolean {
+  return status === 401 || /INVALID_REFRESH_TOKEN|TOKEN_EXPIRED|USER_DISABLED|CREDENTIAL_TOO_OLD_LOGIN_AGAIN|INVALID_GRANT/.test(message);
 }
 
 export class LmsClient {
@@ -159,11 +169,15 @@ export class LmsClient {
       tokenExpiry = refresh.tokenExpiry || tokenExpiry;
     }
 
-    return { email, firebaseToken, lmsToken, refreshToken, tokenExpiry };
+    return { email, lmsToken, refreshToken, tokenExpiry };
+  }
+
+  async ensureSession(session: SessionRecord): Promise<SessionRecord> {
+    return isTokenStillValid(session) ? session : this.refreshSession(session);
   }
 
   async refreshSession(session: SessionRecord): Promise<SessionRecord> {
-    if (!session.refreshToken) throw new Error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+    if (!session.refreshToken) throw new LmsAuthenticationError();
     const key = firebaseKey(this.env, session.firebaseKey);
     const firebaseRefreshUrl = `https://securetoken.googleapis.com/v1/token?key=${encodeURIComponent(key)}`;
     const refreshed = await this.refreshWithToken(session.refreshToken, key, firebaseRefreshUrl);
@@ -182,7 +196,7 @@ export class LmsClient {
     query: string,
     variables: Record<string, unknown> = {},
   ): Promise<LmsCallResult<T>> {
-    let activeSession = isTokenStillValid(session) ? session : await this.refreshSession(session);
+    let activeSession = await this.ensureSession(session);
     let response = await this.fetchGraphql(operationName, query, variables, activeSession.lmsToken);
     let text = await response.text();
 
@@ -190,6 +204,9 @@ export class LmsClient {
       activeSession = await this.refreshSession(activeSession);
       response = await this.fetchGraphql(operationName, query, variables, activeSession.lmsToken);
       text = await response.text();
+      if (shouldRetryLmsResponse(response.status, text)) {
+        throw new LmsAuthenticationError();
+      }
     }
 
     try {
@@ -210,9 +227,19 @@ export class LmsClient {
       },
       body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken }),
     });
-    const data = await readJsonResponse<{ access_token?: string; id_token?: string; refresh_token?: string; expires_in?: string | number }>(response);
+    const data = await readJsonResponse<{
+      access_token?: string;
+      id_token?: string;
+      refresh_token?: string;
+      expires_in?: string | number;
+      error?: { message?: string };
+    }>(response);
     const lmsToken = data.access_token || data.id_token;
-    if (!response.ok || !lmsToken) throw new Error("Token refresh failed");
+    if (!response.ok || !lmsToken) {
+      const message = data.error?.message || "Token refresh failed";
+      if (isRefreshAuthenticationFailure(response.status, message)) throw new LmsAuthenticationError();
+      throw new Error(message);
+    }
     const expiresIn = data.expires_in ? Number(data.expires_in) : 0;
     return {
       lmsToken,
