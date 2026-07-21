@@ -31,7 +31,9 @@ export async function saveUpdatedSession(c: AppContext, original: SessionRecord,
 
 export async function readJsonBody<T extends Record<string, unknown>>(c: AppContext): Promise<T> {
   try {
-    return (await c.req.json()) as T;
+    const parsed = await c.req.json<unknown>();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {} as T;
+    return parsed as T;
   } catch {
     return {} as T;
   }

@@ -8,6 +8,7 @@ import {
   modelSupportsReasoning,
   type ThinkingLevel,
 } from "../constants/aiModels";
+import { LEARNING_LEVELS, normalizeLearningLevel, type LearningLevel } from "../constants/learningLevels";
 import type { AppConfig, Env } from "../types";
 
 interface ChatResult {
@@ -99,6 +100,7 @@ export async function generateCommentWithAi(
     studentName: string;
     pastComments: string;
     notes: string;
+    learningLevel?: LearningLevel;
     sessionSummary?: string;
     modelId?: string;
     customModelId?: string;
@@ -123,6 +125,8 @@ export async function generateCommentWithAi(
   const thinkingLevel = resolveThinkingLevel(model, input.thinkingLevel, String(config.thinking_level || ""));
   const shortName = input.studentName ? input.studentName.split(/\s+/).at(-1) || "em" : "em";
   const lengthGuide = input.commentLength === "short" ? "2-3 câu ngắn gọn" : input.commentLength === "long" ? "4-5 câu chi tiết" : "3-4 câu";
+  const learningLevel = normalizeLearningLevel(input.learningLevel);
+  const learningLevelDetail = LEARNING_LEVELS[learningLevel];
   const homeworkStatus = input.homeworkStatus;
   const previousSession = homeworkStatus?.previousSession ?? homeworkStatus?.previous_session;
   const previousSessionLabel = previousSession ? `buổi ${previousSession}` : "buổi trước";
@@ -142,14 +146,17 @@ export async function generateCommentWithAi(
 HỌC SINH: ${input.studentName} (gọi: ${shortName})
 NỘI DUNG BUỔI HỌC: ${input.sessionSummary || "Thực hành lập trình"}
 NHẬN XÉT BUỔI TRƯỚC: ${input.pastComments || "Buổi đầu tiên"}
-GHI CHÚ BUỔI NÀY: ${input.notes || "Học bình thường, không có gì đặc biệt"}
+MỨC ĐỘ NẮM BÀI: ${learningLevelDetail.code} — ${learningLevelDetail.label}. ${learningLevelDetail.prompt}
+GHI CHÚ BỔ SUNG TỪ GIÁO VIÊN: ${input.notes || "Chưa có ghi chú bổ sung từ giáo viên"}
 ${homeworkStatusText ? `TÌNH TRẠNG BTVN BUỔI TRƯỚC: ${homeworkStatusText}\n` : ""}
 HƯỚNG DẪN VIẾT:
 1. Viết ${lengthGuide}, mỗi câu nối tiếp tự nhiên, văn phong giống giáo viên nhắn phụ huynh trong nhóm Zalo.
 2. CẤU TRÚC BẮT BUỘC theo thứ tự:
    - Câu 1: Học sinh đi học đúng giờ/muộn + mức độ tuân thủ nội quy lớp học.
-   - Câu 2-3: Nhận xét chi tiết thái độ học trong buổi học: mức độ tập trung, hiểu bài, nắm nội dung được học, thao tác thực hành/lập trình nhanh hay chậm, chính xác hay còn vướng mắc, theo kịp tiến độ lớp hay chưa.
+   - Câu 2-3: Bắt buộc diễn đạt MỨC ĐỘ NẮM BÀI bằng hành vi có thể quan sát: tự vận dụng, chủ động hỏi lại, cần gợi ý hay cần hỗ trợ sát. Kết hợp ghi chú giáo viên để nêu bằng chứng hoặc ngoại lệ cụ thể.
    - Câu cuối: Động viên nếu học tốt; hoặc nhắc phụ huynh hỗ trợ/nhắc nhở nếu học sinh còn vấn đề. Chỉ nhắc BTVN/ôn lại bài khi ghi chú cho thấy học sinh cần ôn thêm, chưa hoàn thành bài hoặc cần phụ huynh nhắc thêm. KHÔNG bắt buộc nhắc BTVN ở mọi nhận xét vì tin nhắn Zalo đã có mục BTVN riêng.
+   - Không viết nguyên văn mã nội bộ L1/L2/L3/L4 hoặc từ "level" trong nhận xét gửi phụ huynh.
+   - Không dùng "học bình thường", "mức bình thường", "học ổn", "thực hành ở mức ổn" hoặc "không có vấn đề đặc biệt" làm đánh giá. Phải nói rõ học sinh hiểu đến đâu, có tự làm được không và cần hỗ trợ như thế nào.
 
 3. KHÔNG LẶP CHI TIẾT NỘI DUNG BUỔI HỌC TRONG NHẬN XÉT CÁ NHÂN:
    - "NỘI DUNG BUỔI HỌC" chỉ dùng để hiểu bối cảnh, KHÔNG đưa nguyên văn vào nhận xét từng học sinh.
@@ -157,12 +164,12 @@ HƯỚNG DẪN VIẾT:
    - Thay bằng các câu chung như:
      + "Trong buổi học, con luôn tập trung tốt, hiểu và nắm rõ các nội dung được học, con thực hành nhanh chóng và chính xác, không gặp vướng mắc gì."
      + "Trong buổi học, con tập trung theo dõi bài, nắm được nội dung chính và thao tác lập trình theo hướng dẫn."
-     + "Trong buổi học, con theo kịp tiến độ chung của lớp, thực hành ở mức ổn và cần ôn lại thêm để nắm chắc kiến thức hơn."
+     + "Trong buổi học, con nắm được kiến thức chính; với phần chưa hiểu, con chủ động hỏi lại thầy và hoàn thành bài sau khi được giải đáp."
 
 4. CÁCH DIỄN ĐẠT:
    - Có thể mở đầu bằng tên ngắn "${shortName}" hoặc "em".
    - Dùng "con" khi nói về học sinh với phụ huynh.
-   - Ưu tiên các cụm tự nhiên: "đi học đúng giờ và tuân thủ tốt nội quy lớp học", "nhìn chung tuân thủ nội quy lớp học", "giữ mức độ tập trung ổn", "nắm được nội dung chính", "thao tác lập trình theo hướng dẫn", "thực hành nhanh chóng và chính xác", "theo kịp tiến độ bài học", "hoàn thành nội dung bài học theo tiến độ chung của lớp", "không có vấn đề đặc biệt", "phụ huynh giúp em nhắc nhở con".
+   - Ưu tiên các cụm tự nhiên: "đi học đúng giờ và tuân thủ tốt nội quy lớp học", "nhìn chung tuân thủ nội quy lớp học", "duy trì sự tập trung", "nắm được kiến thức chính", "chủ động hỏi lại khi chưa hiểu", "cần thầy gợi ý ở một số bước", "thực hành nhanh chóng và chính xác", "theo kịp tiến độ bài học", "phụ huynh giúp em nhắc nhở con".
    - Nối câu bằng: "Trong buổi học...", "Tuy nhiên...", "Về nhà...", "Phụ huynh giúp em...", "Cần chú ý...".
    - Tránh giọng quá máy móc, không viết markdown, không bullet list, không tiêu đề.
 
@@ -196,7 +203,7 @@ VÍ DỤ NHẬN XÉT THÔNG THƯỜNG:
 - "${shortName} đi học đúng giờ và tuân thủ tốt nội quy lớp học. Trong buổi học, con luôn tập trung tốt, hiểu và nắm rõ các nội dung được học, con thực hành nhanh chóng và chính xác, không gặp vướng mắc gì. ${shortName} hoàn thành nội dung bài học theo đúng tiến độ của lớp. Cố gắng phát huy ở các buổi học tiếp theo."
 - "${shortName} đi học đúng giờ và nhìn chung tuân thủ nội quy lớp học. Trong buổi học, con tập trung theo dõi bài, nắm được nội dung chính và thao tác lập trình theo hướng dẫn. Tuy nhiên, đôi lúc con còn nói chuyện riêng và mất tập trung nên thầy cần nhắc nhở thêm trong giờ học. Về nhà, ${shortName} nên ôn lại bài và cố gắng tập trung hơn trong các buổi học tới."
 - "${shortName} đi học đúng giờ, tuy nhiên con cần cố gắng tuân thủ nội quy lớp học nghiêm túc hơn. Trong buổi học, con chưa giữ được sự tập trung ổn định, thường xuyên mất trật tự, nói leo và làm việc riêng nên thầy phải nhắc nhở khá nhiều. Phụ huynh giúp em nhắc nhở con cần chú ý rút kinh nghiệm ở buổi học sau."
-- "${shortName} đi học đúng giờ và tuân thủ tốt nội quy lớp học. Trong buổi học, con tập trung theo dõi bài và thao tác lập trình ổn. Con hoàn thành tiến độ bài học ở mức bình thường, không có vấn đề đặc biệt. ${shortName} cần ôn lại bài ở nhà để nắm chắc kiến thức hơn."
+- "${shortName} đi học đúng giờ và tuân thủ tốt nội quy lớp học. Trong buổi học, con nắm được kiến thức chính; với những phần chưa hiểu, con chủ động hỏi lại thầy và có thể hoàn thành bài sau khi được giải đáp. ${shortName} cần tiếp tục duy trì sự chủ động này ở các buổi học sau."
 
 VÍ DỤ NHẬN XÉT BUỔI LÀM SPCK:
 - "${shortName} đi học đúng giờ và tuân thủ tốt nội quy lớp học. Trong buổi học, con nghiêm túc thực hiện làm SPCK, đạt kết quả đúng tiến độ đề ra và hoàn thành tốt phần sản phẩm được giao. Cố gắng tiếp tục hoàn thiện thêm ở nhà."

@@ -1,30 +1,39 @@
 import { Hono } from "hono";
+import { isLearningLevel, normalizeLearningLevel } from "../constants/learningLevels";
 import type { Env } from "../types";
-import { appendCommentLog, getCommentHistory } from "../services/commentService";
+import { appendCommentLog } from "../services/commentService";
 import { getConfig } from "../services/configService";
-import { getNotes } from "../services/notesService";
 import { generateCheckpointCommentWithAi, generateCommentWithAi } from "../services/aiClient";
-import { readJsonBody } from "./helpers";
+import { requireSession, readJsonBody } from "./helpers";
 
 export const commentsRoutes = new Hono<{ Bindings: Env }>();
 
 commentsRoutes.post("/log_comment", async (c) => {
+  const session = await requireSession(c);
+  if (session instanceof Response) return session;
+
   const body = await readJsonBody(c);
   await appendCommentLog(c.env, body);
   return c.json({ success: true, logged: true });
 });
 
-commentsRoutes.get("/comment_history", async (c) => {
-  const url = new URL(c.req.url);
-  const history = await getCommentHistory(c.env, {
-    classId: url.searchParams.get("class_id"),
-    studentId: url.searchParams.get("student_id"),
-  });
-  return c.json({ history });
-});
-
 commentsRoutes.post("/generate_comment", async (c) => {
+  const session = await requireSession(c);
+  if (session instanceof Response) return session;
+
   const data = await readJsonBody<any>(c);
+  const hasSnakeLevel = Object.prototype.hasOwnProperty.call(data, "learning_level");
+  const hasCamelLevel = Object.prototype.hasOwnProperty.call(data, "learningLevel");
+  if (hasSnakeLevel && !isLearningLevel(data.learning_level)) {
+    return c.json({ success: false, error: "Invalid learning level" }, { status: 400 });
+  }
+  if (hasCamelLevel && !isLearningLevel(data.learningLevel)) {
+    return c.json({ success: false, error: "Invalid learning level" }, { status: 400 });
+  }
+  if (hasSnakeLevel && hasCamelLevel && data.learning_level !== data.learningLevel) {
+    return c.json({ success: false, error: "Conflicting learning levels" }, { status: 400 });
+  }
+  const learningLevel = hasSnakeLevel ? data.learning_level : hasCamelLevel ? data.learningLevel : undefined;
   const config = await getConfig(c.env);
   let pastComments = "";
   for (const slot of data.past_slots ?? []) {
@@ -32,18 +41,15 @@ commentsRoutes.post("/generate_comment", async (c) => {
       if (area.type === "CONTENT" && area.content) pastComments += `- Buổi ${slot.index ?? "?"}: ${area.content}\n`;
     }
   }
-  const notes = await getNotes(c.env);
-  const studentNotes = notes[String(data.student_id || "")] ?? [];
-  const noteLines = studentNotes.map((note) => note.note).filter(Boolean);
-  const currentTeacherNote = String(data.teacher_note || data.teacherNote || "").trim();
-  if (currentTeacherNote && !noteLines.includes(currentTeacherNote)) noteLines.push(currentTeacherNote);
-  let notesText = noteLines.join("\n");
-  if (data.is_late) notesText = `Học sinh đi học muộn buổi này.\n${notesText}`;
+  const currentTeacherNote = String(data.teacher_note ?? data.teacherNote ?? "").trim();
+  let notesText = currentTeacherNote;
+  if (data.is_late) notesText = `Học sinh đi học muộn buổi này.${notesText ? `\n${notesText}` : ""}`;
 
   const comment = await generateCommentWithAi(c.env, config, {
     studentName: String(data.student_name || ""),
     pastComments,
     notes: notesText,
+    learningLevel: normalizeLearningLevel(learningLevel),
     sessionSummary: String(data.session_summary || ""),
     modelId: data.model_id,
     customModelId: data.custom_model_id,
@@ -57,6 +63,9 @@ commentsRoutes.post("/generate_comment", async (c) => {
 });
 
 commentsRoutes.post("/generate_checkpoint_comment", async (c) => {
+  const session = await requireSession(c);
+  if (session instanceof Response) return session;
+
   const data = await readJsonBody<any>(c);
   const config = await getConfig(c.env);
   const comment = await generateCheckpointCommentWithAi(c.env, config, {

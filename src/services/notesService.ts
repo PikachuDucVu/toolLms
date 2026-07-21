@@ -23,10 +23,16 @@ export async function getNotes(env: Env): Promise<Record<string, StudentNote[]>>
 }
 
 export async function addStudentNote(env: Env, studentId: string, note: string): Promise<void> {
+  const normalizedNote = String(note ?? "").trim();
+  if (!normalizedNote) {
+    await env.DB.prepare("DELETE FROM student_notes WHERE student_id = ?").bind(studentId).run();
+    return;
+  }
+
   const now = new Date().toISOString();
   await env.DB.prepare(
     "INSERT INTO student_notes (id, student_id, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
   )
-    .bind(noteId(studentId), studentId, note, now, now)
+    .bind(noteId(studentId), studentId, normalizedNote, now, now)
     .run();
 }

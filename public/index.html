@@ -1198,6 +1198,7 @@
 
         .toast.success { background: rgba(34, 197, 94, 0.95); }
         .toast.error { background: rgba(239, 68, 68, 0.95); }
+        .toast.warning { background: rgba(217, 119, 6, 0.97); }
         .toast.info { background: rgba(8, 145, 178, 0.95); }
 
         @keyframes slideIn {
@@ -2374,6 +2375,179 @@
             text-decoration: underline;
         }
 
+        .regular-assessment-editor {
+            display: grid;
+            gap: 14px;
+        }
+
+        .learning-level-fieldset {
+            min-width: 0;
+            margin: 0;
+            padding: 0;
+            border: 0;
+        }
+
+        .learning-level-legend,
+        .regular-note-label {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            width: 100%;
+            margin-bottom: 8px;
+            color: var(--gray-800);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .learning-level-legend small,
+        .regular-note-label small {
+            color: var(--gray-500);
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .learning-level-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .learning-level-option {
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            min-width: 0;
+            min-height: 72px;
+            padding: 10px 34px 10px 11px;
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            background: white;
+            color: var(--gray-700);
+            cursor: pointer;
+            transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        .learning-level-option:hover {
+            border-color: rgba(8, 145, 178, 0.55);
+            background: rgba(236, 254, 255, 0.45);
+        }
+
+        .learning-level-fieldset:disabled .learning-level-option,
+        .quick-template-menu.is-disabled > summary,
+        .regular-note-editor textarea:disabled {
+            cursor: not-allowed;
+            opacity: 0.62;
+        }
+
+        .learning-level-fieldset:disabled .learning-level-option:hover {
+            border-color: var(--gray-200);
+            background: white;
+        }
+
+        .learning-level-option.is-selected {
+            border-color: var(--primary);
+            background: rgba(236, 254, 255, 0.8);
+            box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.1);
+        }
+
+        .learning-level-option::after {
+            content: '';
+            position: absolute;
+            top: 9px;
+            right: 9px;
+            display: grid;
+            place-items: center;
+            width: 18px;
+            height: 18px;
+            border: 1.5px solid var(--gray-300);
+            border-radius: 50%;
+            background: white;
+            color: white;
+            font-size: 11px;
+            font-weight: 900;
+        }
+
+        .learning-level-option.is-selected::after {
+            content: '✓';
+            border-color: var(--primary);
+            background: var(--primary);
+        }
+
+        .learning-level-option:focus-within {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        .learning-level-option input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .learning-level-code {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 30px;
+            height: 24px;
+            padding: 0 6px;
+            border-radius: 999px;
+            background: var(--gray-100);
+            color: var(--gray-700);
+            font-size: 11px;
+            font-weight: 900;
+        }
+
+        .learning-level-option.is-selected .learning-level-code {
+            background: var(--primary);
+            color: white;
+        }
+
+        .learning-level-copy {
+            min-width: 0;
+            display: grid;
+            gap: 2px;
+        }
+
+        .learning-level-copy strong {
+            color: var(--gray-800);
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .learning-level-copy small {
+            color: var(--gray-500);
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .badge-learning-level {
+            border: 1px solid rgba(8, 145, 178, 0.2);
+            background: rgba(236, 254, 255, 0.9);
+            color: var(--primary-dark);
+        }
+
+        .badge-learning-level.is-loading {
+            border-color: var(--gray-200);
+            background: var(--gray-100);
+            color: var(--gray-600);
+        }
+
+        .assessment-save-status {
+            color: var(--gray-500);
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .assessment-save-status.is-dirty { color: #B45309; }
+        .assessment-save-status.is-saved { color: #047857; }
+        .assessment-save-status.is-error { color: #B91C1C; }
+
         .regular-note-editor {
             display: grid;
             gap: 8px;
@@ -2579,7 +2753,7 @@
 
         @media (max-width: 768px) {
             .app-container {
-                padding-bottom: 92px;
+                padding-bottom: 132px;
             }
 
             .student-toolbar {
@@ -2671,6 +2845,10 @@
         }
 
         @media (max-width: 520px) {
+            .app-container {
+                padding-bottom: 96px;
+            }
+
             .card-body {
                 padding: 14px;
             }
@@ -2679,12 +2857,23 @@
                 min-height: 68px;
             }
 
-            .student-list-badges .badge:nth-child(n+3) {
+            .student-list-badges .badge-rate-score {
                 display: none;
+            }
+
+            .student-list-badges .badge-learning-level {
+                max-width: 92px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
 
             .student-detail-header {
                 align-items: flex-start;
+            }
+
+            .learning-level-grid {
+                grid-template-columns: 1fr;
             }
 
             .regular-note-toolbar,
@@ -2779,7 +2968,7 @@
                     </svg>
                     Nhận xét
                 </a>
-                <a href="/homework">
+                <a href="/homework" onclick="return confirmRegularNavigation(event)">
                     <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                     </svg>
@@ -3126,7 +3315,7 @@
         </div>
     </div>
 
-    <div class="toast-container" id="toastContainer"></div>
+    <div class="toast-container" id="toastContainer" role="status" aria-live="polite" aria-atomic="false"></div>
 
     <!-- Confirm Modal -->
     <div class="confirm-modal hidden" id="confirmModal">
@@ -3179,6 +3368,7 @@
         let classesCache = null;
         let homeworkDataCache = {}; // {classId: {students, lessons, submissions}}
         let homeworkDataPromises = {}; // {classId: Promise}
+        let classRefreshToken = 0;
 
         // ===== Kiemtra (Cloudflare) checkpoint submission status =====
         const KIEMTRA_BASE = 'https://kiemtra.ducvu.io.vn';
@@ -3193,12 +3383,48 @@
         let checkpointExpanded = {};    // {studentId: true} — which checkpoint cards are open (persists across re-render)
 
         // ===== Regular-session master-detail state =====
+        const DEFAULT_LEARNING_LEVEL = 'understands_and_asks';
+        const LEARNING_LEVELS = {
+            independent: {
+                code: 'L4',
+                label: 'Nắm vững, tự vận dụng',
+                shortLabel: 'Nắm vững',
+                help: 'Tự vận dụng và hoàn thành độc lập',
+                prompt: 'Học sinh nắm vững kiến thức, có thể tự vận dụng và hoàn thành phần thực hành độc lập, nhanh chóng và chính xác.'
+            },
+            understands_and_asks: {
+                code: 'L3',
+                label: 'Nắm được, chủ động hỏi',
+                shortLabel: 'Nắm được',
+                help: 'Chủ động hỏi lại khi chưa hiểu',
+                prompt: 'Học sinh nắm được kiến thức chính; với những phần chưa hiểu, học sinh chủ động hỏi lại giáo viên và có thể hoàn thành sau khi được giải đáp.'
+            },
+            needs_prompting: {
+                code: 'L2',
+                label: 'Đang củng cố, cần gợi ý',
+                shortLabel: 'Đang củng cố',
+                help: 'Cần thầy gợi ý ở một số bước',
+                prompt: 'Học sinh nắm được một phần kiến thức nhưng vẫn cần giáo viên gợi ý hoặc hướng dẫn ở một số bước trong quá trình thực hành.'
+            },
+            needs_support: {
+                code: 'L1',
+                label: 'Chưa nắm chắc, cần hỗ trợ',
+                shortLabel: 'Cần hỗ trợ',
+                help: 'Cần được hướng dẫn sát hơn',
+                prompt: 'Học sinh chưa nắm chắc kiến thức, còn gặp khó khăn khi tự thực hành và cần giáo viên hỗ trợ sát hơn.'
+            }
+        };
         let selectedRegularStudentId = null;
         let regularUiSlotId = null;
-        let regularNoteDrafts = {};      // Preserve unsaved notes across selection/filter renders.
-        let regularServerSyncedNotes = {};
+        let regularNoteDrafts = {};      // Current-slot assessment note drafts by student.
+        let regularLearningLevelDrafts = {};
+        let regularServerSyncedAssessments = {};
+        let regularAssessmentTouched = new Set();
+        let regularAssessmentLoad = { slotId: null, token: 0, loading: false, error: null, promise: Promise.resolve() };
+        let regularAssessmentSaveBusy = new Set();
         let regularListScrollTop = 0;
         let regularBatchBusy = false;
+        let regularRefreshBusy = false;
         let regularStudentBusy = new Set();
 
         // ============== UTILITY HELPERS ==============
@@ -3330,11 +3556,13 @@
                 const content = (slot.commentByAreas || []).find(area => area.type === 'CONTENT' && area.content)?.content || '';
                 return content ? `- Buổi ${slot.index || '?'}: ${content}` : '';
             }).filter(Boolean).join('\n') || 'Buổi đầu tiên';
-            const localNote = body.teacher_note || body.teacherNote || (body.student_id ? getRegularNoteValue(body.student_id) : '');
-            const notes = `${body.is_late ? 'Học sinh đi học muộn buổi này.\n' : ''}${localNote || 'Học bình thường, không có gì đặc biệt'}`;
+            const localNote = body.teacher_note ?? body.teacherNote ?? (body.student_id ? getRegularNoteValue(body.student_id) : '');
+            const notes = `${body.is_late ? 'Học sinh đi học muộn buổi này.\n' : ''}${localNote || 'Chưa có ghi chú bổ sung từ giáo viên'}`;
+            const learningLevel = normalizeLearningLevel(body.learning_level ?? body.learningLevel);
+            const learningLevelInfo = LEARNING_LEVELS[learningLevel];
             const lengthGuide = body.comment_length === 'short' ? '2-3 câu ngắn gọn' : body.comment_length === 'long' ? '4-5 câu chi tiết' : '3-4 câu';
             const homeworkStatusLine = formatHomeworkStatusForPrompt(body.homework_status || body.homeworkStatus);
-            return `Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét ngắn gọn cho học sinh gửi phụ huynh, theo văn phong giáo viên nhắn trong nhóm Zalo.\n\nHỌC SINH: ${studentName} (gọi: ${shortName})\nNỘI DUNG BUỔI HỌC: ${body.session_summary || 'Thực hành lập trình'}\nNHẬN XÉT BUỔI TRƯỚC: ${pastComments}\nGHI CHÚ BUỔI NÀY: ${notes}\n${homeworkStatusLine ? `TÌNH TRẠNG BTVN BUỔI TRƯỚC: ${homeworkStatusLine}\n` : ''}\nHƯỚNG DẪN VIẾT:\n- Viết ${lengthGuide}, mỗi câu nối tiếp tự nhiên.\n- Câu 1: học sinh đi học đúng giờ/muộn và mức độ tuân thủ nội quy lớp học.\n- Câu tiếp theo: nhận xét chi tiết thái độ học trong buổi học: tập trung, hiểu bài, nắm nội dung được học, thao tác thực hành/lập trình nhanh hay chậm, chính xác hay còn vướng mắc, theo kịp tiến độ lớp hay chưa.\n- Câu cuối: động viên nếu học tốt; hoặc nhắc phụ huynh hỗ trợ/nhắc nhở nếu còn vấn đề. Chỉ nhắc BTVN/ôn bài khi có dòng TÌNH TRẠNG BTVN BUỔI TRƯỚC hoặc ghi chú cho thấy cần, không bắt buộc nhắc BTVN ở mọi nhận xét.\n- Nếu có dòng TÌNH TRẠNG BTVN BUỔI TRƯỚC: học sinh ĐÃ NỘP thì có thể ghi nhận ngắn gọn; nếu chưa thấy nộp thì nhắc rõ phụ huynh hỗ trợ con bổ sung/hoàn thiện bài đầy đủ hơn.\n- Nếu không có dòng TÌNH TRẠNG BTVN BUỔI TRƯỚC thì không tự bịa và không đề cập BTVN.\n- KHÔNG lặp lại chi tiết nội dung buổi học trong nhận xét cá nhân. Nội dung buổi học chỉ dùng để hiểu bối cảnh. Tuyệt đối không viết kiểu: \"Trong buổi học về ...\", \"về xây dựng ...\", hoặc nhắc lại tên bài/chủ đề cụ thể.\n- Thay bằng câu chung như: \"Trong buổi học, con luôn tập trung tốt, hiểu và nắm rõ các nội dung được học, con thực hành nhanh chóng và chính xác, không gặp vướng mắc gì.\"\n- Dùng em hoặc ${shortName} để gọi học sinh; dùng con khi nói về học sinh với phụ huynh.\n- Nếu ghi chú có vấn đề, diễn đạt nhẹ nhàng nhưng rõ ràng: nói chuyện riêng/mất tập trung, làm việc riêng, thực hành chậm, thiếu BTVN, thầy phải nhắc nhở.\n- Không viết markdown, không bullet list, không tiêu đề.\n\nVÍ DỤ:\n${shortName} đi học đúng giờ và tuân thủ tốt nội quy lớp học. Trong buổi học, con luôn tập trung tốt, hiểu và nắm rõ các nội dung được học, con thực hành nhanh chóng và chính xác, không gặp vướng mắc gì. ${shortName} hoàn thành nội dung bài học theo đúng tiến độ của lớp. Cố gắng phát huy ở các buổi học tiếp theo.\n\n${shortName} đi học đúng giờ và nhìn chung tuân thủ nội quy lớp học. Trong buổi học, con tập trung theo dõi bài, nắm được nội dung chính và thao tác lập trình theo hướng dẫn. Tuy nhiên, đôi lúc con còn nói chuyện riêng và mất tập trung nên thầy cần nhắc nhở thêm trong giờ học. Về nhà, ${shortName} nên ôn lại bài và cố gắng tập trung hơn trong các buổi học tới.\n${body.custom_prompt ? `\nYÊU CẦU THÊM: ${body.custom_prompt}\n` : ''}\nCHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH.`;
+            return `Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét ngắn gọn cho học sinh gửi phụ huynh, theo văn phong giáo viên nhắn trong nhóm Zalo.\n\nHỌC SINH: ${studentName} (gọi: ${shortName})\nNỘI DUNG BUỔI HỌC: ${body.session_summary || 'Thực hành lập trình'}\nNHẬN XÉT BUỔI TRƯỚC: ${pastComments}\nMỨC ĐỘ NẮM BÀI: ${learningLevelInfo.code} — ${learningLevelInfo.label}. ${learningLevelInfo.prompt}\nGHI CHÚ BỔ SUNG TỪ GIÁO VIÊN: ${notes}\n${homeworkStatusLine ? `TÌNH TRẠNG BTVN BUỔI TRƯỚC: ${homeworkStatusLine}\n` : ''}\nHƯỚNG DẪN VIẾT:\n- Viết ${lengthGuide}, mỗi câu nối tiếp tự nhiên.\n- Câu 1: học sinh đi học đúng giờ/muộn và mức độ tuân thủ nội quy lớp học.\n- Câu tiếp theo: bắt buộc diễn đạt mức độ nắm bài bằng hành vi có thể quan sát: tự vận dụng, chủ động hỏi lại, cần gợi ý hay cần hỗ trợ sát. Kết hợp ghi chú giáo viên làm bằng chứng hoặc ngoại lệ.\n- Không viết nguyên văn mã L1/L2/L3/L4 hoặc từ level trong nhận xét gửi phụ huynh. Không dùng “học bình thường”, “mức bình thường”, “học ổn”, “thực hành ở mức ổn” hoặc “không có vấn đề đặc biệt” làm đánh giá; phải nói rõ con hiểu đến đâu, tự làm được không và cần hỗ trợ thế nào.\n- Câu cuối: động viên nếu học tốt; hoặc nhắc phụ huynh hỗ trợ/nhắc nhở nếu còn vấn đề. Chỉ nhắc BTVN/ôn bài khi có dòng TÌNH TRẠNG BTVN BUỔI TRƯỚC hoặc ghi chú cho thấy cần, không bắt buộc nhắc BTVN ở mọi nhận xét.\n- Nếu có dòng TÌNH TRẠNG BTVN BUỔI TRƯỚC: học sinh ĐÃ NỘP thì có thể ghi nhận ngắn gọn; nếu chưa thấy nộp thì nhắc rõ phụ huynh hỗ trợ con bổ sung/hoàn thiện bài đầy đủ hơn.\n- Nếu không có dòng TÌNH TRẠNG BTVN BUỔI TRƯỚC thì không tự bịa và không đề cập BTVN.\n- KHÔNG lặp lại chi tiết nội dung buổi học trong nhận xét cá nhân. Nội dung buổi học chỉ dùng để hiểu bối cảnh. Tuyệt đối không viết kiểu: \"Trong buổi học về ...\", \"về xây dựng ...\", hoặc nhắc lại tên bài/chủ đề cụ thể.\n- Thay bằng câu chung như: \"Trong buổi học, con luôn tập trung tốt, hiểu và nắm rõ các nội dung được học, con thực hành nhanh chóng và chính xác, không gặp vướng mắc gì.\"\n- Dùng em hoặc ${shortName} để gọi học sinh; dùng con khi nói về học sinh với phụ huynh.\n- Nếu ghi chú có vấn đề, diễn đạt nhẹ nhàng nhưng rõ ràng: nói chuyện riêng/mất tập trung, làm việc riêng, thực hành chậm, thiếu BTVN, thầy phải nhắc nhở.\n- Không viết markdown, không bullet list, không tiêu đề.\n\nVÍ DỤ:\n${shortName} đi học đúng giờ và tuân thủ tốt nội quy lớp học. Trong buổi học, con luôn tập trung tốt, hiểu và nắm rõ các nội dung được học, con thực hành nhanh chóng và chính xác, không gặp vướng mắc gì. ${shortName} hoàn thành nội dung bài học theo đúng tiến độ của lớp. Cố gắng phát huy ở các buổi học tiếp theo.\n\n${shortName} đi học đúng giờ và nhìn chung tuân thủ nội quy lớp học. Trong buổi học, con tập trung theo dõi bài, nắm được nội dung chính và thao tác lập trình theo hướng dẫn. Tuy nhiên, đôi lúc con còn nói chuyện riêng và mất tập trung nên thầy cần nhắc nhở thêm trong giờ học. Về nhà, ${shortName} nên ôn lại bài và cố gắng tập trung hơn trong các buổi học tới.\n${body.custom_prompt ? `\nYÊU CẦU THÊM: ${body.custom_prompt}\n` : ''}\nCHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH.`;
         }
 
         function buildDirectCheckpointPrompt(body) {
@@ -3986,9 +4214,9 @@
 
         // Note templates
         const NOTE_TEMPLATES = {
-            good: 'Tập trung, làm bài nhanh, hoàn thành BTVN',
-            normal: 'Học bình thường, cần chú ý hơn',
-            needwork: 'Chưa hoàn thành BTVN, cần cố gắng',
+            good: 'Tự hoàn thành phần thực hành nhanh và chính xác',
+            asks: 'Những phần chưa hiểu con chủ động hỏi lại thầy',
+            needwork: 'Cần thầy gợi ý ở một số bước khi thực hành',
             naughty: 'Hay nói chuyện riêng, đôi khi mất tập trung'
         };
 
@@ -4103,15 +4331,29 @@
         // Refresh class data
         async function refreshClassData() {
             if (!classData) return;
+            if (isRegularOperationActive()) {
+                showToast('Vui lòng đợi thao tác đang chạy hoàn tất trước khi refresh', 'info');
+                return;
+            }
+            if (!confirmDiscardRegularWork()) return;
+
             showToast('Đang refresh...', 'info');
+            const requestedClassId = classData.id;
             const slotId = selectedSlot?._id;
+            const refreshToken = ++classRefreshToken;
+            regularRefreshBusy = true;
+            syncRegularOperationLock();
+            updateStats();
 
             try {
-                const result = await lmsApiCall("GetClassById", CLASS_DETAIL_QUERY, {id: classData.id});
+                const result = await lmsApiCall("GetClassById", CLASS_DETAIL_QUERY, {id: requestedClassId});
+                if (refreshToken !== classRefreshToken || classData?.id !== requestedClassId) return;
                 if (result.errors) {
                     showToast('Lỗi refresh: ' + result.errors[0]?.message, 'error');
                     return;
                 }
+                discardRegularWorkState();
+                selectedSlot = null;
                 classData = result?.data?.classesById;
                 mergeClassDetailIntoCache(classData);
 
@@ -4136,7 +4378,15 @@
                 }
                 showToast('Đã refresh dữ liệu!');
             } catch (e) {
-                showToast('Lỗi refresh dữ liệu', 'error');
+                if (refreshToken === classRefreshToken && classData?.id === requestedClassId) {
+                    showToast('Lỗi refresh dữ liệu', 'error');
+                }
+            } finally {
+                if (refreshToken === classRefreshToken) {
+                    regularRefreshBusy = false;
+                    syncRegularOperationLock();
+                    updateStats();
+                }
             }
         }
 
@@ -4147,12 +4397,24 @@
                 return;
             }
             
-            const headers = ['Họ tên', 'Trạng thái', 'Nhận xét hiện tại', 'Nhận xét AI'];
+            const isRegularMode = !isFinalSession() && !isCheckpointSession();
+            const headers = isRegularMode
+                ? ['Họ tên', 'Trạng thái', 'Mức độ nắm bài', 'Ghi chú bổ sung', 'Nhận xét hiện tại', 'Nhận xét AI']
+                : ['Họ tên', 'Trạng thái', 'Nhận xét hiện tại', 'Nhận xét AI'];
             const rows = students.map(s => {
                 const existingComment = s.commentByAreas?.find(a => a.type === 'CONTENT')?.content?.replace(/<[^>]*>/g, '') || '';
                 const aiComment = generatedComments[s.student.id]?.replace(/<[^>]*>/g, '') || '';
                 const status = s.status === 'ATTENDED' ? 'Có mặt' : s.status === 'LATE_ARRIVED' ? 'Đi muộn' : 'Vắng';
-                return [s.student.fullName, status, existingComment, aiComment];
+                if (!isRegularMode) return [s.student.fullName, status, existingComment, aiComment];
+                const levelInfo = LEARNING_LEVELS[getRegularLearningLevel(s.student.id)];
+                return [
+                    s.student.fullName,
+                    status,
+                    `${levelInfo.code} - ${levelInfo.label}`,
+                    getRegularNoteValue(s.student.id),
+                    existingComment,
+                    aiComment
+                ];
             });
             
             const csvContent = [headers, ...rows]
@@ -4359,6 +4621,81 @@
             }
         }
 
+        function isRegularOperationActive() {
+            return regularBatchBusy || regularRefreshBusy || regularStudentBusy.size > 0 || regularAssessmentSaveBusy.size > 0;
+        }
+
+        function isRegularAssessmentUnavailable() {
+            return regularAssessmentLoad.loading || !!regularAssessmentLoad.error;
+        }
+
+        function hasDirtyRegularAssessmentDrafts() {
+            return Array.from(regularAssessmentTouched).some(studentId => {
+                const draft = getRegularAssessmentDraft(studentId);
+                const synced = regularServerSyncedAssessments[studentId];
+                return !synced || synced.learningLevel !== draft.learningLevel || synced.note !== draft.note;
+            });
+        }
+
+        function hasUnsavedRegularWork() {
+            return hasDirtyRegularAssessmentDrafts() || Object.keys(generatedComments).length > 0;
+        }
+
+        function discardRegularWorkState() {
+            generatedComments = {};
+            regularNoteDrafts = {};
+            regularLearningLevelDrafts = {};
+            regularServerSyncedAssessments = {};
+            regularAssessmentTouched.clear();
+            selectedRegularStudentId = null;
+            regularUiSlotId = null;
+        }
+
+        function confirmDiscardRegularWork() {
+            return !hasUnsavedRegularWork()
+                || window.confirm('Bạn đang có đánh giá chưa lưu hoặc bản nháp AI chưa gửi. Bạn có muốn chuyển đi và bỏ các thay đổi này không?');
+        }
+
+        function confirmRegularNavigation(event) {
+            if (isRegularOperationActive()) {
+                event?.preventDefault();
+                showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
+                return false;
+            }
+            if (!confirmDiscardRegularWork()) {
+                event?.preventDefault();
+                return false;
+            }
+            return true;
+        }
+
+        function syncRegularOperationLock() {
+            const operationLocked = isRegularOperationActive();
+            const assessmentBlocked = operationLocked || isRegularAssessmentUnavailable();
+            const slotSelect = document.getElementById('slotSelect');
+            if (slotSelect) slotSelect.disabled = operationLocked;
+
+            document.querySelectorAll('#regularStudentDetail .learning-level-fieldset').forEach(fieldset => {
+                fieldset.disabled = assessmentBlocked;
+            });
+            document.querySelectorAll('#regularStudentDetail .regular-note-editor textarea, #regularStudentDetail .comment-edit').forEach(input => {
+                input.disabled = assessmentBlocked;
+            });
+            document.querySelectorAll('#regularStudentDetail [id^="save-note-"], #regularStudentDetail [id^="gen-btn-"], #regularStudentDetail [id^="submit-btn-"]').forEach(button => {
+                button.disabled = assessmentBlocked;
+            });
+            document.querySelectorAll('#regularStudentDetail details.quick-template-menu').forEach(details => {
+                const summary = details.querySelector(':scope > summary');
+                details.classList.toggle('is-disabled', assessmentBlocked);
+                if (summary) {
+                    summary.setAttribute('aria-disabled', String(assessmentBlocked));
+                    summary.tabIndex = assessmentBlocked ? -1 : 0;
+                    summary.style.pointerEvents = assessmentBlocked ? 'none' : '';
+                }
+                if (assessmentBlocked) details.removeAttribute('open');
+            });
+        }
+
         // Update stats
         function updateStats() {
             const total = students.length;
@@ -4390,14 +4727,21 @@
                 const copyLabel = document.getElementById('copyZaloBtnLabel');
                 const hint = document.getElementById('batchActionHint');
 
-                if (autoLabel) autoLabel.textContent = `Tạo AI cho ${present} học sinh`;
+                if (autoLabel) autoLabel.textContent = regularAssessmentLoad.loading
+                    ? 'Đang tải đánh giá...'
+                    : `Tạo AI cho ${present} học sinh`;
                 if (submitLabel) submitLabel.textContent = `Gửi lên LMS (${batchGenerated})`;
                 if (copyLabel) copyLabel.textContent = `Sao chép Zalo (${availableZalo})`;
-                if (hint) hint.textContent = `${present} có mặt · ${generated} bản nháp · ${submitted} đã gửi`;
-                if (autoBtn) autoBtn.disabled = regularBatchBusy || present === 0;
-                if (submitBtn) submitBtn.disabled = regularBatchBusy || batchGenerated === 0;
-                if (copyBtn) copyBtn.disabled = regularBatchBusy || availableZalo === 0;
+                if (hint) hint.textContent = regularAssessmentLoad.loading
+                    ? 'Đang tải mức độ nắm bài và ghi chú đã lưu'
+                    : `${present} có mặt · ${generated} bản nháp · ${submitted} đã gửi`;
+                const operationLocked = isRegularOperationActive();
+                const assessmentUnavailable = isRegularAssessmentUnavailable();
+                if (autoBtn) autoBtn.disabled = operationLocked || assessmentUnavailable || present === 0;
+                if (submitBtn) submitBtn.disabled = operationLocked || assessmentUnavailable || batchGenerated === 0;
+                if (copyBtn) copyBtn.disabled = operationLocked || availableZalo === 0;
             }
+            syncRegularOperationLock();
         }
 
         // Delete comment
@@ -4427,13 +4771,12 @@
 
         // Apply note template
         function applyTemplate(studentId, templateKey) {
+            if (isRegularOperationActive() || isRegularAssessmentUnavailable()) return;
             const note = NOTE_TEMPLATES[templateKey];
+            if (typeof note !== 'string') return;
             const input = document.getElementById(`note-${getRegularStudentDomId(studentId)}`);
-            if (input) {
-                input.value = note;
-                onRegularNoteInput(studentId, note);
-            }
-            setLocalNote(studentId, note);
+            if (input) input.value = note;
+            onRegularNoteInput(studentId, note);
             showToast('Đã áp dụng mẫu ghi chú');
         }
 
@@ -4491,6 +4834,8 @@
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
+            toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+            toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
             const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
             const iconSpan = document.createElement('span');
             iconSpan.textContent = icon;
@@ -4977,6 +5322,13 @@
         }`;
 
         async function selectClass(cls, element) {
+            if (isRegularOperationActive()) {
+                showToast('Vui lòng đợi thao tác đang chạy hoàn tất trước khi đổi lớp', 'info');
+                return;
+            }
+            if (!confirmDiscardRegularWork()) return;
+            const classRequestToken = ++classRefreshToken;
+
             document.querySelectorAll('.class-item').forEach(el => el.classList.remove('selected'));
             element.classList.add('selected');
             selectedClass = cls;
@@ -4985,6 +5337,9 @@
 
             try {
                 const result = await lmsApiCall("GetClassById", CLASS_DETAIL_QUERY, {id: cls.id});
+                if (classRequestToken !== classRefreshToken || selectedClass?.id !== cls.id) return;
+                discardRegularWorkState();
+                selectedSlot = null;
                 classData = result?.data?.classesById;
 
                 if (!classData) {
@@ -5026,9 +5381,11 @@
                 // Auto select latest uncommented slot
                 autoSelectLatestSlot();
             } catch (e) {
-                showToast('Lỗi tải thông tin lớp', 'error');
+                if (classRequestToken === classRefreshToken && selectedClass?.id === cls.id) {
+                    showToast('Lỗi tải thông tin lớp', 'error');
+                }
             } finally {
-                hidePageLoading();
+                if (classRequestToken === classRefreshToken) hidePageLoading();
             }
         }
 
@@ -5266,13 +5623,28 @@
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
 
-                checkpointStatusOriginal = data.original || null;
-                checkpointStatusMakeup = data.makeup || null;
+                // Soft-deleted exams on kiemtra must not appear in grading UI.
+                // Prefer server-side filtering; also drop DELETED client-side as a safeguard.
+                const isLiveExam = (exam) => exam && String(exam.status || '').toUpperCase() !== 'DELETED';
+                checkpointStatusOriginal = isLiveExam(data.original) ? data.original : null;
+                checkpointStatusMakeup = isLiveExam(data.makeup) ? data.makeup : null;
+
+                const liveOriginal = !!checkpointStatusOriginal;
+                const liveMakeup = !!checkpointStatusMakeup;
+
                 (data.students || []).forEach(s => {
-                    checkpointSubmissionStatus[s.studentId] = s;
+                    const original = liveOriginal ? (s.original || null) : null;
+                    const makeup = liveMakeup ? (s.makeup || null) : null;
+                    if (!original && !makeup) return;
+
+                    checkpointSubmissionStatus[s.studentId] = {
+                        ...s,
+                        original,
+                        makeup,
+                    };
                     // Default to the most recent submission across both branches.
-                    const origAt = s.original?.submittedAt || '';
-                    const makeupAt = s.makeup?.submittedAt || '';
+                    const origAt = original?.submittedAt || '';
+                    const makeupAt = makeup?.submittedAt || '';
                     if (makeupAt && (!origAt || makeupAt > origAt)) {
                         checkpointBranchSelection[s.studentId] = 'makeup';
                     } else if (origAt) {
@@ -5333,9 +5705,14 @@
         function loadSlotStudents() {
             const slotIdx = document.getElementById('slotSelect').value;
             if (!slotIdx || !classData) return;
-            
+
             const nextSlot = classData.slots[parseInt(slotIdx)];
             const slotChanged = regularUiSlotId !== nextSlot?._id;
+            if (slotChanged && regularUiSlotId && !confirmDiscardRegularWork()) {
+                const previousSlotIndex = classData.slots.findIndex(slot => slot._id === regularUiSlotId);
+                document.getElementById('slotSelect').value = previousSlotIndex >= 0 ? String(previousSlotIndex) : '';
+                return;
+            }
             selectedSlot = nextSlot;
             students = selectedSlot.studentAttendance || [];
             generatedComments = {};
@@ -5348,24 +5725,38 @@
             if (slotChanged) {
                 selectedRegularStudentId = null;
                 regularNoteDrafts = {};
-                regularServerSyncedNotes = {};
-                regularStudentBusy.clear();
+                regularLearningLevelDrafts = {};
+                regularServerSyncedAssessments = {};
+                regularAssessmentTouched.clear();
                 regularListScrollTop = 0;
             }
             regularUiSlotId = selectedSlot?._id || null;
-            
+
             // Set summary if exists, otherwise clear it
             if (selectedSlot.summary) {
                 document.getElementById('sessionSummary').value = selectedSlot.summary.replace(/<[^>]*>/g, '');
             } else {
                 document.getElementById('sessionSummary').value = '';
             }
-            
+
             const isFinal = isFinalSession();
             const isCheckpoint = isCheckpointSession();
+            const isRegular = !isFinal && !isCheckpoint;
+
+            if (isRegular && slotChanged && selectedSlot?._id) {
+                loadRegularAssessments(selectedSlot._id);
+            } else if (!isRegular) {
+                regularAssessmentLoad = {
+                    slotId: null,
+                    token: regularAssessmentLoad.token + 1,
+                    loading: false,
+                    error: null,
+                    promise: Promise.resolve()
+                };
+            }
 
             // Toggle action bars based on session type
-            document.getElementById('defaultActionBar').style.display = (isFinal || isCheckpoint) ? 'none' : 'flex';
+            document.getElementById('defaultActionBar').style.display = isRegular ? 'flex' : 'none';
             document.getElementById('demoActionBar').style.display = isFinal ? 'flex' : 'none';
             document.getElementById('checkpointActionBar').style.display = isCheckpoint ? 'flex' : 'none';
 
@@ -5399,10 +5790,169 @@
             return (container.textContent || container.innerText || '').replace(/\s+/g, ' ').trim();
         }
 
+        function normalizeLearningLevel(value) {
+            return Object.prototype.hasOwnProperty.call(LEARNING_LEVELS, value)
+                ? value
+                : DEFAULT_LEARNING_LEVEL;
+        }
+
+        function getRegularLearningLevel(studentId) {
+            return normalizeLearningLevel(regularLearningLevelDrafts[studentId]);
+        }
+
         function getRegularNoteValue(studentId) {
             return Object.prototype.hasOwnProperty.call(regularNoteDrafts, studentId)
                 ? regularNoteDrafts[studentId]
-                : getLocalNote(studentId);
+                : '';
+        }
+
+        function captureRegularContext() {
+            if (!classData?.id || !selectedSlot?._id) return null;
+            return {
+                classId: classData.id,
+                className: classData.name || '',
+                slotId: selectedSlot._id,
+                sessionNumber: getCurrentSessionNumber(),
+                classSiteId: classData.classSites?.[0]?._id || '',
+                courseProcessId: classData.courseProcessId,
+                summary: document.getElementById('sessionSummary')?.value || ''
+            };
+        }
+
+        function isRegularContextCurrent(context) {
+            return !!context
+                && classData?.id === context.classId
+                && selectedSlot?._id === context.slotId;
+        }
+
+        function getRegularAssessmentDraft(studentId) {
+            return {
+                learningLevel: getRegularLearningLevel(studentId),
+                note: String(getRegularNoteValue(studentId) ?? '').trim()
+            };
+        }
+
+        function getRegularAssessmentStatus(studentId) {
+            if (regularAssessmentLoad.loading && regularAssessmentLoad.slotId === selectedSlot?._id) {
+                return { text: 'Đang tải đánh giá', className: '', loading: true, error: false };
+            }
+            if (regularAssessmentLoad.error && regularAssessmentLoad.slotId === selectedSlot?._id) {
+                return { text: 'Không tải được đánh giá', className: 'is-error', loading: false, error: true };
+            }
+            const draft = getRegularAssessmentDraft(studentId);
+            const synced = regularServerSyncedAssessments[studentId];
+            if (!synced) {
+                const touched = regularAssessmentTouched.has(studentId);
+                return {
+                    text: touched ? 'Chưa lưu' : 'Mặc định L3 · tự lưu khi tạo',
+                    className: touched ? 'is-dirty' : '',
+                    loading: false,
+                    error: false
+                };
+            }
+            const isSaved = synced.learningLevel === draft.learningLevel && synced.note === draft.note;
+            return {
+                text: isSaved ? 'Đã lưu' : 'Chưa lưu',
+                className: isSaved ? 'is-saved' : 'is-dirty',
+                loading: false,
+                error: false
+            };
+        }
+
+        function snapshotRegularStudent(att) {
+            const assessment = getRegularAssessmentDraft(att.student.id);
+            return {
+                attendanceId: att._id,
+                studentId: att.student.id,
+                studentName: att.student.fullName || '',
+                isLate: att.status === 'LATE_ARRIVED',
+                assessment,
+                pastSlots: getPastComments(att.student.id)
+            };
+        }
+
+        async function runWithConcurrency(items, limit, worker) {
+            let cursor = 0;
+            const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+                while (cursor < items.length) {
+                    const index = cursor++;
+                    await worker(items[index], index);
+                }
+            });
+            await Promise.all(runners);
+        }
+
+        async function ensureRegularAssessmentsLoaded(context) {
+            const load = regularAssessmentLoad;
+            if (!context || load.slotId !== context.slotId) {
+                throw new Error('Dữ liệu đánh giá không thuộc buổi học hiện tại');
+            }
+            await load.promise;
+            if (!isRegularContextCurrent(context) || regularAssessmentLoad.slotId !== context.slotId) {
+                throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+            }
+            if (regularAssessmentLoad.error) throw regularAssessmentLoad.error;
+        }
+
+        function loadRegularAssessments(slotId) {
+            const token = regularAssessmentLoad.token + 1;
+            const loadState = {
+                slotId,
+                token,
+                loading: true,
+                error: null,
+                promise: null
+            };
+            regularAssessmentLoad = loadState;
+
+            loadState.promise = (async () => {
+                try {
+                    const response = await fetch(`/api/assessments/${encodeURIComponent(slotId)}`);
+                    if (!response.ok) {
+                        const data = await response.json().catch(() => ({}));
+                        throw new Error(data.error || `Không thể tải đánh giá (${response.status})`);
+                    }
+                    const data = await response.json();
+                    if (regularAssessmentLoad.token !== token || selectedSlot?._id !== slotId) return;
+
+                    Object.entries(data.assessments || {}).forEach(([studentId, assessment]) => {
+                        const normalized = {
+                            learningLevel: normalizeLearningLevel(assessment?.learningLevel),
+                            note: String(assessment?.note ?? '').trim()
+                        };
+                        regularServerSyncedAssessments[studentId] = normalized;
+                        if (!Object.prototype.hasOwnProperty.call(regularLearningLevelDrafts, studentId)) {
+                            regularLearningLevelDrafts[studentId] = normalized.learningLevel;
+                        }
+                        if (!Object.prototype.hasOwnProperty.call(regularNoteDrafts, studentId)) {
+                            regularNoteDrafts[studentId] = normalized.note;
+                        }
+                    });
+                } catch (error) {
+                    if (regularAssessmentLoad.token !== token || selectedSlot?._id !== slotId) return;
+                    loadState.error = error instanceof Error ? error : new Error(String(error));
+                    console.warn('Không thể tải đánh giá buổi học:', error);
+                    showToast('Không thể tải đánh giá đã lưu; chưa thể tạo hoặc gửi nhận xét', 'error');
+                } finally {
+                    if (regularAssessmentLoad.token !== token || selectedSlot?._id !== slotId) return;
+                    loadState.loading = false;
+                    renderStudents();
+                    updateStats();
+                }
+            })();
+
+            return loadState.promise;
+        }
+
+        function retryRegularAssessments() {
+            if (!selectedSlot?._id || isRegularOperationActive()) return;
+            regularNoteDrafts = {};
+            regularLearningLevelDrafts = {};
+            regularServerSyncedAssessments = {};
+            regularAssessmentTouched.clear();
+            loadRegularAssessments(selectedSlot._id);
+            renderStudents();
+            updateStats();
         }
 
         function getAttendancePresentation(att) {
@@ -5420,6 +5970,9 @@
             const existingComment = att.commentByAreas?.find(area => area.type === 'CONTENT')?.content || '';
             const generatedComment = generatedComments[studentId] || '';
             const note = getRegularNoteValue(studentId);
+            const learningLevel = getRegularLearningLevel(studentId);
+            const learningLevelInfo = LEARNING_LEVELS[learningLevel];
+            const assessmentStatus = getRegularAssessmentStatus(studentId);
             const progressState = getStudentProgressState(att, 'regular');
             const progress = progressState === 'draft'
                 ? { text: 'Bản nháp AI', badgeClass: 'badge-generated' }
@@ -5435,6 +5988,9 @@
                 existingComment,
                 generatedComment,
                 note,
+                learningLevel,
+                learningLevelInfo,
+                assessmentStatus,
                 progress,
                 progressState,
                 isPresent: isPresentAttendance(att),
@@ -5447,7 +6003,9 @@
             const preview = [state.note, state.generatedComment, state.existingComment]
                 .map(stripHtmlText)
                 .find(Boolean);
-            return preview || 'Chưa có ghi chú hoặc nhận xét';
+            if (state.assessmentStatus.loading) return 'Đang tải mức độ nắm bài và ghi chú đã lưu...';
+            if (state.assessmentStatus.error) return 'Không tải được đánh giá — vui lòng thử lại';
+            return preview || state.learningLevelInfo.help;
         }
 
         function buildRegularStudentListItem(att, inlineDetail = '') {
@@ -5462,7 +6020,7 @@
             return `
                 <div class="student-list-entry" id="student-entry-${domId}" role="listitem" data-student-id="${studentIdAttr}">
                     <button type="button" class="student-list-item ${isSelected ? 'active' : ''}"
-                        aria-selected="${isSelected}" aria-controls="regularStudentDetail"
+                        aria-pressed="${isSelected}" aria-controls="regularStudentDetail"
                         onclick="selectRegularStudent('${studentIdJs}')">
                         <span class="student-list-main">
                             <span class="student-avatar" aria-hidden="true">${escapeHtml(state.initials)}</span>
@@ -5471,7 +6029,8 @@
                                 <span class="student-list-badges">
                                     <span class="badge ${state.attendance.badgeClass}">${state.attendance.text}</span>
                                     <span class="badge ${state.progress.badgeClass}">${state.progress.text}</span>
-                                    ${state.hasRateScore ? '<span class="badge badge-gray">Điểm NL</span>' : ''}
+                                    <span class="badge badge-learning-level ${(state.assessmentStatus.loading || state.assessmentStatus.error) ? 'is-loading' : ''}" id="student-level-badge-${domId}">${state.assessmentStatus.loading ? 'Đang tải đánh giá' : state.assessmentStatus.error ? 'Không tải được' : `${state.learningLevelInfo.code} · ${state.learningLevelInfo.shortLabel}`}</span>
+                                    ${state.hasRateScore ? '<span class="badge badge-gray badge-rate-score">Điểm NL</span>' : ''}
                                 </span>
                                 <span class="student-list-preview ${previewIsEmpty ? 'is-empty' : ''}" id="student-preview-${domId}">${escapeHtml(preview)}</span>
                             </span>
@@ -5494,7 +6053,7 @@
             const attendanceIdJs = escapeInlineJsAttr(att._id);
             const cleanGeneratedComment = stripHtmlText(state.generatedComment);
             const hasAnyCopyableComment = !!(state.generatedComment || state.existingComment);
-            const actionsDisabled = regularBatchBusy || regularStudentBusy.has(state.studentId);
+            const actionsDisabled = isRegularOperationActive() || state.assessmentStatus.loading || state.assessmentStatus.error;
             const generateLabel = state.generatedComment
                 ? 'Tạo lại nhận xét'
                 : state.isPresent ? 'Tạo nhận xét' : 'Tạo nhận xét cho học sinh vắng';
@@ -5508,6 +6067,7 @@
                             <div class="student-detail-meta">
                                 <span class="badge ${state.attendance.badgeClass}">${state.attendance.text}</span>
                                 <span class="badge ${state.progress.badgeClass}">${state.progress.text}</span>
+                                <span class="badge badge-learning-level ${(state.assessmentStatus.loading || state.assessmentStatus.error) ? 'is-loading' : ''}" id="regular-level-badge-${domId}">${state.assessmentStatus.loading ? 'Đang tải đánh giá' : state.assessmentStatus.error ? 'Không tải được' : `${state.learningLevelInfo.code} · ${state.learningLevelInfo.shortLabel}`}</span>
                                 ${state.hasRateScore ? '<span class="badge badge-gray">Đã có điểm năng lực</span>' : ''}
                             </div>
                         </div>
@@ -5532,30 +6092,62 @@
 
                 <div class="student-detail-section">
                     <div class="student-detail-section-title">
-                        <span>Ghi chú cho AI</span>
+                        <span>Đánh giá buổi học</span>
                         <button type="button" class="btn-link" onclick="showPastComments('${studentIdJs}', '${studentNameJs}')">Xem buổi trước</button>
                     </div>
-                    <div class="regular-note-editor">
-                        <label class="sr-only" for="note-${domId}">Ghi chú về ${escapeHtml(state.fullName)}</label>
-                        <textarea id="note-${domId}" rows="2" placeholder="Ví dụ: tập trung tốt, hoàn thành bài; cần luyện thêm vòng lặp..."
-                            oninput="onRegularNoteInput('${studentIdJs}', this.value)">${escapeHtml(state.note)}</textarea>
-                        <div class="regular-note-toolbar">
-                            <div class="regular-note-toolbar-left">
-                                <details class="quick-template-menu">
-                                    <summary class="btn btn-sm btn-outline">Mẫu nhanh</summary>
-                                    <div class="quick-template-popover">
-                                        <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'good'); closeDetailsMenu(this)">Học tập tốt</button>
-                                        <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'normal'); closeDetailsMenu(this)">Mức độ bình thường</button>
-                                        <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'needwork'); closeDetailsMenu(this)">Cần cố gắng thêm</button>
-                                        <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'naughty'); closeDetailsMenu(this)">Hay mất tập trung</button>
-                                    </div>
-                                </details>
+                    <div class="regular-assessment-editor" aria-busy="${state.assessmentStatus.loading}">
+                        <fieldset class="learning-level-fieldset" ${(state.assessmentStatus.loading || state.assessmentStatus.error || isRegularOperationActive()) ? 'disabled' : ''}>
+                            <legend class="learning-level-legend">
+                                <span>Mức độ nắm bài</span>
+                                <small>${state.assessmentStatus.loading ? 'Đang tải đánh giá đã lưu...' : state.assessmentStatus.error ? 'Vui lòng thử tải lại' : 'Level 3 được dùng mặc định và tự lưu khi tạo'}</small>
+                            </legend>
+                            <div class="learning-level-grid">
+                                ${Object.entries(LEARNING_LEVELS).map(([value, info]) => `
+                                    <label class="learning-level-option ${state.learningLevel === value ? 'is-selected' : ''}">
+                                        <input type="radio" name="learning-level-${domId}" value="${value}"
+                                            ${state.learningLevel === value ? 'checked' : ''}
+                                            onchange="onRegularLearningLevelChange('${studentIdJs}', this.value)">
+                                        <span class="learning-level-code">${info.code}</span>
+                                        <span class="learning-level-copy">
+                                            <strong>${info.label}</strong>
+                                            <small>${info.help}</small>
+                                        </span>
+                                    </label>
+                                `).join('')}
                             </div>
-                            <div class="regular-note-toolbar-right">
-                                <button type="button" class="btn btn-sm btn-outline" id="save-note-${domId}" onclick="saveNote('${studentIdJs}')">
-                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.5 12.75 10.5 18l9-13.5"/></svg>
-                                    Lưu ghi chú
-                                </button>
+                        </fieldset>
+                        <div class="regular-note-editor">
+                            <label class="regular-note-label" for="note-${domId}">
+                                <span>Ghi chú bổ sung</span>
+                                <small>Không bắt buộc</small>
+                            </label>
+                            <textarea id="note-${domId}" rows="2" placeholder="Ví dụ: chưa hiểu một phần nhưng chủ động hỏi; thực hành chậm ở một số bước..."
+                                ${(state.assessmentStatus.loading || state.assessmentStatus.error || isRegularOperationActive()) ? 'disabled' : ''}
+                                oninput="onRegularNoteInput('${studentIdJs}', this.value)">${escapeHtml(state.note)}</textarea>
+                            <div class="regular-note-toolbar">
+                                <div class="regular-note-toolbar-left">
+                                    ${state.assessmentStatus.error ? `
+                                        <button type="button" class="btn btn-sm btn-outline" onclick="retryRegularAssessments()">Thử tải lại</button>
+                                    ` : state.assessmentStatus.loading ? '' : `
+                                        <details class="quick-template-menu">
+                                            <summary class="btn btn-sm btn-outline">Mẫu ghi chú nhanh</summary>
+                                            <div class="quick-template-popover">
+                                                <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'good'); closeDetailsMenu(this)">Tự làm tốt</button>
+                                                <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'asks'); closeDetailsMenu(this)">Chủ động hỏi</button>
+                                                <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'needwork'); closeDetailsMenu(this)">Cần gợi ý</button>
+                                                <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'naughty'); closeDetailsMenu(this)">Hay mất tập trung</button>
+                                            </div>
+                                        </details>
+                                    `}
+                                </div>
+                                <div class="regular-note-toolbar-right">
+                                    <span class="assessment-save-status ${state.assessmentStatus.className}" id="assessment-status-${domId}" aria-live="polite">${state.assessmentStatus.text}</span>
+                                    <button type="button" class="btn btn-sm btn-outline" id="save-note-${domId}" onclick="saveAssessment('${studentIdJs}')"
+                                        ${(state.assessmentStatus.loading || state.assessmentStatus.error || isRegularOperationActive()) ? 'disabled' : ''} aria-busy="${regularAssessmentSaveBusy.has(state.studentId)}">
+                                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.5 12.75 10.5 18l9-13.5"/></svg>
+                                        Lưu đánh giá
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -5572,7 +6164,7 @@
                     ` : `
                         <div class="regular-ai-empty">
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.591-2.591L3.5 12.5l2.096-.813a4.5 4.5 0 0 0 2.591-2.591L9 7l.813 2.096a4.5 4.5 0 0 0 2.591 2.591l2.096.813-2.096.813a4.5 4.5 0 0 0-2.591 2.591Z"/></svg>
-                            <span>Chưa có bản nháp AI. Thêm ghi chú ngắn để nhận xét sát với tình hình học tập hơn.</span>
+                            <span>Chưa có bản nháp AI. Hệ thống sẽ dùng mức độ nắm bài và ghi chú bổ sung để tạo nhận xét cụ thể.</span>
                         </div>
                     `}
                 </div>
@@ -5655,7 +6247,7 @@
             document.querySelectorAll('#studentList .student-list-item').forEach(button => {
                 const isActive = button.parentElement?.dataset.studentId === studentId;
                 button.classList.toggle('active', isActive);
-                button.setAttribute('aria-selected', String(isActive));
+                button.setAttribute('aria-pressed', String(isActive));
             });
 
             const detail = document.getElementById('regularStudentDetail');
@@ -5683,15 +6275,45 @@
             }
         }
 
+        function refreshRegularAssessmentIndicators(studentId) {
+            const domId = getRegularStudentDomId(studentId);
+            const info = LEARNING_LEVELS[getRegularLearningLevel(studentId)];
+            const status = getRegularAssessmentStatus(studentId);
+            [`student-level-badge-${domId}`, `regular-level-badge-${domId}`].forEach(id => {
+                const badge = document.getElementById(id);
+                if (!badge) return;
+                badge.textContent = status.loading ? 'Đang tải đánh giá' : status.error ? 'Không tải được' : `${info.code} · ${info.shortLabel}`;
+                badge.classList.toggle('is-loading', status.loading || status.error);
+            });
+
+            const statusElement = document.getElementById(`assessment-status-${domId}`);
+            if (statusElement) {
+                statusElement.textContent = status.text;
+                statusElement.className = `assessment-save-status ${status.className}`;
+            }
+
+            const att = students.find(item => item.student.id === studentId);
+            const preview = document.getElementById(`student-preview-${domId}`);
+            if (att && preview) {
+                preview.textContent = getRegularStudentPreview(att);
+                preview.classList.remove('is-empty');
+            }
+        }
+
+        function onRegularLearningLevelChange(studentId, value) {
+            regularLearningLevelDrafts[studentId] = normalizeLearningLevel(value);
+            regularAssessmentTouched.add(studentId);
+            const domId = getRegularStudentDomId(studentId);
+            document.querySelectorAll(`input[name="learning-level-${domId}"]`).forEach(input => {
+                input.closest('.learning-level-option')?.classList.toggle('is-selected', input.checked);
+            });
+            refreshRegularAssessmentIndicators(studentId);
+        }
+
         function onRegularNoteInput(studentId, value) {
             regularNoteDrafts[studentId] = value;
-            const att = students.find(item => item.student.id === studentId);
-            const preview = document.getElementById(`student-preview-${getRegularStudentDomId(studentId)}`);
-            if (att && preview) {
-                const previewText = getRegularStudentPreview(att);
-                preview.textContent = previewText;
-                preview.classList.toggle('is-empty', previewText === 'Chưa có ghi chú hoặc nhận xét');
-            }
+            regularAssessmentTouched.add(studentId);
+            refreshRegularAssessmentIndicators(studentId);
         }
 
         // Render students
@@ -5706,6 +6328,7 @@
                 || document.getElementById('filterProgress')?.value !== 'all');
 
             list.classList.toggle('regular-mode', !isFinal && !isCheckpoint);
+            list.setAttribute('aria-busy', String(!isFinal && !isCheckpoint && regularAssessmentLoad.loading));
             updateStudentCount(toRender.length);
 
             if (toRender.length === 0) {
@@ -6160,7 +6783,7 @@
                     </div>
                     <div class="template-buttons">
                         <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'good')">👍 Tốt</button>
-                        <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'normal')">👌 Bình thường</button>
+                        <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'asks')">Chủ động hỏi</button>
                         <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'needwork')">📝 Cần cố gắng</button>
                         <button class="btn btn-xs btn-template" onclick="applyTemplate('${att.student.id}', 'naughty')">😅 Hay nghịch</button>
                         <button class="btn btn-xs btn-template" onclick="showPastComments('${escapeInlineJsAttr(att.student.id)}', '${escapeInlineJsAttr(att.student.fullName)}')">📜 Xem buổi trước</button>
@@ -6197,48 +6820,90 @@
             });
         }
 
-        async function persistStudentNote(studentId, note) {
-            const normalizedNote = String(note || '').trim();
-            if (!normalizedNote) throw new Error('Vui lòng nhập ghi chú trước khi lưu');
-            regularNoteDrafts[studentId] = normalizedNote;
-            setLocalNote(studentId, normalizedNote);
-            if (regularServerSyncedNotes[studentId] === normalizedNote) return false;
+        async function persistStudentAssessment(context, studentId, assessment) {
+            if (!context?.classId || !context?.slotId) throw new Error('Chưa chọn lớp hoặc buổi học');
+            const normalized = {
+                learningLevel: normalizeLearningLevel(assessment?.learningLevel),
+                note: String(assessment?.note ?? '').trim()
+            };
+            const synced = regularServerSyncedAssessments[studentId];
+            if (synced
+                && synced.learningLevel === normalized.learningLevel
+                && synced.note === normalized.note) {
+                if (isRegularContextCurrent(context)) regularAssessmentTouched.delete(studentId);
+                return false;
+            }
 
-            const response = await fetch(`/api/notes/${encodeURIComponent(studentId)}`, {
-                method: 'POST',
+            const response = await fetch(`/api/assessments/${encodeURIComponent(context.slotId)}/${encodeURIComponent(studentId)}`, {
+                method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({note: normalizedNote})
+                body: JSON.stringify({
+                    class_id: context.classId,
+                    learning_level: normalized.learningLevel,
+                    note: normalized.note
+                })
             });
 
-            if (!response.ok) throw new Error(`Không thể lưu ghi chú (${response.status})`);
-            regularServerSyncedNotes[studentId] = normalizedNote;
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.error || `Không thể lưu đánh giá (${response.status})`);
+            }
+            if (isRegularContextCurrent(context)) {
+                regularServerSyncedAssessments[studentId] = normalized;
+                regularAssessmentTouched.delete(studentId);
+                refreshRegularAssessmentIndicators(studentId);
+            }
             return true;
         }
 
-        // Save note
-        async function saveNote(studentId) {
-            const domId = getRegularStudentDomId(studentId);
-            const input = document.getElementById(`note-${domId}`);
-            const button = document.getElementById(`save-note-${domId}`);
-            if (!input) return;
+        async function persistRegularStudentSnapshots(context, studentSnapshots, concurrency = 3) {
+            await runWithConcurrency(studentSnapshots, concurrency, async snapshot => {
+                if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+                await persistStudentAssessment(context, snapshot.studentId, snapshot.assessment);
+            });
+        }
 
+        async function saveAssessment(studentId) {
+            const context = captureRegularContext();
+            if (!context) return;
+            if (isRegularOperationActive()) {
+                showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
+                return;
+            }
+            const domId = getRegularStudentDomId(studentId);
+            const button = document.getElementById(`save-note-${domId}`);
             const originalHtml = button?.innerHTML;
+            regularAssessmentSaveBusy.add(studentId);
+            syncRegularOperationLock();
+            updateStats();
             if (button) {
                 button.disabled = true;
+                button.setAttribute('aria-busy', 'true');
                 button.textContent = 'Đang lưu...';
             }
 
             try {
-                await persistStudentNote(studentId, input.value);
-                showToast('Đã lưu ghi chú!');
+                await ensureRegularAssessmentsLoaded(context);
+                if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+                const changed = await persistStudentAssessment(context, studentId, getRegularAssessmentDraft(studentId));
+                showToast(changed ? 'Đã lưu đánh giá!' : 'Không có thay đổi', changed ? 'success' : 'info');
             } catch (error) {
-                showToast('Lỗi lưu ghi chú: ' + error.message, 'error');
+                showToast('Lỗi lưu đánh giá: ' + error.message, 'error');
             } finally {
-                if (button) {
-                    button.disabled = false;
+                regularAssessmentSaveBusy.delete(studentId);
+                syncRegularOperationLock();
+                if (isRegularContextCurrent(context)) updateStats();
+                if (button?.isConnected && isRegularContextCurrent(context)) {
+                    button.disabled = regularAssessmentLoad.loading;
+                    button.setAttribute('aria-busy', 'false');
                     button.innerHTML = originalHtml;
                 }
             }
+        }
+
+        // Compatibility for the legacy card markup; regular master-detail uses saveAssessment.
+        async function saveNote(studentId) {
+            return saveAssessment(studentId);
         }
 
         // Get past comments
@@ -6265,171 +6930,193 @@
 
         // Generate single
         async function generateSingle(studentId, studentName, idx) {
-            const summary = document.getElementById('sessionSummary').value;
-            const pastSlots = getPastComments(studentId);
+            const context = captureRegularContext();
             const btn = document.getElementById(`gen-btn-${getRegularStudentDomId(studentId)}`);
             const originalButtonHtml = btn?.innerHTML;
 
-            if (regularBatchBusy || regularStudentBusy.has(studentId)) {
+            if (!context) return;
+            if (isRegularOperationActive()) {
                 showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
                 return;
             }
 
-            // Check API key first
-            const { aiApiKey } = getSelectedModelConfig();
-            if (!aiApiKey) {
+            const selectedModel = getSelectedModelConfig();
+            if (!selectedModel.aiApiKey) {
                 showToast('Vui lòng nhập API Key trong phần Cấu hình', 'error');
                 return;
             }
 
             regularStudentBusy.add(studentId);
-
-            // Show loading
+            syncRegularOperationLock();
+            updateStats();
             if (btn) {
                 btn.disabled = true;
                 btn.textContent = 'Đang tạo...';
             }
-            
+
             try {
+                await ensureRegularAssessmentsLoaded(context);
+                if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
                 const att = students.find(s => s.student.id === studentId);
-                const isLate = att?.status === 'LATE_ARRIVED';
-                
-                const commentLength = document.getElementById('commentLength')?.value || 'medium';
-                const customPrompt = document.getElementById('customPrompt')?.value || '';
-                const { aiModel, customModelId, thinkingLevel, aiApiKey } = getSelectedModelConfig();
+                if (!att) throw new Error('Không tìm thấy học sinh trong buổi học hiện tại');
+
+                const snapshot = snapshotRegularStudent(att);
+                const requestOptions = {
+                    commentLength: document.getElementById('commentLength')?.value || 'medium',
+                    customPrompt: document.getElementById('customPrompt')?.value || '',
+                    ...selectedModel
+                };
+                await persistStudentAssessment(context, studentId, snapshot.assessment);
+                if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
 
                 const homeworkStatus = await getPreviousHomeworkStatusForStudent(att);
+                if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
                 const data = await fetchJSON('/api/generate_comment', {
-                        student_id: studentId,
-                        student_name: studentName,
-                        past_slots: pastSlots,
-                        session_summary: summary,
-                        teacher_note: getRegularNoteValue(studentId),
-                        is_late: isLate,
-                        homework_status: homeworkStatus,
-                        model_id: aiModel,
-                        custom_model_id: customModelId,
-                        thinking_level: thinkingLevel,
-                        comment_length: commentLength,
-                        custom_prompt: customPrompt,
-                        ai_api_key: aiApiKey
-                    });
-                if (data.error) {
-                    showToast(data.error, 'error');
-                    return;
-                }
-                
+                    student_id: snapshot.studentId,
+                    student_name: snapshot.studentName || studentName,
+                    past_slots: snapshot.pastSlots,
+                    session_summary: context.summary,
+                    teacher_note: snapshot.assessment.note,
+                    learning_level: snapshot.assessment.learningLevel,
+                    is_late: snapshot.isLate,
+                    homework_status: homeworkStatus,
+                    model_id: requestOptions.aiModel,
+                    custom_model_id: requestOptions.customModelId,
+                    thinking_level: requestOptions.thinkingLevel,
+                    comment_length: requestOptions.commentLength,
+                    custom_prompt: requestOptions.customPrompt,
+                    ai_api_key: requestOptions.aiApiKey
+                });
+                if (!isRegularContextCurrent(context)) return;
                 generatedComments[studentId] = data.comment;
                 renderStudents();
                 updateStats();
                 showToast('Đã tạo nhận xét!');
-            } catch (e) {
-                showToast('Lỗi tạo nhận xét', 'error');
+            } catch (error) {
+                if (isRegularContextCurrent(context)) {
+                    showToast('Lỗi tạo nhận xét: ' + (error.message || 'Không xác định'), 'error');
+                }
             } finally {
                 regularStudentBusy.delete(studentId);
-                if (btn?.isConnected) {
-                    btn.disabled = false;
+                syncRegularOperationLock();
+                if (btn?.isConnected && isRegularContextCurrent(context)) {
+                    btn.disabled = regularAssessmentLoad.loading;
                     btn.innerHTML = originalButtonHtml;
                 }
-                const liveGenerateButton = document.getElementById(`gen-btn-${getRegularStudentDomId(studentId)}`);
-                const liveSubmitButton = document.getElementById(`submit-btn-${getRegularStudentDomId(studentId)}`);
-                if (liveGenerateButton) liveGenerateButton.disabled = regularBatchBusy;
-                if (liveSubmitButton) liveSubmitButton.disabled = regularBatchBusy;
+                if (isRegularContextCurrent(context)) updateStats();
             }
         }
 
         // Auto comment all
         async function autoCommentAll() {
-            if (regularBatchBusy) {
-                showToast('Đang có thao tác cả lớp khác chạy', 'info');
+            const context = captureRegularContext();
+            if (!context) return;
+            if (isRegularOperationActive()) {
+                showToast('Đang có thao tác nhận xét khác chạy', 'info');
                 return;
             }
-            const summary = document.getElementById('sessionSummary').value;
             const btn = document.getElementById('autoCommentBtn');
             const progressContainer = document.getElementById('progressContainer');
             const progressFill = document.getElementById('progressFill');
             const progressText = document.getElementById('progressText');
-            
-            btn.disabled = true;
-            progressContainer.classList.add('show');
-
-            // Check API key first
-            const { aiApiKey } = getSelectedModelConfig();
-            if (!aiApiKey) {
+            const requestOptions = {
+                commentLength: document.getElementById('commentLength')?.value || 'medium',
+                customPrompt: document.getElementById('customPrompt')?.value || '',
+                ...getSelectedModelConfig()
+            };
+            if (!requestOptions.aiApiKey) {
                 showToast('Vui lòng nhập API Key trong phần Cấu hình', 'error');
-                btn.disabled = false;
-                progressContainer.classList.remove('show');
                 return;
             }
 
             regularBatchBusy = true;
+            syncRegularOperationLock();
+            if (btn) btn.disabled = true;
+            progressContainer.classList.add('show');
             updateStats();
 
-            // Include both ATTENDED and LATE_ARRIVED students (not ABSENT)
-            const presentStudents = students.filter(isPresentAttendance);
-            
-            // Batch size for parallel requests
-            const BATCH_SIZE = 3;
-            let completed = 0;
-            const startTime = Date.now();
-            const avgTimePerBatch = 3000; // 3 seconds per batch estimate
-            
-            for (let i = 0; i < presentStudents.length; i += BATCH_SIZE) {
-                const batch = presentStudents.slice(i, i + BATCH_SIZE);
-                
-                // Process batch in parallel
-                const promises = batch.map(async (att) => {
-                    try {
-                        const commentLength = document.getElementById('commentLength')?.value || 'medium';
-                        const customPrompt = document.getElementById('customPrompt')?.value || '';
-                        const { aiModel, customModelId, thinkingLevel, aiApiKey } = getSelectedModelConfig();
+            let generatedCount = 0;
+            const generationFailures = [];
+            try {
+                await ensureRegularAssessmentsLoaded(context);
+                if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+                const presentStudents = students.filter(isPresentAttendance);
+                const snapshots = presentStudents.map(snapshotRegularStudent);
+                await persistRegularStudentSnapshots(context, snapshots, 3);
+                if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
 
-                        const homeworkStatus = await getPreviousHomeworkStatusForStudent(att);
-                        const data = await fetchJSON('/api/generate_comment', {
-                            student_id: att.student.id,
-                            student_name: att.student.fullName,
-                            past_slots: getPastComments(att.student.id),
-                            session_summary: summary,
-                            teacher_note: getRegularNoteValue(att.student.id),
-                            is_late: att.status === 'LATE_ARRIVED',
-                            homework_status: homeworkStatus,
-                            model_id: aiModel,
-                            custom_model_id: customModelId,
-                            thinking_level: thinkingLevel,
-                            comment_length: commentLength,
-                            custom_prompt: customPrompt,
-                            ai_api_key: aiApiKey
-                        });
-                        if (!data.error) {
-                            generatedComments[att.student.id] = data.comment;
+                const BATCH_SIZE = 3;
+                let completed = 0;
+                const startTime = Date.now();
+                for (let i = 0; i < snapshots.length; i += BATCH_SIZE) {
+                    if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+                    const batch = snapshots.slice(i, i + BATCH_SIZE);
+                    await Promise.all(batch.map(async snapshot => {
+                        const att = presentStudents.find(item => item.student.id === snapshot.studentId);
+                        try {
+                            const homeworkStatus = await getPreviousHomeworkStatusForStudent(att);
+                            if (!isRegularContextCurrent(context)) return;
+                            const data = await fetchJSON('/api/generate_comment', {
+                                student_id: snapshot.studentId,
+                                student_name: snapshot.studentName,
+                                past_slots: snapshot.pastSlots,
+                                session_summary: context.summary,
+                                teacher_note: snapshot.assessment.note,
+                                learning_level: snapshot.assessment.learningLevel,
+                                is_late: snapshot.isLate,
+                                homework_status: homeworkStatus,
+                                model_id: requestOptions.aiModel,
+                                custom_model_id: requestOptions.customModelId,
+                                thinking_level: requestOptions.thinkingLevel,
+                                comment_length: requestOptions.commentLength,
+                                custom_prompt: requestOptions.customPrompt,
+                                ai_api_key: requestOptions.aiApiKey
+                            });
+                            if (!isRegularContextCurrent(context)) return;
+                            generatedComments[snapshot.studentId] = data.comment;
+                            generatedCount++;
+                        } catch (error) {
+                            generationFailures.push({
+                                studentName: snapshot.studentName,
+                                message: error?.message || 'Lỗi không xác định'
+                            });
+                            console.error('Generate comment error:', snapshot.studentId, error);
                         }
-                    } catch (e) {
-                        console.error(e);
+                    }));
+                    if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+
+                    completed += batch.length;
+                    const progress = Math.round((completed / snapshots.length) * 100);
+                    progressFill.style.width = `${progress}%`;
+                    const elapsed = Date.now() - startTime;
+                    const avgTimePerStudent = elapsed / Math.max(completed, 1);
+                    const remaining = Math.ceil((snapshots.length - completed) * avgTimePerStudent / 1000);
+                    progressText.textContent = `${progress}% (${completed}/${snapshots.length})${remaining > 0 ? ` (~${remaining}s còn lại)` : ''}`;
+                    if (isRegularContextCurrent(context)) {
+                        renderStudents();
+                        updateStats();
                     }
-                });
-                
-                await Promise.all(promises);
-                completed += batch.length;
-                
-                const progress = Math.round((completed / presentStudents.length) * 100);
-                progressFill.style.width = `${progress}%`;
-                
-                // Estimate remaining time
-                const elapsed = Date.now() - startTime;
-                const avgTimePerStudent = elapsed / completed;
-                const remaining = Math.ceil((presentStudents.length - completed) * avgTimePerStudent / 1000);
-                const timeStr = remaining > 0 ? ` (~${remaining}s còn lại)` : '';
-                
-                progressText.textContent = `${progress}% (${completed}/${presentStudents.length})${timeStr}`;
-                renderStudents();
-                updateStats();
+                }
+                if (isRegularContextCurrent(context)) {
+                    const failedCount = generationFailures.length;
+                    playSound(failedCount ? 'error' : 'success');
+                    showToast(
+                        failedCount
+                            ? `Đã tạo ${generatedCount}/${snapshots.length} nhận xét. Lỗi: ${generationFailures.slice(0, 3).map(item => item.studentName).join(', ')}${failedCount > 3 ? '...' : ''}`
+                            : `Đã tạo ${generatedCount} nhận xét!`,
+                        failedCount ? 'warning' : 'success'
+                    );
+                }
+            } catch (error) {
+                if (isRegularContextCurrent(context)) {
+                    showToast('Lỗi tạo nhận xét cả lớp: ' + (error.message || 'Không xác định'), 'error');
+                }
+            } finally {
+                regularBatchBusy = false;
+                syncRegularOperationLock();
+                progressContainer.classList.remove('show');
+                if (isRegularContextCurrent(context)) updateStats();
             }
-            
-            regularBatchBusy = false;
-            progressContainer.classList.remove('show');
-            updateStats();
-            playSound('success');
-            showToast(`Đã tạo ${Object.keys(generatedComments).length} nhận xét!`);
         }
 
         // Random score above 75% of maxScore with step 0.25
@@ -7222,41 +7909,53 @@
 
         // Submit single comment
         async function submitSingle(studentId, attendanceId) {
-            const summary = document.getElementById('sessionSummary').value;
+            const context = captureRegularContext();
+            if (!context) return;
+            const isFinal = context.sessionNumber === 14;
             const comment = generatedComments[studentId];
-            const sessionNumber = getCurrentSessionNumber();
-            const isFinal = sessionNumber === 14;
-
-            if (!isFinal && (regularBatchBusy || regularStudentBusy.has(studentId))) {
+            if (!isFinal && isRegularOperationActive()) {
                 showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
                 return;
             }
-
             if (!isFinal && !comment) {
                 showToast('Chưa có nhận xét để gửi', 'error');
                 return;
             }
-
-            if (!summary) {
+            if (!context.summary) {
                 showToast('Vui lòng nhập tổng kết buổi học', 'error');
                 return;
             }
 
+            const att = students.find(item => item.student.id === studentId);
+            if (!att) return;
+            let snapshot = null;
             const submitButton = document.getElementById(`submit-btn-${getRegularStudentDomId(studentId)}`);
-            if (!isFinal) regularStudentBusy.add(studentId);
+            if (!isFinal) {
+                regularStudentBusy.add(studentId);
+                syncRegularOperationLock();
+                updateStats();
+            }
             if (submitButton) submitButton.disabled = true;
 
             try {
+                if (!isFinal) {
+                    await ensureRegularAssessmentsLoaded(context);
+                    if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+                    snapshot = snapshotRegularStudent(att);
+                    await persistStudentAssessment(context, studentId, snapshot.assessment);
+                    if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+                }
+
                 const baseData = {
-                    slot_id: selectedSlot._id,
-                    class_site_id: classData.classSites[0]._id,
-                    session_number: sessionNumber,
-                    class_id: classData.id,
-                    course_process_id: classData.courseProcessId,
+                    slot_id: context.slotId,
+                    class_site_id: context.classSiteId,
+                    session_number: context.sessionNumber,
+                    class_id: context.classId,
+                    course_process_id: context.courseProcessId,
                     student_attendance_id: attendanceId,
                     student_id: studentId,
                     comment: isFinal ? '' : comment,
-                    summary: `<p>${summary}</p>`
+                    summary: `<p>${context.summary}</p>`
                 };
 
                 let payload, resultInfo = {};
@@ -7269,31 +7968,53 @@
                 }
 
                 const result = await submitToLMS(payload);
+                if (result.errors) throw new Error(result.errors[0]?.message || 'Không thể gửi lên LMS');
 
-                if (result.errors) {
-                    showToast('Lỗi submit: ' + result.errors[0]?.message, 'error');
-                    return;
+                logComment({
+                    class_id: context.classId,
+                    class_name: context.className,
+                    session_number: context.sessionNumber,
+                    student_id: studentId,
+                    student_name: snapshot?.studentName || att.student.fullName || '',
+                    comment: isFinal ? '' : comment,
+                    slot_type: isFinal ? 'Final' : 'Default',
+                    learning_level: snapshot?.assessment.learningLevel,
+                    scores: resultInfo,
+                    success: true
+                });
+
+                if (isRegularContextCurrent(context)) {
+                    const siblingDrafts = isFinal
+                        ? {}
+                        : Object.fromEntries(Object.entries(generatedComments).filter(([id]) => id !== studentId));
+                    delete generatedComments[studentId];
+                    if (isFinal && resultInfo.demo_scores) {
+                        const scores = Object.entries(resultInfo.demo_scores).map(([k,v]) => `${k}: ${v}`).join(', ');
+                        showToast(`Đã submit Demo! Tổng: ${resultInfo.total_demo_score} điểm (${scores})`);
+                    } else {
+                        showToast('Đã gửi nhận xét lên LMS!');
+                    }
+                    if (!isFinal) generatedComments = {};
+                    await reloadAndRestoreCurrentSlot();
+                    if (!isFinal && isRegularContextCurrent(context)) {
+                        Object.assign(generatedComments, siblingDrafts);
+                        renderStudents();
+                        updateStats();
+                    }
                 }
-
-                delete generatedComments[studentId];
-                const studentName = students.find(s => s.student.id === studentId)?.student?.fullName || '';
-                logComment({class_id: classData.id, class_name: classData.name, session_number: sessionNumber, student_id: studentId, student_name: studentName, comment: isFinal ? '' : comment, slot_type: isFinal ? 'Final' : 'Default', scores: resultInfo, success: true});
-
-                if (isFinal && resultInfo.demo_scores) {
-                    const scores = Object.entries(resultInfo.demo_scores).map(([k,v]) => `${k}: ${v}`).join(', ');
-                    showToast(`Đã submit Demo! Tổng: ${resultInfo.total_demo_score} điểm (${scores})`);
-                } else {
-                    showToast('Đã gửi nhận xét lên LMS!');
-                }
-                // Reload to get updated status
-                await reloadAndRestoreCurrentSlot();
-            } catch (e) {
-                showToast('Lỗi submit: ' + e.message, 'error');
-                console.error(e);
+            } catch (error) {
+                if (isRegularContextCurrent(context)) showToast('Lỗi submit: ' + error.message, 'error');
+                console.error(error);
             } finally {
-                if (!isFinal) regularStudentBusy.delete(studentId);
-                const liveSubmitButton = document.getElementById(`submit-btn-${getRegularStudentDomId(studentId)}`);
-                if (liveSubmitButton) liveSubmitButton.disabled = regularBatchBusy;
+                if (!isFinal) {
+                    regularStudentBusy.delete(studentId);
+                    syncRegularOperationLock();
+                }
+                if (isRegularContextCurrent(context)) {
+                    updateStats();
+                    const liveSubmitButton = document.getElementById(`submit-btn-${getRegularStudentDomId(studentId)}`);
+                    if (liveSubmitButton) liveSubmitButton.disabled = regularBatchBusy || regularAssessmentLoad.loading;
+                }
             }
         }
 
@@ -7549,92 +8270,126 @@ MindX Technology School`;
 
         // Submit all
         async function submitAll() {
-            if (regularBatchBusy) {
-                showToast('Đang có thao tác cả lớp khác chạy', 'info');
+            const context = captureRegularContext();
+            if (!context) return;
+            if (isRegularOperationActive()) {
+                showToast('Đang có thao tác nhận xét khác chạy', 'info');
                 return;
             }
-            const summary = document.getElementById('sessionSummary').value;
             const btn = document.getElementById('submitAllBtn');
             const progressContainer = document.getElementById('progressContainer');
             const progressFill = document.getElementById('progressFill');
             const progressText = document.getElementById('progressText');
-
-            if (!summary) {
+            if (!context.summary) {
                 showToast('Vui lòng nhập tổng kết buổi học', 'error');
                 return;
             }
 
-            btn.disabled = true;
             regularBatchBusy = true;
+            syncRegularOperationLock();
+            if (btn) btn.disabled = true;
             updateStats();
             progressContainer.classList.add('show');
 
-            const toSubmit = Object.entries(generatedComments).filter(([studentId]) => {
-                const att = students.find(item => item.student.id === studentId);
-                return att && isPresentAttendance(att);
-            });
             let successCount = 0;
-            let summarySubmitted = false;
+            let failedCount = 0;
+            let totalCount = 0;
+            let preservedDrafts = {};
+            try {
+                await ensureRegularAssessmentsLoaded(context);
+                if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+                const submissionSnapshots = Object.entries(generatedComments).map(([studentId, comment]) => {
+                    const att = students.find(item => item.student.id === studentId);
+                    if (!att || !isPresentAttendance(att)) return null;
+                    return { ...snapshotRegularStudent(att), comment };
+                }).filter(Boolean);
+                const submittedStudentIds = new Set(submissionSnapshots.map(snapshot => snapshot.studentId));
+                preservedDrafts = Object.fromEntries(
+                    Object.entries(generatedComments).filter(([studentId]) => !submittedStudentIds.has(studentId))
+                );
+                totalCount = submissionSnapshots.length;
+                await persistRegularStudentSnapshots(context, submissionSnapshots, 3);
+                if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
 
-            for (let i = 0; i < toSubmit.length; i++) {
-                const [studentId, comment] = toSubmit[i];
-                const att = students.find(s => s.student.id === studentId);
-                if (!att) continue;
+                let summarySubmitted = false;
+                for (let i = 0; i < submissionSnapshots.length; i++) {
+                    if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+                    const snapshot = submissionSnapshots[i];
+                    try {
+                        const baseData = {
+                            slot_id: context.slotId,
+                            class_site_id: context.classSiteId,
+                            session_number: context.sessionNumber,
+                            class_id: context.classId,
+                            course_process_id: context.courseProcessId,
+                            student_attendance_id: snapshot.attendanceId,
+                            student_id: snapshot.studentId,
+                            comment: snapshot.comment
+                        };
+                        if (!summarySubmitted) baseData.summary = `<p>${context.summary}</p>`;
 
-                const progress = Math.round(((i + 1) / toSubmit.length) * 100);
-                progressFill.style.width = `${progress}%`;
-                progressText.textContent = `${progress}% (${i + 1}/${toSubmit.length})`;
-
-                try {
-                    const sessionNumber = getCurrentSessionNumber();
-                    const isFinal = sessionNumber === 14;
-                    const baseData = {
-                        slot_id: selectedSlot._id,
-                        class_site_id: classData.classSites[0]._id,
-                        session_number: sessionNumber,
-                        class_id: classData.id,
-                        course_process_id: classData.courseProcessId,
-                        student_attendance_id: att._id,
-                        student_id: studentId,
-                        comment: isFinal ? '' : comment
-                    };
-
-                    if (!summarySubmitted) {
-                        baseData.summary = `<p>${summary}</p>`;
-                        summarySubmitted = true;
+                        const result = await submitToLMS(buildDefaultPayload(baseData));
+                        if (result.errors) {
+                            failedCount++;
+                            console.error('Submit error:', snapshot.studentId, result.errors);
+                        } else {
+                            successCount++;
+                            if (baseData.summary) summarySubmitted = true;
+                            logComment({
+                                class_id: context.classId,
+                                class_name: context.className,
+                                session_number: context.sessionNumber,
+                                student_id: snapshot.studentId,
+                                student_name: snapshot.studentName,
+                                comment: snapshot.comment,
+                                slot_type: 'Default',
+                                learning_level: snapshot.assessment.learningLevel,
+                                success: true
+                            });
+                            if (isRegularContextCurrent(context)) delete generatedComments[snapshot.studentId];
+                        }
+                    } catch (error) {
+                        failedCount++;
+                        console.error('Submit request error:', snapshot.studentId, error);
                     }
 
-                    let payload;
-                    if (isFinal) {
-                        payload = buildFinalDemoPayload(baseData).payload;
-                    } else {
-                        payload = buildDefaultPayload(baseData);
-                    }
-
-                    const result = await submitToLMS(payload);
-                    if (!result.errors) {
-                        successCount++;
-                        delete generatedComments[studentId];
-                        logComment({class_id: classData.id, class_name: classData.name, session_number: sessionNumber, student_id: studentId, student_name: att.student.fullName, comment: isFinal ? '' : comment, slot_type: isFinal ? 'Final' : 'Default', success: true});
-                    }
-                } catch (e) {
-                    console.error(e);
+                    if (!isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+                    const progress = Math.round(((i + 1) / Math.max(submissionSnapshots.length, 1)) * 100);
+                    progressFill.style.width = `${progress}%`;
+                    progressText.textContent = `${progress}% (${i + 1}/${submissionSnapshots.length})`;
                 }
+
+                if (isRegularContextCurrent(context)) {
+                    playSound(failedCount ? 'error' : 'success');
+                    if (failedCount === 0 && totalCount > 0) {
+                        generatedComments = {};
+                        await reloadAndRestoreCurrentSlot();
+                        if (isRegularContextCurrent(context)) {
+                            Object.assign(generatedComments, preservedDrafts);
+                            renderStudents();
+                            updateStats();
+                        }
+                    } else {
+                        renderStudents();
+                        updateStats();
+                    }
+                    showToast(
+                        failedCount
+                            ? `Đã gửi ${successCount}/${totalCount}; còn ${failedCount} nhận xét chưa gửi, bản nháp vẫn được giữ lại.`
+                            : `Đã gửi ${successCount}/${totalCount} nhận xét lên LMS!`,
+                        failedCount ? 'warning' : 'success'
+                    );
+                }
+            } catch (error) {
+                if (isRegularContextCurrent(context)) {
+                    showToast('Lỗi gửi nhận xét cả lớp: ' + (error.message || 'Không xác định'), 'error');
+                }
+            } finally {
+                regularBatchBusy = false;
+                syncRegularOperationLock();
+                progressContainer.classList.remove('show');
+                if (isRegularContextCurrent(context)) updateStats();
             }
-
-            btn.disabled = false;
-            progressContainer.classList.remove('show');
-
-            // Reload class data to get updated status
-            if (classData && classData.id) {
-                await reloadAndRestoreCurrentSlot();
-            }
-
-            regularBatchBusy = false;
-            updateStats();
-
-            playSound('success');
-            showToast(`Đã gửi ${successCount}/${toSubmit.length} nhận xét lên LMS!`);
         }
 
         // Init
@@ -7656,6 +8411,11 @@ MindX Technology School`;
             event.preventDefault();
         });
         window.addEventListener('resize', debounce(syncRegularDetailPlacement, 120));
+        window.addEventListener('beforeunload', event => {
+            if (!hasUnsavedRegularWork() && !isRegularOperationActive()) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
 
         // Restore remembered login details so an expired server session can be renewed quickly.
         const savedEmail = localStorage.getItem('lms_email');

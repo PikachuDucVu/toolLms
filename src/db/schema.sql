@@ -14,6 +14,23 @@ CREATE TABLE IF NOT EXISTS student_notes (
 
 CREATE INDEX IF NOT EXISTS idx_student_notes_student ON student_notes(student_id);
 
+CREATE TABLE IF NOT EXISTS student_session_assessments (
+  id TEXT PRIMARY KEY,
+  teacher_email TEXT NOT NULL,
+  class_id TEXT NOT NULL,
+  slot_id TEXT NOT NULL,
+  student_id TEXT NOT NULL,
+  learning_level TEXT NOT NULL DEFAULT 'understands_and_asks'
+    CHECK (learning_level IN ('independent', 'understands_and_asks', 'needs_prompting', 'needs_support')),
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(teacher_email, slot_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_assessments_owner_slot ON student_session_assessments(teacher_email, slot_id);
+CREATE INDEX IF NOT EXISTS idx_session_assessments_student ON student_session_assessments(student_id);
+
 CREATE TABLE IF NOT EXISTS comment_log (
   id TEXT PRIMARY KEY,
   timestamp TEXT NOT NULL,

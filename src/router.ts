@@ -3,13 +3,13 @@ import { AI_MODELS } from "./constants/aiModels";
 import { LmsAuthenticationError } from "./services/lmsClient";
 import { buildExpiredSessionCookie, destroySession } from "./services/sessionService";
 import type { Env } from "./types";
+import { assessmentsRoutes } from "./routes/assessments";
 import { authRoutes } from "./routes/auth";
 import { classesRoutes } from "./routes/classes";
 import { commentsRoutes } from "./routes/comments";
 import { configRoutes } from "./routes/config";
 import { healthRoutes } from "./routes/health";
 import { homeworkRoutes } from "./routes/homework";
-import { notesRoutes } from "./routes/notes";
 
 export const app = new Hono<{ Bindings: Env }>();
 
@@ -26,9 +26,9 @@ app.onError(async (error, c) => {
 });
 
 app.route("/api", healthRoutes);
+app.route("/api", assessmentsRoutes);
 app.route("/api", authRoutes);
 app.route("/api", configRoutes);
-app.route("/api", notesRoutes);
 app.route("/api", commentsRoutes);
 app.route("/api", classesRoutes);
 app.route("/api", homeworkRoutes);
