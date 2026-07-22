@@ -1,0 +1,50 @@
+// Mutable state for the comment/assessment page. Domain modules import this
+// single object so state is never duplicated across module boundaries.
+export const state = {
+    selectedClass: null,
+    selectedSlot: null,
+    students: [],
+    generatedComments: {},
+    checkpointScoresCache: {},
+    checkpointDescriptionDrafts: {},
+    demoScoresCache: {},
+    demoAutoRateCache: {},
+    manualComments: {},
+    classData: null,
+    classesCache: null,
+    homeworkDataCache: {},
+    homeworkDataPromises: {},
+    classRefreshToken: 0,
+
+    checkpointSubmissionStatus: {},
+    checkpointStatusOriginal: null,
+    checkpointStatusMakeup: null,
+    checkpointBranchSelection: {},
+    checkpointStatusLoading: false,
+    checkpointStatusKey: null,
+    checkpointExpanded: {},
+
+    selectedRegularStudentId: null,
+    regularUiSlotId: null,
+    regularNoteDrafts: {},
+    regularLearningLevelDrafts: {},
+    regularServerSyncedAssessments: {},
+    regularAssessmentTouched: new Set(),
+    regularAssessmentLoad: {
+        slotId: null,
+        token: 0,
+        loading: false,
+        error: null,
+        promise: Promise.resolve()
+    },
+    regularAssessmentSaveBusy: new Set(),
+    regularListScrollTop: 0,
+    regularBatchBusy: false,
+    regularRefreshBusy: false,
+    regularStudentBusy: new Set(),
+
+    hasServerSession: false,
+    filteredStudents: [],
+    aiModelsCache: [],
+    savedThinkingLevel: 'high'
+};

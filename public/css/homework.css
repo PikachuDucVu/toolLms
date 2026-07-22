@@ -1,0 +1,271 @@
+/* ============================================================
+   homework.css — styles riêng của trang (đã tách phần chung sang shared.css)
+   ============================================================ */
+
+.form-group .form-select, .form-group .form-input {
+    width: 100%
+    }
+
+.btn-primary:active:not(:disabled) {
+    transform: translatey(0)
+    }
+
+.btn-success:active:not(:disabled) {
+    transform: translatey(0)
+    }
+
+.btn-warning:active:not(:disabled) {
+    transform: translatey(0)
+    }
+
+.stats-bar {
+    display: flex;
+    gap: 32px;
+    padding: 22px 28px;
+    background: var(--surface-card);
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--gray-200)
+    }
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px
+    }
+
+.stat-label {
+    font-size: 12px;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500
+    }
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--gray-800);
+    font-family: "Plus Jakarta Sans", sans-serif
+    }
+
+.stat-value.warning {
+    color: var(--warning)
+    }
+
+.stat-value.success {
+    color: var(--success)
+    }
+
+.filters {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center
+    }
+
+.table-container {
+    overflow-x: auto
+    }
+
+table {
+    width: 100%;
+    border-collapse: collapse
+    }
+
+th, td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--gray-100)
+    }
+
+th {
+    background: var(--gray-50);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px
+    }
+
+td {
+    font-size: 14px;
+    color: var(--gray-700)
+    }
+
+tbody tr {
+    transition: background var(--transition)
+    }
+
+tbody tr:hover {
+    background: var(--primary-bg)
+    }
+
+.student-name {
+    font-weight: 600;
+    color: var(--gray-800)
+    }
+
+.lesson-name {
+    font-size: 13px;
+    color: var(--gray-600)
+    }
+
+.file-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px
+    }
+
+.file-link:hover {
+    text-decoration: underline
+    }
+
+.file-link svg {
+    width: 14px;
+    height: 14px
+    }
+
+.score-input {
+    width: 70px;
+    padding: 8px 10px;
+    border: 1.5px solid var(--gray-300);
+    border-radius: var(--radius-xs);
+    font-size: 14px;
+    text-align: center;
+    font-family: inherit;
+    font-weight: 700;
+    transition: border-color var(--transition), box-shadow var(--transition)
+    }
+
+.score-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1)
+    }
+
+.score-display {
+    font-weight: 700;
+    color: var(--success);
+    font-size: 15px
+    }
+
+.note-cell {
+    min-width: 240px
+    }
+
+.note-input {
+    width: 100%;
+    min-width: 220px;
+    min-height: 56px;
+    padding: 8px 10px;
+    border: 1.5px solid var(--gray-300);
+    border-radius: var(--radius-xs);
+    font-size: 13px;
+    font-family: inherit;
+    line-height: 1.5;
+    color: var(--gray-700);
+    resize: vertical;
+    transition: border-color var(--transition), box-shadow var(--transition)
+    }
+
+.note-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1)
+    }
+
+.note-input::placeholder {
+    color: var(--gray-400)
+    }
+
+.checkbox-cell {
+    width: 48px;
+    text-align: center
+    }
+
+.select-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary);
+    border-radius: 4px
+    }
+
+.session-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm)
+    }
+
+.session-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--gray-700);
+    font-weight: 500
+    }
+
+.session-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0
+    }
+
+.session-dot.ok {
+    background: var(--success);
+    box-shadow: 0 0 0 3px var(--success-light)
+    }
+
+.session-dot.bad {
+    background: var(--danger);
+    box-shadow: 0 0 0 3px var(--danger-light)
+    }
+
+.session-dot.checking {
+    background: var(--warning);
+    box-shadow: 0 0 0 3px var(--warning-light);
+    animation: pulse 1.2s ease-in-out infinite
+    }
+
+@media (max-width: 768px) {
+.stats-bar {
+    flex-direction: column;
+    gap: 16px
+    }
+.filters {
+    flex-direction: column;
+    width: 100%
+    }
+.filters .form-select {
+    width: 100%
+    }
+.filters .btn {
+    width: 100%;
+    justify-content: center
+    }
+th, td {
+    padding: 10px 12px;
+    font-size: 13px
+    }
+}
+
+@media (pointer: coarse) {
+.select-checkbox {
+    width: 22px;
+    height: 22px
+    }
+}
