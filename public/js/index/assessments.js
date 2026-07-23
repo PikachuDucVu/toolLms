@@ -545,7 +545,7 @@ function refreshRegularAssessmentIndicators(studentId) {
             const domId = app.getRegularStudentDomId(studentId);
             const info = app.LEARNING_LEVELS[app.getRegularLearningLevel(studentId)];
             const status = app.getRegularAssessmentStatus(studentId);
-            [`student-level-badge-${domId}`, `regular-level-badge-${domId}`].forEach(id => {
+            [`student-level-badge-${domId}`, `regular-level-badge-${domId}`, `review-level-badge-${domId}`].forEach(id => {
                 const badge = document.getElementById(id);
                 if (!badge) return;
                 badge.textContent = status.loading ? 'Đang tải đánh giá' : status.error ? 'Không tải được' : `${info.code} · ${info.shortLabel}`;
@@ -557,6 +557,8 @@ function refreshRegularAssessmentIndicators(studentId) {
                 statusElement.textContent = status.text;
                 statusElement.className = `assessment-save-status ${status.className}`;
             }
+            const reviewStatusElement = document.getElementById(`review-assessment-status-${domId}`);
+            if (reviewStatusElement) reviewStatusElement.textContent = status.text;
 
             const att = state.students.find(item => item.student.id === studentId);
             const preview = document.getElementById(`student-preview-${domId}`);
@@ -661,6 +663,14 @@ function renderStudents(studentList = null) {
             const isFinal = app.isFinalSession();
             const isCheckpoint = app.isCheckpointSession();
             app.configureStudentFilters();
+
+            if (!isFinal && !isCheckpoint && state.regularReviewMode && typeof app.renderRegularReview === 'function') {
+                app.renderRegularReview(list);
+                return;
+            }
+
+            document.body.classList.remove('regular-review-active');
+            list.classList.remove('regular-review-mode');
             const toRender = studentList || app.getVisibleStudents();
             const filtersActive = !!(document.getElementById('searchStudent')?.value
                 || document.getElementById('filterAttendance')?.value !== 'all'

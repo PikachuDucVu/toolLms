@@ -424,7 +424,19 @@ function discardRegularWorkState() {
             state.regularAssessmentAutoSaveBusy.clear();
             state.regularAssessmentAutoSaveErrors = {};
             state.selectedRegularStudentId = null;
+            state.regularReviewMode = false;
+            state.regularReviewSelectedStudentId = null;
+            state.regularReviewSearch = '';
+            state.regularReviewAlertFilter = 'all';
+            state.regularReviewLevelFilter = 'all';
+            state.regularReviewSort = 'name';
+            state.regularReviewScrollTop = 0;
+            state.regularReviewDrawerScrollTop = 0;
+            state.regularReviewShouldResetScroll = false;
+            state.regularReviewSubmitScopeIds = null;
+            state.regularOperationErrors = {};
             state.regularUiSlotId = null;
+            document.body.classList.remove('regular-review-active');
         }
 
 function confirmDiscardRegularWork() {
@@ -459,16 +471,21 @@ function syncRegularOperationLock() {
             const slotSelect = document.getElementById('slotSelect');
             if (slotSelect) slotSelect.disabled = operationLocked;
 
-            document.querySelectorAll('#regularStudentDetail .learning-level-fieldset').forEach(fieldset => {
+            document.querySelectorAll('#regularStudentDetail .learning-level-fieldset, #regularReviewDrawer .learning-level-fieldset').forEach(fieldset => {
                 fieldset.disabled = assessmentBlocked;
             });
-            document.querySelectorAll('#regularStudentDetail .regular-note-editor textarea, #regularStudentDetail .comment-edit').forEach(input => {
+            document.querySelectorAll('#regularStudentDetail .regular-note-editor textarea, #regularStudentDetail .comment-edit, #regularReviewDrawer .regular-note-editor textarea, #regularReviewDrawer .comment-edit, .regular-review-comment').forEach(input => {
                 input.disabled = assessmentBlocked;
             });
-            document.querySelectorAll('#regularStudentDetail [id^="save-note-"], #regularStudentDetail [id^="gen-btn-"], #regularStudentDetail [id^="submit-btn-"]').forEach(button => {
+            document.querySelectorAll('#regularStudentDetail [id^="save-note-"], #regularStudentDetail [id^="gen-btn-"], #regularStudentDetail [id^="submit-btn-"], #regularReviewDrawer [id^="save-note-"], #regularReviewDrawer [id^="gen-btn-"], #regularReviewDrawer [id^="submit-btn-"]').forEach(button => {
                 button.disabled = assessmentBlocked;
             });
-            document.querySelectorAll('#regularStudentDetail details.quick-template-menu').forEach(details => {
+            document.querySelectorAll('.regular-review-row-generate').forEach(button => {
+                const studentId = button.dataset.reviewGenerateStudent;
+                const status = studentId ? app.getRegularAssessmentStatus(studentId) : null;
+                button.disabled = assessmentBlocked || !!status?.loading || !!status?.error;
+            });
+            document.querySelectorAll('#regularStudentDetail details.quick-template-menu, #regularReviewDrawer details.quick-template-menu').forEach(details => {
                 const summary = details.querySelector(':scope > summary');
                 details.classList.toggle('is-disabled', assessmentBlocked);
                 if (summary) {
@@ -505,16 +522,22 @@ function updateStats() {
                 const autoBtn = document.getElementById('autoCommentBtn');
                 const submitBtn = document.getElementById('submitAllBtn');
                 const copyBtn = document.getElementById('copyZaloBtn');
+                const reviewBtn = document.getElementById('reviewAllBtn');
                 const autoLabel = document.getElementById('autoCommentBtnLabel');
                 const submitLabel = document.getElementById('submitAllBtnLabel');
                 const copyLabel = document.getElementById('copyZaloBtnLabel');
+                const reviewLabel = document.getElementById('reviewAllBtnLabel');
                 const hint = document.getElementById('batchActionHint');
 
                 if (autoLabel) autoLabel.textContent = state.regularAssessmentLoad.loading
                     ? 'Đang tải đánh giá...'
                     : `Tạo AI cho ${present} học sinh`;
-                if (submitLabel) submitLabel.textContent = `Gửi lên LMS (${batchGenerated})`;
+                if (submitLabel) submitLabel.textContent = `Gửi tất cả (${batchGenerated})`;
                 if (copyLabel) copyLabel.textContent = `Sao chép Zalo (${availableZalo})`;
+                if (reviewLabel) reviewLabel.textContent = state.regularReviewMode
+                    ? 'Quay lại chi tiết'
+                    : `Review ${batchGenerated} nhận xét`;
+                if (reviewBtn) reviewBtn.style.display = batchGenerated > 0 ? 'inline-flex' : 'none';
                 if (hint) hint.textContent = state.regularAssessmentLoad.loading
                     ? 'Đang tải mức độ nắm bài và ghi chú đã lưu'
                     : `${present} có mặt · ${generated} bản nháp · ${submitted} đã gửi`;
@@ -523,6 +546,7 @@ function updateStats() {
                 if (autoBtn) autoBtn.disabled = operationLocked || assessmentUnavailable || present === 0;
                 if (submitBtn) submitBtn.disabled = operationLocked || assessmentUnavailable || batchGenerated === 0;
                 if (copyBtn) copyBtn.disabled = operationLocked || availableZalo === 0;
+                if (reviewBtn) reviewBtn.disabled = operationLocked || assessmentUnavailable || batchGenerated === 0;
             }
             app.syncRegularOperationLock();
         }
@@ -541,6 +565,8 @@ async function deleteComment(studentId) {
                 dangerConfirm: true
             }))) return;
             delete state.generatedComments[studentId];
+            delete state.regularOperationErrors[studentId];
+            if (state.regularReviewSelectedStudentId === studentId) state.regularReviewSelectedStudentId = null;
             app.saveCheckpointScoresToCache();
             app.saveCheckpointDescriptionsToCache();
             app.renderStudents();
@@ -554,6 +580,9 @@ function updateComment(studentId, value) {
             } else {
                 state.manualComments[studentId] = value;
             }
+            if (state.regularReviewMode && typeof app.syncRegularReviewComment === 'function') {
+                app.syncRegularReviewComment(studentId, value);
+            }
         }
 
 function applyTemplate(studentId, templateKey) {
@@ -566,38 +595,54 @@ function applyTemplate(studentId, templateKey) {
             app.showToast('Đã áp dụng mẫu ghi chú');
         }
 
-function showConfirmModal() {
+function showConfirmModal(studentIds = null) {
             if (state.regularBatchBusy) {
                 app.showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
                 return;
             }
-            const preview = document.getElementById('confirmPreview');
-            const comments = Object.entries(state.generatedComments).filter(([studentId]) => {
+
+            const availableIds = Object.keys(state.generatedComments).filter(studentId => {
                 const att = state.students.find(item => item.student.id === studentId);
                 return att && app.isPresentAttendance(att);
             });
-            
+            const requestedIds = Array.isArray(studentIds) ? new Set(studentIds.map(String)) : null;
+            const scopeIds = requestedIds ? availableIds.filter(studentId => requestedIds.has(studentId)) : availableIds;
+            const comments = scopeIds.map(studentId => [studentId, state.generatedComments[studentId]]);
+
             if (comments.length === 0) {
                 app.showToast('Chưa có nhận xét nào để gửi', 'error');
                 return;
             }
-            
+
+            state.regularReviewSubmitScopeIds = [...scopeIds];
+            const isFilteredScope = requestedIds && scopeIds.length < availableIds.length;
+            const title = document.getElementById('confirmModalTitle');
+            const description = document.getElementById('confirmModalDescription');
+            const submitButton = document.getElementById('confirmSubmitButton');
+            if (title) title.textContent = isFilteredScope ? `Gửi ${scopeIds.length} nhận xét đang lọc?` : `Gửi tất cả ${scopeIds.length} nhận xét?`;
+            if (description) description.textContent = isFilteredScope
+                ? 'Chỉ các học sinh đang nằm trong bộ lọc review tại thời điểm xác nhận sẽ được gửi:'
+                : 'Bạn sắp gửi nhận xét lên LMS cho các học sinh sau:';
+            if (submitButton) submitButton.textContent = `Gửi ${scopeIds.length} lên LMS`;
+
+            const preview = document.getElementById('confirmPreview');
             preview.innerHTML = comments.map(([studentId, comment]) => {
                 const student = state.students.find(s => s.student.id === studentId);
                 const cleanComment = comment.replace(/<[^>]*>/g, '').substring(0, 100);
                 return `
                     <div class="confirm-preview-item">
                         <div class="confirm-preview-name">${app.escapeHtml(student?.student.fullName || studentId)}</div>
-                        <div class="confirm-preview-comment">${app.escapeHtml(cleanComment)}...</div>
+                        <div class="confirm-preview-comment">${app.escapeHtml(cleanComment)}${cleanComment.length >= 100 ? '...' : ''}</div>
                     </div>
                 `;
             }).join('');
-            
+
             document.getElementById('confirmModal').classList.remove('hidden');
         }
 
 function hideConfirmModal() {
             document.getElementById('confirmModal').classList.add('hidden');
+            state.regularReviewSubmitScopeIds = null;
         }
 
 

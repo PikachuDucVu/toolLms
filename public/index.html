@@ -335,6 +335,12 @@
                             </svg>
                             <span id="autoCommentBtnLabel">Tạo AI cho cả lớp</span>
                         </button>
+                        <button class="btn btn-outline" type="button" onclick="toggleRegularReviewMode()" id="reviewAllBtn" style="display:none;" disabled>
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.75 5.75h16.5M3.75 12h16.5M3.75 18.25h16.5M7 3.75v16.5"/>
+                            </svg>
+                            <span id="reviewAllBtnLabel">Review nhận xét</span>
+                        </button>
                         <button class="btn btn-success" onclick="showConfirmModal()" id="submitAllBtn" disabled>
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-8-4-4m0 0L8 8m4-4v12"/>
@@ -391,12 +397,12 @@
     <!-- Confirm Modal -->
     <div class="confirm-modal hidden" id="confirmModal">
         <div class="confirm-content">
-            <div class="confirm-title">Xác nhận gửi nhận xét</div>
-            <p style="margin-bottom: 12px; color: var(--gray-600);">Bạn sắp gửi nhận xét lên LMS cho các học sinh sau:</p>
+            <div class="confirm-title" id="confirmModalTitle">Xác nhận gửi nhận xét</div>
+            <p id="confirmModalDescription" style="margin-bottom: 12px; color: var(--gray-600);">Bạn sắp gửi nhận xét lên LMS cho các học sinh sau:</p>
             <div class="confirm-preview" id="confirmPreview"></div>
             <div class="confirm-actions">
                 <button class="btn btn-outline" onclick="hideConfirmModal()">Hủy</button>
-                <button class="btn btn-success" onclick="confirmSubmitAll()">Gửi lên LMS</button>
+                <button class="btn btn-success" id="confirmSubmitButton" onclick="confirmSubmitAll()">Gửi lên LMS</button>
             </div>
         </div>
     </div>

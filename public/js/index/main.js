@@ -8,6 +8,7 @@ import './auth.js';
 import './classes.js';
 import './assessments.js';
 import './comments.js';
+import './review.js';
 import './demo.js';
 import './checkpoint.js';
 
@@ -92,6 +93,19 @@ Object.assign(window, {
     hideCopyModal: app.hideCopyModal,
     hidePastCommentsModal: app.hidePastCommentsModal,
     loadClasses: app.loadClasses,
+    toggleRegularReviewMode: app.toggleRegularReviewMode,
+    enterRegularReviewMode: app.enterRegularReviewMode,
+    exitRegularReviewMode: app.exitRegularReviewMode,
+    openRegularReviewDetail: app.openRegularReviewDetail,
+    closeRegularReviewDetail: app.closeRegularReviewDetail,
+    setRegularReviewSearch: app.setRegularReviewSearch,
+    queueRegularReviewSearch: app.queueRegularReviewSearch,
+    setRegularReviewFilter: app.setRegularReviewFilter,
+    resetRegularReviewFilters: app.resetRegularReviewFilters,
+    updateRegularReviewComment: app.updateRegularReviewComment,
+    handleRegularReviewTextareaKeydown: app.handleRegularReviewTextareaKeydown,
+    submitRegularReviewFiltered: app.submitRegularReviewFiltered,
+    regenerateRegularReviewFiltered: app.regenerateRegularReviewFiltered,
     loadSlotStudents: app.loadSlotStudents,
     login: app.login,
     onAiModelChange: app.onAiModelChange,

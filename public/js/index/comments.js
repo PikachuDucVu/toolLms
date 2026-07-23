@@ -40,6 +40,7 @@ async function generateSingle(studentId, studentName, idx) {
             }
 
             state.regularStudentBusy.add(studentId);
+            delete state.regularOperationErrors[studentId];
             app.syncRegularOperationLock();
             app.updateStats();
             if (btn) {
@@ -83,25 +84,28 @@ async function generateSingle(studentId, studentName, idx) {
                 });
                 if (!app.isRegularContextCurrent(context)) return;
                 state.generatedComments[studentId] = data.comment;
-                app.renderStudents();
-                app.updateStats();
+                delete state.regularOperationErrors[studentId];
                 app.showToast('Đã tạo nhận xét!');
             } catch (error) {
                 if (app.isRegularContextCurrent(context)) {
-                    app.showToast('Lỗi tạo nhận xét: ' + (error.message || 'Không xác định'), 'error');
+                    state.regularOperationErrors[studentId] = error?.message || 'Lỗi không xác định';
+                    app.showToast('Lỗi tạo nhận xét: ' + state.regularOperationErrors[studentId], 'error');
                 }
             } finally {
                 state.regularStudentBusy.delete(studentId);
                 app.syncRegularOperationLock();
-                if (btn?.isConnected && app.isRegularContextCurrent(context)) {
-                    btn.disabled = state.regularAssessmentLoad.loading;
-                    btn.innerHTML = originalButtonHtml;
+                if (app.isRegularContextCurrent(context)) {
+                    app.renderStudents();
+                    if (btn?.isConnected) {
+                        btn.disabled = state.regularAssessmentLoad.loading;
+                        btn.innerHTML = originalButtonHtml;
+                    }
+                    app.updateStats();
                 }
-                if (app.isRegularContextCurrent(context)) app.updateStats();
             }
         }
 
-async function autoCommentAll() {
+async function autoCommentAll(studentIds = null) {
             const context = app.captureRegularContext();
             if (!context) return;
             if (app.isRegularOperationActive()) {
@@ -122,14 +126,22 @@ async function autoCommentAll() {
                 return;
             }
 
-            const presentCount = state.students.filter(app.isPresentAttendance).length;
+            const requestedIds = Array.isArray(studentIds) ? new Set(studentIds.map(String)) : null;
+            const targetStudents = state.students.filter(att => app.isPresentAttendance(att)
+                && (!requestedIds || requestedIds.has(String(att.student.id))));
+            const presentCount = targetStudents.length;
+            if (!presentCount) {
+                app.showToast('Không có học sinh phù hợp để tạo nhận xét', 'info');
+                return;
+            }
             if (!(await app.confirmDialog({
-                title: 'Tạo nhận xét AI cho cả lớp',
-                message: `AI sẽ tạo nhận xét cho ${presentCount} học sinh có mặt. Tiếp tục?`,
+                title: requestedIds ? 'Tạo lại nhận xét đang lọc' : 'Tạo nhận xét AI cho cả lớp',
+                message: `AI sẽ tạo nhận xét cho ${presentCount} học sinh có mặt${requestedIds ? ' trong bộ lọc hiện tại' : ''}. Tiếp tục?`,
                 confirmText: 'Tạo AI',
                 tone: 'info'
             }))) return;
 
+            targetStudents.forEach(att => delete state.regularOperationErrors[att.student.id]);
             state.regularBatchBusy = true;
             app.syncRegularOperationLock();
             if (btn) btn.disabled = true;
@@ -141,7 +153,7 @@ async function autoCommentAll() {
             try {
                 await app.ensureRegularAssessmentsLoaded(context);
                 if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
-                const presentStudents = state.students.filter(app.isPresentAttendance);
+                const presentStudents = targetStudents;
                 const snapshots = presentStudents.map(app.snapshotRegularStudent);
                 await app.persistRegularStudentSnapshots(context, snapshots, 3);
                 if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
@@ -175,11 +187,14 @@ async function autoCommentAll() {
                             });
                             if (!app.isRegularContextCurrent(context)) return;
                             state.generatedComments[snapshot.studentId] = data.comment;
+                            delete state.regularOperationErrors[snapshot.studentId];
                             generatedCount++;
                         } catch (error) {
+                            const message = error?.message || 'Lỗi không xác định';
+                            state.regularOperationErrors[snapshot.studentId] = message;
                             generationFailures.push({
                                 studentName: snapshot.studentName,
-                                message: error?.message || 'Lỗi không xác định'
+                                message
                             });
                             console.error('Generate comment error:', snapshot.studentId, error);
                         }
@@ -244,6 +259,7 @@ async function submitSingle(studentId, attendanceId) {
             const submitButton = document.getElementById(`submit-btn-${app.getRegularStudentDomId(studentId)}`);
             if (!isFinal) {
                 state.regularStudentBusy.add(studentId);
+                delete state.regularOperationErrors[studentId];
                 app.syncRegularOperationLock();
                 app.updateStats();
             }
@@ -301,6 +317,7 @@ async function submitSingle(studentId, attendanceId) {
                         ? {}
                         : Object.fromEntries(Object.entries(state.generatedComments).filter(([id]) => id !== studentId));
                     delete state.generatedComments[studentId];
+                    delete state.regularOperationErrors[studentId];
                     if (isFinal && resultInfo.demo_scores) {
                         const scores = Object.entries(resultInfo.demo_scores).map(([k,v]) => `${k}: ${v}`).join(', ');
                         app.showToast(`Đã submit Demo! Tổng: ${resultInfo.total_demo_score} điểm (${scores})`);
@@ -316,7 +333,10 @@ async function submitSingle(studentId, attendanceId) {
                     }
                 }
             } catch (error) {
-                if (app.isRegularContextCurrent(context)) app.showToast('Lỗi submit: ' + error.message, 'error');
+                if (app.isRegularContextCurrent(context)) {
+                    state.regularOperationErrors[studentId] = error?.message || 'Lỗi không xác định';
+                    app.showToast('Lỗi submit: ' + state.regularOperationErrors[studentId], 'error');
+                }
                 console.error(error);
             } finally {
                 if (!isFinal) {
@@ -324,6 +344,7 @@ async function submitSingle(studentId, attendanceId) {
                     app.syncRegularOperationLock();
                 }
                 if (app.isRegularContextCurrent(context)) {
+                    if (state.regularReviewMode) app.renderStudents();
                     app.updateStats();
                     const liveSubmitButton = document.getElementById(`submit-btn-${app.getRegularStudentDomId(studentId)}`);
                     if (liveSubmitButton) liveSubmitButton.disabled = state.regularBatchBusy || state.regularAssessmentLoad.loading;
@@ -570,11 +591,14 @@ function copyAllZalo() {
         }
 
 async function confirmSubmitAll() {
+            const scopeIds = Array.isArray(state.regularReviewSubmitScopeIds)
+                ? [...state.regularReviewSubmitScopeIds]
+                : null;
             app.hideConfirmModal();
-            await app.submitAll();
+            await app.submitAll(scopeIds);
         }
 
-async function submitAll() {
+async function submitAll(studentIds = null) {
             const context = app.captureRegularContext();
             if (!context) return;
             if (app.isRegularOperationActive()) {
@@ -589,6 +613,18 @@ async function submitAll() {
                 app.showToast('Vui lòng nhập tổng kết buổi học', 'error');
                 return;
             }
+
+            const requestedIds = Array.isArray(studentIds) ? new Set(studentIds.map(String)) : null;
+            const candidateIds = Object.keys(state.generatedComments).filter(studentId => {
+                const att = state.students.find(item => item.student.id === studentId);
+                return att && app.isPresentAttendance(att) && (!requestedIds || requestedIds.has(String(studentId)));
+            });
+            if (!candidateIds.length) {
+                app.showToast('Không có bản nháp phù hợp để gửi', 'info');
+                return;
+            }
+            const candidateIdSet = new Set(candidateIds);
+            candidateIds.forEach(studentId => delete state.regularOperationErrors[studentId]);
 
             state.regularBatchBusy = true;
             app.syncRegularOperationLock();
@@ -605,7 +641,7 @@ async function submitAll() {
                 if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
                 const submissionSnapshots = Object.entries(state.generatedComments).map(([studentId, comment]) => {
                     const att = state.students.find(item => item.student.id === studentId);
-                    if (!att || !app.isPresentAttendance(att)) return null;
+                    if (!candidateIdSet.has(studentId) || !att || !app.isPresentAttendance(att)) return null;
                     return { ...app.snapshotRegularStudent(att), comment };
                 }).filter(Boolean);
                 const submittedStudentIds = new Set(submissionSnapshots.map(snapshot => snapshot.studentId));
@@ -636,6 +672,7 @@ async function submitAll() {
                         const result = await app.submitToLMS(app.buildDefaultPayload(baseData));
                         if (result.errors) {
                             failedCount++;
+                            state.regularOperationErrors[snapshot.studentId] = result.errors[0]?.message || 'Không thể gửi lên LMS';
                             console.error('Submit error:', snapshot.studentId, result.errors);
                         } else {
                             successCount++;
@@ -651,10 +688,14 @@ async function submitAll() {
                                 learning_level: snapshot.assessment.learningLevel,
                                 success: true
                             });
-                            if (app.isRegularContextCurrent(context)) delete state.generatedComments[snapshot.studentId];
+                            if (app.isRegularContextCurrent(context)) {
+                                delete state.generatedComments[snapshot.studentId];
+                                delete state.regularOperationErrors[snapshot.studentId];
+                            }
                         }
                     } catch (error) {
                         failedCount++;
+                        state.regularOperationErrors[snapshot.studentId] = error?.message || 'Lỗi không xác định';
                         console.error('Submit request error:', snapshot.studentId, error);
                     }
 

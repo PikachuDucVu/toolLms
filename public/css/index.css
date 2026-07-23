@@ -2276,6 +2276,20 @@
     grid-template-columns: 1fr 1fr auto;
     width: 100%
     }
+#autoCommentBtn {
+    grid-column: 1
+    }
+#reviewAllBtn {
+    grid-column: 2
+    }
+#submitAllBtn {
+    grid-column: 1/3;
+    grid-row: 2
+    }
+.batch-overflow {
+    grid-column: 3;
+    grid-row: 2
+    }
 .action-bar .batch-action-buttons > .btn, .action-bar .batch-overflow > summary.btn {
     width: 100%;
     min-height: 44px
@@ -2349,5 +2363,452 @@
     }
 .batch-action-buttons .btn .icon-sm {
     display: none
+    }
+}
+
+/* ===== Regular class review mode ===== */
+#defaultActionBar .batch-action-buttons {
+    flex-wrap: wrap;
+}
+
+.regular-review-active .student-toolbar {
+    display: none;
+}
+
+.student-grid.regular-review-mode {
+    display: block;
+}
+
+.regular-review-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    min-width: 0;
+}
+
+.regular-review-workspace.has-drawer {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+}
+
+.regular-review-main {
+    min-width: 0;
+}
+
+.regular-review-header {
+    position: sticky;
+    z-index: 12;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: var(--surface-card);
+    box-shadow: var(--shadow-sm);
+}
+
+.regular-review-title-block,
+.regular-review-primary-actions,
+.regular-review-row-meta,
+.regular-review-comment-meta,
+.regular-review-filter-actions,
+.regular-review-drawer-navigation {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.regular-review-title-block h3 {
+    margin: 0;
+    color: var(--gray-900);
+    font-size: 17px;
+}
+
+.regular-review-title-block p {
+    margin: 2px 0 0;
+    color: var(--gray-500);
+    font-size: 11px;
+}
+
+.regular-review-toolbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(120px, auto)) auto;
+    align-items: end;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--gray-200);
+    border-top: 0;
+    background: var(--gray-50);
+}
+
+.regular-review-toolbar label {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    color: var(--gray-600);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.regular-review-toolbar .form-input,
+.regular-review-toolbar .form-select {
+    width: 100%;
+    min-width: 0;
+    height: 36px;
+    font-size: 12px;
+}
+
+.regular-review-table-header,
+.regular-review-row {
+    display: grid;
+    grid-template-columns: minmax(155px, 0.75fr) minmax(105px, 0.48fr) minmax(360px, 2.6fr) minmax(94px, 0.48fr);
+    gap: 0;
+}
+
+.regular-review-table-header {
+    position: sticky;
+    z-index: 10;
+    top: 70px;
+    border: 1px solid var(--gray-300);
+    border-top: 0;
+    background: var(--gray-200);
+    color: var(--gray-700);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.regular-review-table-header span {
+    padding: 9px 10px;
+}
+
+.regular-review-scroll {
+    max-height: min(68vh, 780px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--gray-300);
+    border-top: 0;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    background: var(--surface-card);
+}
+
+.regular-review-row {
+    border-bottom: 1px solid var(--gray-200);
+    background: var(--surface-card);
+    transition: background-color .18s ease, border-color .18s ease;
+}
+
+.regular-review-row:last-child {
+    border-bottom: 0;
+}
+
+.regular-review-row:hover {
+    background: var(--gray-50);
+}
+
+.regular-review-row.is-selected {
+    box-shadow: inset 3px 0 0 var(--primary);
+    background: var(--primary-lighter);
+}
+
+.regular-review-row.has-warning {
+    background: var(--feature-checkpoint-bg);
+}
+
+.regular-review-row.has-warning.is-selected {
+    background: var(--feature-checkpoint-light);
+}
+
+.regular-review-row.is-absent {
+    opacity: .7;
+}
+
+.regular-review-student-cell,
+.regular-review-level-cell,
+.regular-review-comment-cell,
+.regular-review-actions-cell {
+    min-width: 0;
+    padding: 10px;
+}
+
+.regular-review-student-cell,
+.regular-review-level-cell,
+.regular-review-actions-cell {
+    border-right: 1px solid var(--gray-200);
+}
+
+.regular-review-student-cell strong {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--gray-900);
+    font-size: 13px;
+}
+
+.regular-review-row-meta {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.regular-review-level-cell {
+    display: flex;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.regular-review-level-cell small {
+    color: var(--gray-500);
+    font-size: 10px;
+    line-height: 1.35;
+}
+
+.regular-review-comment {
+    display: block;
+    width: 100%;
+    min-height: 72px;
+    resize: none;
+    overflow: hidden;
+    padding: 9px 10px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    background: var(--surface-card);
+    color: var(--gray-800);
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.55;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.regular-review-comment:hover {
+    border-color: var(--gray-400);
+}
+
+.regular-review-comment:focus {
+    border-color: var(--primary);
+    outline: 0;
+    box-shadow: 0 0 0 3px var(--primary-lighter);
+}
+
+.regular-review-comment-placeholder {
+    min-height: 72px;
+    padding: 10px;
+    border: 1px dashed var(--gray-300);
+    border-radius: var(--radius-sm);
+    background: var(--gray-50);
+    color: var(--gray-500);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.regular-review-comment-placeholder.has-existing {
+    border-style: solid;
+    color: var(--gray-700);
+}
+
+.regular-review-comment-meta {
+    justify-content: space-between;
+    align-items: flex-start;
+    min-height: 18px;
+    margin-top: 5px;
+    color: var(--gray-500);
+    font-size: 10px;
+}
+
+.regular-review-warning {
+    color: var(--feature-checkpoint-dark);
+    font-weight: 700;
+}
+
+.regular-review-actions-cell {
+    display: flex;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+    border-right: 0;
+}
+
+.regular-review-actions-cell .btn {
+    width: 100%;
+}
+
+.regular-review-empty {
+    min-height: 240px;
+}
+
+.regular-review-drawer {
+    position: sticky;
+    z-index: 20;
+    top: 0;
+    max-height: min(78vh, 880px);
+    overflow-y: auto;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    background: var(--surface-card);
+    box-shadow: var(--shadow-xl);
+}
+
+.regular-review-drawer-header {
+    position: sticky;
+    z-index: 5;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--gray-200);
+    background: var(--surface-card);
+}
+
+.regular-review-drawer-header > div:first-child {
+    display: grid;
+    gap: 1px;
+}
+
+.regular-review-drawer-header strong {
+    color: var(--gray-900);
+    font-size: 13px;
+}
+
+.regular-review-drawer-header span {
+    color: var(--gray-500);
+    font-size: 10px;
+}
+
+.regular-review-drawer-navigation .toolbar-icon-button {
+    width: 34px;
+    height: 34px;
+}
+
+.regular-review-drawer-body {
+    padding: 12px;
+}
+
+.regular-review-drawer-body .student-detail-panel {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+}
+
+.regular-review-drawer-body .student-detail-header {
+    display: none;
+}
+
+@media (max-width: 1280px) {
+    .regular-review-workspace.has-drawer {
+        grid-template-columns: minmax(0, 1fr) minmax(340px, 380px);
+    }
+    .regular-review-toolbar {
+        grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(105px, auto));
+    }
+    .regular-review-filter-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+    .regular-review-table-header,
+    .regular-review-row {
+        grid-template-columns: minmax(145px, .7fr) minmax(95px, .42fr) minmax(330px, 2.5fr) 88px;
+    }
+}
+
+@media (max-width: 900px) {
+    .regular-review-workspace,
+    .regular-review-workspace.has-drawer {
+        display: block;
+    }
+    .regular-review-header {
+        position: static;
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .regular-review-primary-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+    .regular-review-toolbar {
+        grid-template-columns: 1fr 1fr;
+    }
+    .regular-review-search,
+    .regular-review-filter-actions {
+        grid-column: 1 / -1;
+    }
+    .regular-review-table-header {
+        display: none;
+    }
+    .regular-review-scroll {
+        max-height: none;
+        overflow: visible;
+        border-top: 1px solid var(--gray-300);
+        border-radius: var(--radius-sm);
+    }
+    .regular-review-row {
+        grid-template-columns: minmax(150px, .8fr) minmax(90px, .45fr) minmax(0, 2fr);
+    }
+    .regular-review-actions-cell {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        border-top: 1px solid var(--gray-200);
+    }
+    .regular-review-drawer {
+        position: fixed;
+        z-index: 140;
+        inset: 10px;
+        max-height: none;
+        border-radius: var(--radius-md);
+    }
+}
+
+@media (max-width: 768px) {
+    .regular-review-active #studentList {
+        padding-bottom: 150px;
+    }
+}
+
+@media (max-width: 680px) {
+    .regular-review-title-block {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .regular-review-toolbar,
+    .regular-review-primary-actions,
+    .regular-review-filter-actions {
+        grid-template-columns: 1fr;
+    }
+    .regular-review-row {
+        display: block;
+        padding: 10px;
+    }
+    .regular-review-student-cell,
+    .regular-review-level-cell,
+    .regular-review-comment-cell,
+    .regular-review-actions-cell {
+        padding: 7px 0;
+        border-right: 0;
+    }
+    .regular-review-level-cell {
+        align-items: center;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    .regular-review-actions-cell {
+        grid-template-columns: 1fr 1fr;
+    }
+    .regular-review-comment {
+        font-size: 16px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .regular-review-row,
+    .regular-review-comment {
+        transition: none;
     }
 }

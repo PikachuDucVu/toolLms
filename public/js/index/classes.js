@@ -555,6 +555,18 @@ async function loadSlotStudents() {
                 state.regularAssessmentAutoSaveBusy.clear();
                 state.regularAssessmentAutoSaveErrors = {};
                 state.regularListScrollTop = 0;
+                state.regularReviewMode = false;
+                state.regularReviewSelectedStudentId = null;
+                state.regularReviewSearch = '';
+                state.regularReviewAlertFilter = 'all';
+                state.regularReviewLevelFilter = 'all';
+                state.regularReviewSort = 'name';
+                state.regularReviewScrollTop = 0;
+                state.regularReviewDrawerScrollTop = 0;
+                state.regularReviewShouldResetScroll = false;
+                state.regularReviewSubmitScopeIds = null;
+                state.regularOperationErrors = {};
+                document.body.classList.remove('regular-review-active');
             }
             state.regularUiSlotId = state.selectedSlot?._id || null;
 
