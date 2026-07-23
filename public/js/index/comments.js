@@ -1,6 +1,8 @@
 import { app } from './registry.js';
 import { state } from './state.js';
 
+let copyModalReturnFocusElement = null;
+
 function getPastComments(studentId) {
             if (!state.classData) return [];
             
@@ -231,7 +233,10 @@ async function autoCommentAll(studentIds = null) {
                 state.regularBatchBusy = false;
                 app.syncRegularOperationLock();
                 progressContainer.classList.remove('show');
-                if (app.isRegularContextCurrent(context)) app.updateStats();
+                if (app.isRegularContextCurrent(context)) {
+                    if (state.regularReviewMode) app.renderRegularReview();
+                    app.updateStats();
+                }
             }
         }
 
@@ -403,6 +408,7 @@ function isMobileDevice() {
         }
 
 function showCopyModal(title, text) {
+            copyModalReturnFocusElement = document.activeElement;
             document.getElementById('copyModalTitle').textContent = title;
             document.getElementById('copyModalTextarea').value = text;
             document.getElementById('copyModal').classList.remove('hidden');
@@ -418,6 +424,14 @@ function showCopyModal(title, text) {
 
 function hideCopyModal() {
             document.getElementById('copyModal').classList.add('hidden');
+            const returnFocus = copyModalReturnFocusElement;
+            copyModalReturnFocusElement = null;
+            if (state.regularReviewMode) {
+                requestAnimationFrame(() => {
+                    const target = returnFocus?.isConnected ? returnFocus : document.getElementById('closeRegularReviewModal');
+                    target?.focus();
+                });
+            }
         }
 
 function doCopyFromModal() {
@@ -734,7 +748,10 @@ async function submitAll(studentIds = null) {
                 state.regularBatchBusy = false;
                 app.syncRegularOperationLock();
                 progressContainer.classList.remove('show');
-                if (app.isRegularContextCurrent(context)) app.updateStats();
+                if (app.isRegularContextCurrent(context)) {
+                    if (state.regularReviewMode) app.renderRegularReview();
+                    app.updateStats();
+                }
             }
         }
 

@@ -12,6 +12,7 @@
 
     let overlayEl = null;
     let resolver = null;
+    let returnFocusElement = null;
 
     function ensureMarkup() {
         if (overlayEl) return overlayEl;
@@ -47,8 +48,13 @@
         if (!overlayEl) return;
         overlayEl.classList.add('hidden');
         const r = resolver;
+        const focusTarget = returnFocusElement;
         resolver = null;
+        returnFocusElement = null;
         if (r) r(value);
+        requestAnimationFrame(() => {
+            if (focusTarget?.isConnected) focusTarget.focus();
+        });
     }
 
     /**
@@ -71,6 +77,7 @@
             dangerConfirm = false
         } = opts || {};
 
+        returnFocusElement = document.activeElement;
         ensureMarkup();
         // Nếu đang mở một modal khác, coi như cancel cái cũ
         if (resolver) settle(false);

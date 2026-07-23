@@ -58,6 +58,8 @@ function resetReviewState() {
   state.classData = { id: 'class-1', slots: [] };
   state.regularOperationErrors = {};
   state.regularStudentBusy.clear();
+  state.regularReviewMode = false;
+  state.regularReviewSelectedStudentId = null;
   state.regularReviewSearch = '';
   state.regularReviewAlertFilter = 'all';
   state.regularReviewLevelFilter = 'all';
@@ -131,7 +133,7 @@ test('confirmation freezes the explicit filtered submit scope', () => {
   const elements = {
     confirmModalTitle: { textContent: '' },
     confirmModalDescription: { textContent: '' },
-    confirmSubmitButton: { textContent: '' },
+    confirmSubmitButton: { textContent: '', focus() {} },
     confirmPreview: { innerHTML: '' },
     confirmModal: { classList: { remove() {}, add() {} } },
   };
@@ -144,6 +146,7 @@ test('confirmation freezes the explicit filtered submit scope', () => {
     },
   };
   app.showToast = () => {};
+  globalThis.requestAnimationFrame = callback => callback();
 
   app.showConfirmModal(['student-3']);
   assert.deepEqual(state.regularReviewSubmitScopeIds, ['student-3']);
@@ -154,4 +157,72 @@ test('confirmation freezes the explicit filtered submit scope', () => {
 
   app.hideConfirmModal();
   assert.equal(state.regularReviewSubmitScopeIds, null);
+});
+
+test('review opens in a modal shell and restores focus when closed', () => {
+  resetReviewState();
+  const makeClassList = (initial = []) => {
+    const values = new Set(initial);
+    return {
+      add: (...names) => names.forEach(name => values.add(name)),
+      remove: (...names) => names.forEach(name => values.delete(name)),
+      contains: name => values.has(name),
+    };
+  };
+  let focusRestored = false;
+  const reviewButton = { isConnected: true, focus: () => { focusRestored = true; } };
+  const modal = {
+    classList: makeClassList(['hidden']),
+    attributes: {},
+    setAttribute(name, value) { this.attributes[name] = value; },
+  };
+  const content = { innerHTML: '' };
+  const backgroundChild = { id: 'regularStudentDetail', dataset: {} };
+  const background = {
+    inert: false,
+    attributes: {},
+    setAttribute(name, value) { this.attributes[name] = value; },
+    removeAttribute(name) { delete this.attributes[name]; },
+    querySelectorAll() { return [backgroundChild]; },
+  };
+  const body = { classList: makeClassList() };
+  globalThis.requestAnimationFrame = callback => callback();
+  globalThis.document = {
+    activeElement: reviewButton,
+    body,
+    getElementById(id) {
+      if (id === 'regularReviewModal') return modal;
+      if (id === 'regularReviewModalContent') return content;
+      if (id === 'studentList') return background;
+      if (id === 'reviewAllBtn') return reviewButton;
+      return null;
+    },
+    querySelector() { return null; },
+  };
+  const originalRender = app.renderRegularReview;
+  const originalUpdateStats = app.updateStats;
+  app.renderRegularReview = () => {};
+  app.updateStats = () => {};
+
+  app.enterRegularReviewMode();
+  assert.equal(state.regularReviewMode, true);
+  assert.equal(modal.classList.contains('hidden'), false);
+  assert.equal(modal.attributes['aria-hidden'], 'false');
+  assert.equal(body.classList.contains('regular-review-active'), true);
+  assert.equal(background.inert, true);
+  assert.equal(backgroundChild.id, 'review-background-regularStudentDetail');
+
+  state.regularReviewSelectedStudentId = 'student-2';
+  app.exitRegularReviewMode();
+  assert.equal(state.regularReviewMode, false);
+  assert.equal(state.regularReviewSelectedStudentId, 'student-2');
+  assert.equal(modal.classList.contains('hidden'), true);
+  assert.equal(modal.attributes['aria-hidden'], 'true');
+  assert.equal(body.classList.contains('regular-review-active'), false);
+  assert.equal(background.inert, false);
+  assert.equal(backgroundChild.id, 'regularStudentDetail');
+  assert.equal(focusRestored, true);
+
+  app.renderRegularReview = originalRender;
+  app.updateStats = originalUpdateStats;
 });

@@ -3,9 +3,11 @@ import { state } from './state.js';
 
 const REVIEW_DUPLICATE_MIN_CHARS = 45;
 const REVIEW_DUPLICATE_MIN_WORDS = 8;
+let regularReviewReturnFocusElement = null;
+let regularReviewPendingFocusState = null;
 
 function stripReviewComment(value) {
-    if (typeof app.stripHtmlText === 'function' && typeof document !== 'undefined') return app.stripHtmlText(value);
+    if (typeof app.stripHtmlText === 'function' && typeof document !== 'undefined' && typeof document.createElement === 'function') return app.stripHtmlText(value);
     return String(value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
@@ -225,7 +227,7 @@ function buildRegularReviewRow(row) {
                     Chi tiết
                 </button>
                 <button type="button" class="btn btn-xs regular-review-row-generate ${row.isDraft ? 'btn-outline' : 'btn-primary'}"
-                    data-review-generate-student="${app.escapeAttr(row.studentId)}"
+                    id="review-generate-btn-${domId}" data-review-generate-student="${app.escapeAttr(row.studentId)}"
                     onclick="generateSingle('${studentIdJs}', '${studentNameJs}', ${row.index})"
                     ${operationLocked || row.assessmentStatus.loading || row.assessmentStatus.error ? 'disabled' : ''}>
                     ${row.busy ? 'Đang tạo...' : generateLabel}
@@ -256,8 +258,8 @@ function buildRegularReviewDrawer(rows) {
                     <span>${position >= 0 ? `${position + 1}/${visibleRows.length}` : ''}</span>
                 </div>
                 <div class="regular-review-drawer-navigation">
-                    <button type="button" class="toolbar-icon-button" onclick="openRegularReviewDetail('${previousIdJs}')" ${previous ? '' : 'disabled'} aria-label="Học sinh trước">←</button>
-                    <button type="button" class="toolbar-icon-button" onclick="openRegularReviewDetail('${nextIdJs}')" ${next ? '' : 'disabled'} aria-label="Học sinh tiếp theo">→</button>
+                    <button type="button" class="toolbar-icon-button" id="previousRegularReviewStudent" onclick="openRegularReviewDetail('${previousIdJs}')" ${previous ? '' : 'disabled'} aria-label="Học sinh trước">←</button>
+                    <button type="button" class="toolbar-icon-button" id="nextRegularReviewStudent" onclick="openRegularReviewDetail('${nextIdJs}')" ${next ? '' : 'disabled'} aria-label="Học sinh tiếp theo">→</button>
                     <button type="button" class="toolbar-icon-button" id="closeRegularReviewDrawer" onclick="closeRegularReviewDetail()" aria-label="Đóng chi tiết">×</button>
                 </div>
             </div>
@@ -268,8 +270,108 @@ function buildRegularReviewDrawer(rows) {
     `;
 }
 
-function renderRegularReview(list = document.getElementById('studentList')) {
-    if (!list) return;
+function getRegularReviewModal() {
+    return document.getElementById('regularReviewModal');
+}
+
+function getOpenHigherPriorityDialog() {
+    return document.querySelector('#appConfirmModal:not(.hidden), #copyModal:not(.hidden), #confirmModal:not(.hidden), #pastCommentsModal:not(.hidden)');
+}
+
+function getFocusableElements(container) {
+    if (!container) return [];
+    return Array.from(container.querySelectorAll(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary:not([aria-disabled="true"]), [href], [tabindex]:not([tabindex="-1"])'
+    )).filter(element => element.getClientRects().length > 0);
+}
+
+function trapFocusWithin(container, event) {
+    const focusable = getFocusableElements(container);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !container.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !container.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+    }
+}
+
+function captureRegularReviewFocusState(list) {
+    const active = document.activeElement;
+    if (!active?.id || !list?.contains(active)) return;
+    regularReviewPendingFocusState = {
+        id: active.id,
+        selectionStart: typeof active.selectionStart === 'number' ? active.selectionStart : null,
+        selectionEnd: typeof active.selectionEnd === 'number' ? active.selectionEnd : null,
+    };
+}
+
+function restoreRegularReviewFocusState() {
+    const focusState = regularReviewPendingFocusState;
+    if (!focusState) return;
+    const target = document.getElementById(focusState.id);
+    if (!target || target.disabled || !getRegularReviewModal()?.contains(target)) return;
+    target.focus({ preventScroll: true });
+    if (focusState.selectionStart !== null && typeof target.setSelectionRange === 'function') {
+        target.setSelectionRange(focusState.selectionStart, focusState.selectionEnd ?? focusState.selectionStart);
+    }
+    regularReviewPendingFocusState = null;
+}
+
+function setRegularReviewBackgroundInert(inert) {
+    const background = document.getElementById('studentList');
+    if (!background) return;
+    background.inert = inert;
+    if (inert) background.setAttribute('aria-hidden', 'true');
+    else background.removeAttribute('aria-hidden');
+
+    background.querySelectorAll('[id]').forEach(element => {
+        if (inert) {
+            if (!element.dataset.reviewOriginalId) element.dataset.reviewOriginalId = element.id;
+            element.id = `review-background-${element.dataset.reviewOriginalId}`;
+        } else if (element.dataset.reviewOriginalId) {
+            element.id = element.dataset.reviewOriginalId;
+            delete element.dataset.reviewOriginalId;
+        }
+    });
+}
+
+function openRegularReviewModalShell() {
+    const modal = getRegularReviewModal();
+    if (!modal) return;
+    setRegularReviewBackgroundInert(true);
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('regular-review-active');
+}
+
+function forceCloseRegularReviewModal(restoreFocus = false) {
+    const modal = getRegularReviewModal();
+    const content = document.getElementById('regularReviewModalContent');
+    modal?.classList.add('hidden');
+    modal?.setAttribute('aria-hidden', 'true');
+    if (content) content.innerHTML = '';
+    regularReviewPendingFocusState = null;
+    setRegularReviewBackgroundInert(false);
+    document.body.classList.remove('regular-review-active');
+
+    if (restoreFocus) {
+        const target = regularReviewReturnFocusElement?.isConnected
+            ? regularReviewReturnFocusElement
+            : document.getElementById('reviewAllBtn');
+        requestAnimationFrame(() => target?.focus());
+    }
+}
+
+function handleRegularReviewBackdropClick(event) {
+    if (event.target === getRegularReviewModal()) app.exitRegularReviewMode();
+}
+
+function renderRegularReview(list = document.getElementById('regularReviewModalContent')) {
+    if (!state.regularReviewMode || !list) return;
     if (state.regularReviewShouldResetScroll) {
         state.regularReviewScrollTop = 0;
         state.regularReviewDrawerScrollTop = 0;
@@ -287,30 +389,30 @@ function renderRegularReview(list = document.getElementById('studentList')) {
     const warningCount = allRows.filter(row => row.hasWarning).length;
     const hasDrawer = !!state.regularReviewSelectedStudentId;
 
-    app.updateStudentCount(rows.length);
-    list.classList.add('regular-mode', 'regular-review-mode');
+    captureRegularReviewFocusState(list);
+    list.classList.add('regular-review-mode');
     list.setAttribute('aria-busy', String(app.isRegularOperationActive()));
     list.innerHTML = `
         <section class="regular-review-workspace ${hasDrawer ? 'has-drawer' : ''}">
             <div class="regular-review-main">
                 <div class="regular-review-header">
                     <div class="regular-review-title-block">
-                        <button type="button" class="btn btn-sm btn-outline" onclick="exitRegularReviewMode()">← Quay lại chi tiết</button>
+                        <button type="button" class="btn btn-sm btn-outline" id="closeRegularReviewModal" onclick="exitRegularReviewMode()" aria-label="Đóng modal review">× Đóng</button>
                         <div>
-                            <h3>Review cả lớp</h3>
+                            <h3 id="regularReviewModalTitle">Review cả lớp</h3>
                             <p id="regularReviewSummary">${allDraftIds.length} bản nháp · ${warningCount} cần chú ý · ${rows.length}/${allRows.length} đang hiển thị</p>
                         </div>
                     </div>
                     <div class="regular-review-primary-actions">
                         <details class="toolbar-menu regular-review-overflow">
-                            <summary class="btn btn-sm btn-outline" aria-label="Mở thêm công cụ review">Thêm</summary>
+                            <summary class="btn btn-sm btn-outline" id="regularReviewMoreActions" aria-label="Mở thêm công cụ review">Thêm</summary>
                             <div class="toolbar-menu-popover">
                                 <button type="button" class="menu-action" onclick="closeDetailsMenu(this); refreshClassData()">Làm mới dữ liệu</button>
                                 <button type="button" class="menu-action" onclick="closeDetailsMenu(this); exportToCSV()">Xuất file CSV</button>
                             </div>
                         </details>
-                        <button type="button" class="btn btn-sm btn-outline" onclick="copyAllZalo()" ${allDraftIds.length ? '' : 'disabled'}>Sao chép Zalo</button>
-                        <button type="button" class="btn btn-sm btn-success" onclick="showConfirmModal()" ${allDraftIds.length && !app.isRegularOperationActive() ? '' : 'disabled'}>Gửi tất cả ${allDraftIds.length}</button>
+                        <button type="button" class="btn btn-sm btn-outline" id="regularReviewCopyAll" onclick="copyAllZalo()" ${allDraftIds.length ? '' : 'disabled'}>Sao chép Zalo</button>
+                        <button type="button" class="btn btn-sm btn-success" id="regularReviewSubmitAll" onclick="showConfirmModal()" ${allDraftIds.length && !app.isRegularOperationActive() ? '' : 'disabled'}>Gửi tất cả ${allDraftIds.length}</button>
                     </div>
                 </div>
 
@@ -320,25 +422,25 @@ function renderRegularReview(list = document.getElementById('studentList')) {
                         <input type="search" class="form-input" id="regularReviewSearch" placeholder="Tìm học sinh hoặc nội dung..."
                             value="${app.escapeAttr(state.regularReviewSearch)}" oninput="queueRegularReviewSearch(this.value)">
                     </label>
-                    <label><span>Cảnh báo</span><select class="form-select" onchange="setRegularReviewFilter('alert', this.value)">
+                    <label><span>Cảnh báo</span><select class="form-select" id="regularReviewAlertFilter" onchange="setRegularReviewFilter('alert', this.value)">
                         <option value="all" ${state.regularReviewAlertFilter === 'all' ? 'selected' : ''}>Tất cả</option>
                         <option value="attention" ${state.regularReviewAlertFilter === 'attention' ? 'selected' : ''}>Cần chú ý</option>
                         <option value="duplicate" ${state.regularReviewAlertFilter === 'duplicate' ? 'selected' : ''}>Nội dung trùng</option>
                         <option value="missing" ${state.regularReviewAlertFilter === 'missing' ? 'selected' : ''}>Chưa có bản nháp</option>
                     </select></label>
-                    <label><span>Mức học</span><select class="form-select" onchange="setRegularReviewFilter('level', this.value)">
+                    <label><span>Mức học</span><select class="form-select" id="regularReviewLevelFilter" onchange="setRegularReviewFilter('level', this.value)">
                         <option value="all" ${state.regularReviewLevelFilter === 'all' ? 'selected' : ''}>Tất cả</option>
                         ${Object.entries(app.LEARNING_LEVELS).map(([value, info]) => `<option value="${value}" ${state.regularReviewLevelFilter === value ? 'selected' : ''}>${info.code}</option>`).join('')}
                     </select></label>
-                    <label><span>Sắp xếp</span><select class="form-select" onchange="setRegularReviewFilter('sort', this.value)">
+                    <label><span>Sắp xếp</span><select class="form-select" id="regularReviewSort" onchange="setRegularReviewFilter('sort', this.value)">
                         <option value="name" ${state.regularReviewSort === 'name' ? 'selected' : ''}>Tên học sinh</option>
                         <option value="warning" ${state.regularReviewSort === 'warning' ? 'selected' : ''}>Cần chú ý trước</option>
                         <option value="level" ${state.regularReviewSort === 'level' ? 'selected' : ''}>Mức L1 → L4</option>
                         <option value="attendance" ${state.regularReviewSort === 'attendance' ? 'selected' : ''}>Có mặt trước</option>
                     </select></label>
                     <div class="regular-review-filter-actions">
-                        <button type="button" class="btn btn-sm btn-outline" onclick="regenerateRegularReviewFiltered()" ${filteredPresentIds.length && !app.isRegularOperationActive() ? '' : 'disabled'}>Tạo AI ${filteredPresentIds.length} mục đang lọc</button>
-                        <button type="button" class="btn btn-sm btn-outline" onclick="submitRegularReviewFiltered()" ${filteredDraftIds.length && !app.isRegularOperationActive() ? '' : 'disabled'}>Gửi ${filteredDraftIds.length} mục đang lọc</button>
+                        <button type="button" class="btn btn-sm btn-outline" id="regularReviewGenerateFiltered" onclick="regenerateRegularReviewFiltered()" ${filteredPresentIds.length && !app.isRegularOperationActive() ? '' : 'disabled'}>Tạo AI ${filteredPresentIds.length} mục đang lọc</button>
+                        <button type="button" class="btn btn-sm btn-outline" id="regularReviewSubmitFiltered" onclick="submitRegularReviewFiltered()" ${filteredDraftIds.length && !app.isRegularOperationActive() ? '' : 'disabled'}>Gửi ${filteredDraftIds.length} mục đang lọc</button>
                     </div>
                 </div>
 
@@ -357,6 +459,7 @@ function renderRegularReview(list = document.getElementById('studentList')) {
             ${buildRegularReviewDrawer(rows)}
         </section>
     `;
+    openRegularReviewModalShell();
 
     requestAnimationFrame(() => {
         const scroll = list.querySelector('.regular-review-scroll');
@@ -364,6 +467,7 @@ function renderRegularReview(list = document.getElementById('studentList')) {
         const drawer = document.getElementById('regularReviewDrawer');
         if (drawer) drawer.scrollTop = state.regularReviewDrawerScrollTop;
         list.querySelectorAll('.regular-review-comment').forEach(autosizeRegularReviewTextarea);
+        restoreRegularReviewFocusState();
     });
 }
 
@@ -373,18 +477,25 @@ function enterRegularReviewMode() {
         app.showToast('Chưa có bản nháp AI để review', 'info');
         return;
     }
+    regularReviewReturnFocusElement = document.activeElement && document.activeElement !== document.body
+        ? document.activeElement
+        : document.getElementById('reviewAllBtn');
     state.regularReviewMode = true;
-    state.regularReviewSelectedStudentId = null;
-    app.renderStudents();
+    app.renderRegularReview();
+    openRegularReviewModalShell();
     app.updateStats();
+    requestAnimationFrame(() => {
+        const focusTarget = state.regularReviewSelectedStudentId
+            ? document.getElementById('closeRegularReviewDrawer')
+            : document.getElementById('closeRegularReviewModal');
+        focusTarget?.focus();
+    });
 }
 
 function exitRegularReviewMode() {
     captureRegularReviewViewState();
     state.regularReviewMode = false;
-    state.regularReviewSelectedStudentId = null;
-    document.body.classList.remove('regular-review-active');
-    app.renderStudents();
+    forceCloseRegularReviewModal(true);
     app.updateStats();
 }
 
@@ -400,7 +511,7 @@ function openRegularReviewDetail(studentId) {
     captureRegularReviewViewState();
     state.regularReviewSelectedStudentId = studentId;
     state.regularReviewDrawerScrollTop = 0;
-    app.renderStudents();
+    app.renderRegularReview();
     requestAnimationFrame(() => document.getElementById('closeRegularReviewDrawer')?.focus());
 }
 
@@ -408,7 +519,7 @@ function closeRegularReviewDetail() {
     const studentId = state.regularReviewSelectedStudentId;
     captureRegularReviewViewState();
     state.regularReviewSelectedStudentId = null;
-    app.renderStudents();
+    app.renderRegularReview();
     requestAnimationFrame(() => {
         if (studentId) document.getElementById(`review-detail-btn-${app.getRegularStudentDomId(studentId)}`)?.focus();
     });
@@ -418,7 +529,7 @@ function setRegularReviewSearch(value) {
     state.regularReviewSearch = value;
     if (!state.regularReviewMode) return;
     state.regularReviewShouldResetScroll = true;
-    app.renderStudents();
+    app.renderRegularReview();
     requestAnimationFrame(() => {
         const input = document.getElementById('regularReviewSearch');
         if (input) {
@@ -442,7 +553,7 @@ function setRegularReviewFilter(type, value) {
     if (type === 'level') state.regularReviewLevelFilter = value;
     if (type === 'sort') state.regularReviewSort = value;
     state.regularReviewShouldResetScroll = true;
-    app.renderStudents();
+    app.renderRegularReview();
 }
 
 function resetRegularReviewFilters() {
@@ -451,7 +562,7 @@ function resetRegularReviewFilters() {
     state.regularReviewLevelFilter = 'all';
     state.regularReviewSort = 'name';
     state.regularReviewShouldResetScroll = true;
-    app.renderStudents();
+    app.renderRegularReview();
 }
 
 function refreshRegularReviewWarnings() {
@@ -520,24 +631,50 @@ function regenerateRegularReviewFiltered() {
 
 function handleRegularReviewGlobalKeydown(event) {
     if (!state.regularReviewMode) return;
+
+    const higherDialog = getOpenHigherPriorityDialog();
+    if (higherDialog) {
+        if (event.key === 'Tab') trapFocusWithin(higherDialog, event);
+        if (event.key === 'Escape' && higherDialog.id !== 'appConfirmModal') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (higherDialog.id === 'confirmModal') app.hideConfirmModal();
+            if (higherDialog.id === 'pastCommentsModal') app.hidePastCommentsModal();
+            if (higherDialog.id === 'copyModal') app.hideCopyModal();
+        }
+        return;
+    }
+
     const target = event.target;
     const isEditable = target instanceof HTMLInputElement
         || target instanceof HTMLTextAreaElement
         || target instanceof HTMLSelectElement
         || target?.isContentEditable;
+
     if (event.key === 'Escape') {
-        if (state.regularReviewSelectedStudentId) {
+        const modal = getRegularReviewModal();
+        const openDetails = modal?.querySelector('details.toolbar-menu[open], details.quick-template-menu[open], details.detail-overflow[open], details.batch-overflow[open]');
+        if (openDetails) {
             event.preventDefault();
-            app.closeRegularReviewDetail();
-        } else if (!isEditable) {
-            event.preventDefault();
-            app.exitRegularReviewMode();
+            event.stopImmediatePropagation();
+            openDetails.removeAttribute('open');
+            openDetails.querySelector(':scope > summary')?.focus();
+            return;
         }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (state.regularReviewSelectedStudentId) app.closeRegularReviewDetail();
+        else app.exitRegularReviewMode();
         return;
     }
-    if (isEditable) return;
-    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
 
+    if (event.key === 'Tab') {
+        trapFocusWithin(getRegularReviewModal(), event);
+        return;
+    }
+
+    if (isEditable || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
     const rows = filterRegularReviewRows();
     if (!rows.length) return;
     const currentIndex = rows.findIndex(row => row.studentId === state.regularReviewSelectedStudentId);
@@ -563,6 +700,9 @@ Object.assign(app, {
     getRegularReviewFilteredDraftIds,
     getRegularReviewFilteredPresentIds,
     renderRegularReview,
+    openRegularReviewModalShell,
+    forceCloseRegularReviewModal,
+    handleRegularReviewBackdropClick,
     enterRegularReviewMode,
     exitRegularReviewMode,
     toggleRegularReviewMode,

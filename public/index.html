@@ -392,28 +392,34 @@
         </div>
     </div>
 
+    <div class="regular-review-modal hidden" id="regularReviewModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="regularReviewModalTitle" onclick="handleRegularReviewBackdropClick(event)">
+        <div class="regular-review-modal-dialog" role="document">
+            <div class="regular-review-modal-content" id="regularReviewModalContent"></div>
+        </div>
+    </div>
+
     <div class="toast-container" id="toastContainer" role="status" aria-live="polite" aria-atomic="false"></div>
 
     <!-- Confirm Modal -->
-    <div class="confirm-modal hidden" id="confirmModal">
+    <div class="confirm-modal hidden" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
         <div class="confirm-content">
             <div class="confirm-title" id="confirmModalTitle">Xác nhận gửi nhận xét</div>
             <p id="confirmModalDescription" style="margin-bottom: 12px; color: var(--gray-600);">Bạn sắp gửi nhận xét lên LMS cho các học sinh sau:</p>
             <div class="confirm-preview" id="confirmPreview"></div>
             <div class="confirm-actions">
-                <button class="btn btn-outline" onclick="hideConfirmModal()">Hủy</button>
+                <button class="btn btn-outline" id="confirmCancelButton" onclick="hideConfirmModal()">Hủy</button>
                 <button class="btn btn-success" id="confirmSubmitButton" onclick="confirmSubmitAll()">Gửi lên LMS</button>
             </div>
         </div>
     </div>
 
     <!-- Copy Modal for Mobile -->
-    <div class="copy-modal hidden" id="copyModal">
+    <div class="copy-modal hidden" id="copyModal" role="dialog" aria-modal="true" aria-labelledby="copyModalTitle">
         <div class="copy-modal-content">
             <div class="copy-modal-title" id="copyModalTitle">Copy nhận xét</div>
             <textarea class="copy-modal-textarea" id="copyModalTextarea" readonly></textarea>
             <div class="copy-modal-actions">
-                <button class="btn btn-outline" onclick="hideCopyModal()">Đóng</button>
+                <button class="btn btn-outline" id="copyModalCloseButton" onclick="hideCopyModal()">Đóng</button>
                 <button class="btn btn-primary" onclick="doCopyFromModal()">
                     <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0 3-3m-3 3 3 3"/></svg>
                     Copy
@@ -423,13 +429,13 @@
     </div>
 
     <!-- Past Comments Modal -->
-    <div class="confirm-modal hidden" id="pastCommentsModal">
+    <div class="confirm-modal hidden" id="pastCommentsModal" role="dialog" aria-modal="true" aria-labelledby="pastCommentsModalTitle">
         <div class="confirm-content" style="max-width: 600px;">
-            <div class="confirm-title">Lịch sử nhận xét</div>
+            <div class="confirm-title" id="pastCommentsModalTitle">Lịch sử nhận xét</div>
             <div id="pastCommentsStudentName" style="font-weight: 600; margin-bottom: 12px; color: var(--primary);"></div>
             <div class="confirm-preview" id="pastCommentsContent" style="max-height: 400px;"></div>
             <div class="confirm-actions">
-                <button class="btn btn-outline" onclick="hidePastCommentsModal()">Đóng</button>
+                <button class="btn btn-outline" id="pastCommentsCloseButton" onclick="hidePastCommentsModal()">Đóng</button>
             </div>
         </div>
     </div>

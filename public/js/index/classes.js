@@ -567,6 +567,7 @@ async function loadSlotStudents() {
                 state.regularReviewSubmitScopeIds = null;
                 state.regularOperationErrors = {};
                 document.body.classList.remove('regular-review-active');
+                app.forceCloseRegularReviewModal?.(false);
             }
             state.regularUiSlotId = state.selectedSlot?._id || null;
 

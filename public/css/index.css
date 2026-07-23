@@ -2371,19 +2371,52 @@
     flex-wrap: wrap;
 }
 
-.regular-review-active .student-toolbar {
+body.regular-review-active {
+    overflow: hidden;
+}
+
+.regular-review-modal {
+    position: fixed;
+    z-index: 900;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4vh 2vw;
+    background: rgba(15, 23, 42, .64);
+    backdrop-filter: blur(4px);
+}
+
+.regular-review-modal.hidden {
     display: none;
 }
 
-.student-grid.regular-review-mode {
-    display: block;
+.regular-review-modal-dialog {
+    width: 96vw;
+    height: 92vh;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius);
+    background: var(--surface-card);
+    box-shadow: var(--shadow-xl);
+}
+
+.regular-review-modal-content {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
 }
 
 .regular-review-workspace {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 14px;
+    width: 100%;
+    height: 100%;
     min-width: 0;
+    padding: 12px;
+    background: var(--surface-subtle);
 }
 
 .regular-review-workspace.has-drawer {
@@ -2391,14 +2424,17 @@
 }
 
 .regular-review-main {
+    display: flex;
     min-width: 0;
+    min-height: 0;
+    flex-direction: column;
 }
 
 .regular-review-header {
-    position: sticky;
+    position: relative;
     z-index: 12;
-    top: 0;
     display: flex;
+    flex: 0 0 auto;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
@@ -2434,6 +2470,7 @@
 
 .regular-review-toolbar {
     display: grid;
+    flex: 0 0 auto;
     grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(120px, auto)) auto;
     align-items: end;
     gap: 8px;
@@ -2468,9 +2505,9 @@
 }
 
 .regular-review-table-header {
-    position: sticky;
+    position: relative;
     z-index: 10;
-    top: 70px;
+    flex: 0 0 auto;
     border: 1px solid var(--gray-300);
     border-top: 0;
     background: var(--gray-200);
@@ -2486,7 +2523,8 @@
 }
 
 .regular-review-scroll {
-    max-height: min(68vh, 780px);
+    min-height: 0;
+    flex: 1 1 auto;
     overflow-y: auto;
     overscroll-behavior: contain;
     border: 1px solid var(--gray-300);
@@ -2640,10 +2678,10 @@
 }
 
 .regular-review-drawer {
-    position: sticky;
+    position: relative;
     z-index: 20;
-    top: 0;
-    max-height: min(78vh, 880px);
+    height: 100%;
+    min-height: 0;
     overflow-y: auto;
     border: 1px solid var(--gray-300);
     border-radius: var(--radius-sm);
@@ -2719,9 +2757,21 @@
 }
 
 @media (max-width: 900px) {
+    .regular-review-modal {
+        padding: 0;
+    }
+    .regular-review-modal-dialog {
+        width: 100vw;
+        height: 100dvh;
+        border: 0;
+        border-radius: 0;
+    }
     .regular-review-workspace,
     .regular-review-workspace.has-drawer {
         display: block;
+    }
+    .regular-review-main {
+        height: 100%;
     }
     .regular-review-header {
         position: static;
@@ -2743,8 +2793,8 @@
         display: none;
     }
     .regular-review-scroll {
-        max-height: none;
-        overflow: visible;
+        min-height: 0;
+        overflow-y: auto;
         border-top: 1px solid var(--gray-300);
         border-radius: var(--radius-sm);
     }
@@ -2761,14 +2811,10 @@
         position: fixed;
         z-index: 140;
         inset: 10px;
+        width: auto;
+        height: auto;
         max-height: none;
         border-radius: var(--radius-md);
-    }
-}
-
-@media (max-width: 768px) {
-    .regular-review-active #studentList {
-        padding-bottom: 150px;
     }
 }
 

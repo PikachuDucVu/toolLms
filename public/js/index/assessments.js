@@ -664,12 +664,7 @@ function renderStudents(studentList = null) {
             const isCheckpoint = app.isCheckpointSession();
             app.configureStudentFilters();
 
-            if (!isFinal && !isCheckpoint && state.regularReviewMode && typeof app.renderRegularReview === 'function') {
-                app.renderRegularReview(list);
-                return;
-            }
-
-            document.body.classList.remove('regular-review-active');
+            if (!state.regularReviewMode) document.body.classList.remove('regular-review-active');
             list.classList.remove('regular-review-mode');
             const toRender = studentList || app.getVisibleStudents();
             const filtersActive = !!(document.getElementById('searchStudent')?.value
@@ -693,6 +688,9 @@ function renderStudents(studentList = null) {
                         ${filtersActive && state.students.length > 0 ? '<button type="button" class="btn btn-sm btn-outline" style="margin-top:12px" onclick="resetStudentFilters()">Xóa bộ lọc</button>' : ''}
                     </div>
                 `;
+                if (!isFinal && !isCheckpoint && state.regularReviewMode && typeof app.renderRegularReview === 'function') {
+                    app.renderRegularReview();
+                }
                 return;
             }
 
@@ -727,6 +725,7 @@ function renderStudents(studentList = null) {
                 `;
             } else {
                 app.renderRegularStudents(toRender, list);
+                if (state.regularReviewMode && typeof app.renderRegularReview === 'function') app.renderRegularReview();
                 return;
             }
 

@@ -1,6 +1,17 @@
 import { app } from './registry.js';
 import { state } from './state.js';
 
+let confirmModalReturnFocusElement = null;
+let pastCommentsReturnFocusElement = null;
+
+function restoreDialogFocus(element) {
+            if (!state.regularReviewMode) return;
+            requestAnimationFrame(() => {
+                const target = element?.isConnected ? element : document.getElementById('closeRegularReviewModal');
+                target?.focus();
+            });
+        }
+
 function getLocalNote(studentId) {
             const notes = JSON.parse(localStorage.getItem('studentNotes') || '{}');
             return notes[studentId] || '';
@@ -204,6 +215,7 @@ function exportToCSV() {
         }
 
 function showPastComments(studentId, studentName) {
+            pastCommentsReturnFocusElement = document.activeElement;
             const pastSlots = app.getPastComments(studentId);
             
             document.getElementById('pastCommentsStudentName').textContent = studentName;
@@ -229,10 +241,14 @@ function showPastComments(studentId, studentName) {
             }
             
             document.getElementById('pastCommentsModal').classList.remove('hidden');
+            requestAnimationFrame(() => document.getElementById('pastCommentsCloseButton')?.focus());
         }
 
 function hidePastCommentsModal() {
             document.getElementById('pastCommentsModal').classList.add('hidden');
+            const returnFocus = pastCommentsReturnFocusElement;
+            pastCommentsReturnFocusElement = null;
+            restoreDialogFocus(returnFocus);
         }
 
 function getSlotDisplayNumber(slot, arrayIndex = null) {
@@ -437,6 +453,7 @@ function discardRegularWorkState() {
             state.regularOperationErrors = {};
             state.regularUiSlotId = null;
             document.body.classList.remove('regular-review-active');
+            app.forceCloseRegularReviewModal?.(false);
         }
 
 function confirmDiscardRegularWork() {
@@ -614,6 +631,7 @@ function showConfirmModal(studentIds = null) {
                 return;
             }
 
+            confirmModalReturnFocusElement = document.activeElement;
             state.regularReviewSubmitScopeIds = [...scopeIds];
             const isFilteredScope = requestedIds && scopeIds.length < availableIds.length;
             const title = document.getElementById('confirmModalTitle');
@@ -638,11 +656,15 @@ function showConfirmModal(studentIds = null) {
             }).join('');
 
             document.getElementById('confirmModal').classList.remove('hidden');
+            requestAnimationFrame(() => document.getElementById('confirmSubmitButton')?.focus());
         }
 
-function hideConfirmModal() {
+function hideConfirmModal(restoreFocus = true) {
             document.getElementById('confirmModal').classList.add('hidden');
             state.regularReviewSubmitScopeIds = null;
+            const returnFocus = confirmModalReturnFocusElement;
+            confirmModalReturnFocusElement = null;
+            if (restoreFocus) restoreDialogFocus(returnFocus);
         }
 
 

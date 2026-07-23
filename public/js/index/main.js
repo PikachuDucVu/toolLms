@@ -94,6 +94,7 @@ Object.assign(window, {
     hidePastCommentsModal: app.hidePastCommentsModal,
     loadClasses: app.loadClasses,
     toggleRegularReviewMode: app.toggleRegularReviewMode,
+    handleRegularReviewBackdropClick: app.handleRegularReviewBackdropClick,
     enterRegularReviewMode: app.enterRegularReviewMode,
     exitRegularReviewMode: app.exitRegularReviewMode,
     openRegularReviewDetail: app.openRegularReviewDetail,
