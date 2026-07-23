@@ -473,8 +473,8 @@ function renderRegularReview(list = document.getElementById('regularReviewModalC
 
 function enterRegularReviewMode() {
     if (app.getCurrentStudentMode() !== 'regular') return;
-    if (getRegularReviewAllDraftIds().length === 0) {
-        app.showToast('Chưa có bản nháp AI để review', 'info');
+    if (state.students.length === 0) {
+        app.showToast('Buổi học chưa có học sinh để review', 'info');
         return;
     }
     regularReviewReturnFocusElement = document.activeElement && document.activeElement !== document.body

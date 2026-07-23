@@ -223,6 +223,13 @@ test('review opens in a modal shell and restores focus when closed', () => {
   assert.equal(backgroundChild.id, 'regularStudentDetail');
   assert.equal(focusRestored, true);
 
+  state.generatedComments = {};
+  state.regularReviewSelectedStudentId = null;
+  app.enterRegularReviewMode();
+  assert.equal(state.regularReviewMode, true);
+  assert.equal(modal.classList.contains('hidden'), false);
+  app.exitRegularReviewMode();
+
   app.renderRegularReview = originalRender;
   app.updateStats = originalUpdateStats;
 });

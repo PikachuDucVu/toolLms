@@ -552,9 +552,9 @@ function updateStats() {
                 if (submitLabel) submitLabel.textContent = `Gửi tất cả (${batchGenerated})`;
                 if (copyLabel) copyLabel.textContent = `Sao chép Zalo (${availableZalo})`;
                 if (reviewLabel) reviewLabel.textContent = state.regularReviewMode
-                    ? 'Quay lại chi tiết'
-                    : `Review ${batchGenerated} nhận xét`;
-                if (reviewBtn) reviewBtn.style.display = batchGenerated > 0 ? 'inline-flex' : 'none';
+                    ? 'Đóng review'
+                    : `Review cả lớp · ${batchGenerated} bản nháp`;
+                if (reviewBtn) reviewBtn.style.display = total > 0 ? 'inline-flex' : 'none';
                 if (hint) hint.textContent = state.regularAssessmentLoad.loading
                     ? 'Đang tải mức độ nắm bài và ghi chú đã lưu'
                     : `${present} có mặt · ${generated} bản nháp · ${submitted} đã gửi`;
@@ -563,7 +563,7 @@ function updateStats() {
                 if (autoBtn) autoBtn.disabled = operationLocked || assessmentUnavailable || present === 0;
                 if (submitBtn) submitBtn.disabled = operationLocked || assessmentUnavailable || batchGenerated === 0;
                 if (copyBtn) copyBtn.disabled = operationLocked || availableZalo === 0;
-                if (reviewBtn) reviewBtn.disabled = operationLocked || assessmentUnavailable || batchGenerated === 0;
+                if (reviewBtn) reviewBtn.disabled = operationLocked || assessmentUnavailable || total === 0;
             }
             app.syncRegularOperationLock();
         }
