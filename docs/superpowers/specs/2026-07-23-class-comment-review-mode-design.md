@@ -31,7 +31,8 @@ Tạo một workspace `Review cả lớp` trong modal gần toàn màn hình đ�
 
 ### Bảng review
 
-- Hiển thị tất cả học sinh có bản nháp AI, kèm học sinh vắng hoặc chưa có bản nháp khi phù hợp.
+- Hiển thị tất cả học sinh trong buổi học, bao gồm học sinh có bản nháp AI, đã có nhận xét trên LMS, chưa có nhận xét hoặc vắng.
+- Hàng chưa có bản nháp hiển thị trạng thái trống và nút `Tạo AI` riêng; giáo viên cũng có thể lọc `Chưa có bản nháp` để tạo AI theo phạm vi lọc.
 - Cột chính:
   - Học sinh và trạng thái điểm danh.
   - Mức học L1–L4.
@@ -66,7 +67,8 @@ Panel bên phải mở từ một hàng và dùng chung state với bảng. Pane
 
 ### Thao tác hàng loạt
 
-- `Review x nhận xét` chỉ hiển thị khi có bản nháp phù hợp.
+- Nút `Review cả lớp · x bản nháp` hiển thị khi buổi học có học sinh, kể cả khi `x = 0`.
+- Mở modal review không gọi AI và không yêu cầu phải tạo nhận xét hàng loạt trước.
 - Thanh thao tác cố định cung cấp:
   - Tạo AI cho cả lớp.
   - Gửi tất cả nhận xét đã có bản nháp.
@@ -130,7 +132,7 @@ Các cảnh báo khác có thể bổ sung sau khi có dữ liệu sử dụng t
 
 ## Kiểm thử chấp nhận
 
-1. Sau khi tạo AI cả lớp, mở được modal review mà không gọi AI lần nữa hoặc thay đổi DOM/state của màn hình chính phía sau.
+1. Khi buổi học có học sinh, mở được modal review kể cả khi chưa có bản nháp AI; thao tác mở không gọi AI hoặc thay đổi DOM/state của màn hình chính phía sau.
 2. Tất cả nhận xét hiện có được đọc trên một màn hình.
 3. Sửa inline cập nhật đúng `generatedComments` và không mất khi render lại.
 4. Mở/đóng panel không mất nội dung hoặc vị trí cuộn.
@@ -144,7 +146,8 @@ Các cảnh báo khác có thể bổ sung sau khi có dữ liệu sử dụng t
 12. Đóng/mở lại modal giữ state, filter và scroll hợp lý; focus quay về nút mở modal khi đóng.
 13. `Esc` đóng panel trước rồi mới đóng modal, không làm mất draft.
 14. Bàn phím và screen reader nhận diện được dialog, hàng, textarea, panel và nút thao tác; focus không thoát ra trang phía sau.
-15. Responsive ở desktop, tablet và mobile không tạo cuộn ngang không cần thiết.
+15. Khi có `0` bản nháp, nút gửi bị vô hiệu hóa nhưng các nút tạo AI riêng và tạo AI theo phạm vi lọc vẫn hoạt động.
+16. Responsive ở desktop, tablet và mobile không tạo cuộn ngang không cần thiết.
 
 ## Ngoài phạm vi phiên bản đầu
 
