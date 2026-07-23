@@ -6,11 +6,13 @@
 
 ## Mục tiêu
 
-Tạo một chế độ `Review cả lớp` trên desktop để giáo viên có thể đọc, so sánh và chỉnh sửa toàn bộ nhận xét trong một màn hình, đồng thời giữ nguyên đầy đủ chức năng hiện tại của từng học sinh.
+Tạo một workspace `Review cả lớp` trong modal gần toàn màn hình để giáo viên có thể đọc, so sánh và chỉnh sửa toàn bộ nhận xét mà không rời ngữ cảnh lớp/buổi học, đồng thời giữ nguyên đầy đủ chức năng hiện tại của từng học sinh.
 
 ## Quyết định thiết kế
 
-- Thêm chế độ review riêng, không thay thế giao diện chi tiết hiện tại.
+- Mở review trong modal gần toàn màn hình, không thay thế hoặc render đè giao diện chi tiết hiện tại.
+- Desktop dùng modal khoảng `96vw × 92vh`; mobile/tablet dùng full-screen modal.
+- Khóa scroll của trang phía sau trong khi modal mở và trả focus về nút `Review x nhận xét` khi đóng.
 - Bảng chính tập trung vào các thông tin cần so sánh: học sinh, trạng thái điểm danh, mức L1–L4 và nhận xét.
 - Mỗi hàng có nút `Chi tiết` mở panel bên phải.
 - Panel chi tiết cung cấp toàn bộ thao tác hiện có của học sinh.
@@ -18,6 +20,14 @@ Tạo một chế độ `Review cả lớp` trên desktop để giáo viên có 
 - Bộ lọc chỉ ảnh hưởng nội dung đang hiển thị, không âm thầm thay đổi phạm vi gửi.
 
 ## Phạm vi chức năng
+
+### Modal shell
+
+- Modal có backdrop riêng, `role="dialog"`, `aria-modal="true"` và tiêu đề được liên kết bằng `aria-labelledby`.
+- Header modal cố định chứa tên workspace, số bản nháp/cảnh báo và nút đóng.
+- Khu vực filter, bảng review và panel chi tiết nằm trong cùng modal; chỉ vùng nội dung cần thiết được cuộn.
+- Footer/thanh thao tác gửi được giữ trong modal để không phụ thuộc action bar của trang phía sau.
+- Không mở modal review thứ hai. Các thao tác chi tiết tiếp tục dùng panel bên phải; xác nhận gửi có thể mở dialog xác nhận hiện có ở lớp z-index cao hơn.
 
 ### Bảng review
 
@@ -77,9 +87,10 @@ Panel bên phải mở từ một hàng và dùng chung state với bảng. Pane
   - Trạng thái assessments và autosave.
 - Chỉnh sửa inline gọi cùng handler cập nhật nhận xét hiện tại.
 - Tạo lại, gửi, copy, xóa và autosave gọi lại các service/handler hiện có để tránh hai luồng hành vi khác nhau.
-- Khi chuyển chế độ:
+- Khi mở/đóng modal:
   - Giữ draft, bộ lọc, hàng đang chọn và vị trí cuộn.
-  - Không gọi lại AI chỉ vì render bảng hoặc mở panel.
+  - Không gọi lại AI chỉ vì render bảng, mở modal hoặc mở panel.
+  - Giữ DOM trang chính phía sau; chỉ mount/unmount nội dung modal.
 - Khi render lại sau một request:
   - Khôi phục focus nếu phần tử vẫn tồn tại.
   - Không ghi đè text đang chỉnh sửa bằng dữ liệu cũ.
@@ -108,17 +119,18 @@ Các cảnh báo khác có thể bổ sung sau khi có dữ liệu sử dụng t
 
 - Bảng dùng semantic table hoặc cấu trúc grid có header/label rõ ràng.
 - Mỗi textarea có label gắn với tên học sinh.
+- Modal quản lý focus trap; nút mở modal nhận lại focus khi modal đóng.
 - Nút mở panel có `aria-expanded`, `aria-controls` và trạng thái focus rõ ràng.
 - Hỗ trợ phím tắt:
   - `Ctrl/Cmd + Enter`: lưu chỉnh sửa hiện tại.
   - `↑/↓`: chuyển hàng khi không đang nhập text.
-  - `Esc`: đóng panel.
-- Desktop là ưu tiên. Ở màn hình nhỏ, bảng chuyển thành danh sách hàng có thể bung panel toàn màn hình, không ép bảng rộng gây cuộn ngang.
+  - `Esc` lần đầu đóng panel chi tiết; nếu panel đã đóng thì đóng modal review.
+- Desktop là ưu tiên. Ở màn hình nhỏ, modal chiếm toàn màn hình, bảng chuyển thành danh sách hàng và panel chi tiết trở thành màn hình con, không ép bảng rộng gây cuộn ngang.
 - Không dùng màu làm tín hiệu duy nhất; cảnh báo có text/icon.
 
 ## Kiểm thử chấp nhận
 
-1. Sau khi tạo AI cả lớp, mở được chế độ review mà không gọi AI lần nữa.
+1. Sau khi tạo AI cả lớp, mở được modal review mà không gọi AI lần nữa hoặc thay đổi DOM/state của màn hình chính phía sau.
 2. Tất cả nhận xét hiện có được đọc trên một màn hình.
 3. Sửa inline cập nhật đúng `generatedComments` và không mất khi render lại.
 4. Mở/đóng panel không mất nội dung hoặc vị trí cuộn.
@@ -129,9 +141,10 @@ Các cảnh báo khác có thể bổ sung sau khi có dữ liệu sử dụng t
 9. Nút `Chỉ gửi mục đang lọc` hiển thị đúng số lượng và có xác nhận.
 10. Cảnh báo trùng hiển thị đúng nhưng không chặn gửi.
 11. Một hàng lỗi không làm mất hoặc hủy các hàng thành công.
-12. Đổi qua lại giữa review và chi tiết giữ state, filter, focus và scroll hợp lý.
-13. Bàn phím và screen reader nhận diện được hàng, textarea, panel và nút thao tác.
-14. Responsive ở desktop, tablet và mobile không tạo cuộn ngang không cần thiết.
+12. Đóng/mở lại modal giữ state, filter và scroll hợp lý; focus quay về nút mở modal khi đóng.
+13. `Esc` đóng panel trước rồi mới đóng modal, không làm mất draft.
+14. Bàn phím và screen reader nhận diện được dialog, hàng, textarea, panel và nút thao tác; focus không thoát ra trang phía sau.
+15. Responsive ở desktop, tablet và mobile không tạo cuộn ngang không cần thiết.
 
 ## Ngoài phạm vi phiên bản đầu
 
