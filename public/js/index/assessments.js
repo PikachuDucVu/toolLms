@@ -36,6 +36,7 @@ function captureRegularContext() {
                 sessionNumber: app.getCurrentSessionNumber(),
                 classSiteId: state.classData.classSites?.[0]?._id || '',
                 courseProcessId: state.classData.courseProcessId,
+                assessmentEpoch: state.regularAssessmentContextEpoch,
                 summary: document.getElementById('sessionSummary')?.value || ''
             };
         }
@@ -43,7 +44,8 @@ function captureRegularContext() {
 function isRegularContextCurrent(context) {
             return !!context
                 && state.classData?.id === context.classId
-                && state.selectedSlot?._id === context.slotId;
+                && state.selectedSlot?._id === context.slotId
+                && state.regularAssessmentContextEpoch === context.assessmentEpoch;
         }
 
 function getRegularAssessmentDraft(studentId) {
@@ -60,20 +62,34 @@ function getRegularAssessmentStatus(studentId) {
             if (state.regularAssessmentLoad.error && state.regularAssessmentLoad.slotId === state.selectedSlot?._id) {
                 return { text: 'Không tải được đánh giá', className: 'is-error', loading: false, error: true };
             }
+            if (state.regularAssessmentAutoSaveBusy.has(studentId)) {
+                return { text: 'Đang lưu mức...', className: '', loading: false, error: false };
+            }
+            if (state.regularAssessmentAutoSaveErrors[studentId]) {
+                return { text: 'Lưu mức thất bại', className: 'is-error', loading: false, error: false, saveError: true };
+            }
+
             const draft = app.getRegularAssessmentDraft(studentId);
             const synced = state.regularServerSyncedAssessments[studentId];
             if (!synced) {
+                const inherited = state.regularInheritedAssessments[studentId];
                 const touched = state.regularAssessmentTouched.has(studentId);
                 return {
-                    text: touched ? 'Chưa lưu' : 'Mặc định L3 · tự lưu khi tạo',
+                    text: touched
+                        ? 'Chưa lưu'
+                        : inherited
+                            ? `Kế thừa ${app.LEARNING_LEVELS[inherited.learningLevel].code} từ buổi trước`
+                            : 'Mặc định L3 · chưa lưu buổi này',
                     className: touched ? 'is-dirty' : '',
                     loading: false,
                     error: false
                 };
             }
-            const isSaved = synced.learningLevel === draft.learningLevel && synced.note === draft.note;
+            const levelSaved = synced.learningLevel === draft.learningLevel;
+            const noteSaved = synced.note === draft.note;
+            const isSaved = levelSaved && noteSaved;
             return {
-                text: isSaved ? 'Đã lưu' : 'Chưa lưu',
+                text: isSaved ? 'Đã lưu' : levelSaved ? 'Chưa lưu ghi chú' : 'Chưa lưu',
                 className: isSaved ? 'is-saved' : 'is-dirty',
                 loading: false,
                 error: false
@@ -115,6 +131,19 @@ async function ensureRegularAssessmentsLoaded(context) {
             if (state.regularAssessmentLoad.error) throw state.regularAssessmentLoad.error;
         }
 
+function getPreviousRegularSlotIds(slotId) {
+            const slots = Array.isArray(state.classData?.slots) ? state.classData.slots : [];
+            const currentSlot = slots.find(slot => slot?._id === slotId);
+            const currentSlotIndex = Number(currentSlot?.index);
+            if (!Number.isFinite(currentSlotIndex)) return [];
+
+            return slots
+                .filter(slot => slot?._id && Number.isFinite(Number(slot.index)) && Number(slot.index) < currentSlotIndex)
+                .sort((left, right) => Number(right.index) - Number(left.index))
+                .slice(0, 100)
+                .map(slot => slot._id);
+        }
+
 function loadRegularAssessments(slotId) {
             const token = state.regularAssessmentLoad.token + 1;
             const loadState = {
@@ -128,7 +157,11 @@ function loadRegularAssessments(slotId) {
 
             loadState.promise = (async () => {
                 try {
-                    const response = await fetch(`/api/assessments/${encodeURIComponent(slotId)}`);
+                    const params = new URLSearchParams();
+                    if (state.classData?.id) params.set('class_id', state.classData.id);
+                    getPreviousRegularSlotIds(slotId).forEach(previousSlotId => params.append('previous_slot_id', previousSlotId));
+                    const query = params.toString();
+                    const response = await fetch(`/api/assessments/${encodeURIComponent(slotId)}${query ? `?${query}` : ''}`);
                     if (!response.ok) {
                         const data = await response.json().catch(() => ({}));
                         throw new Error(data.error || `Không thể tải đánh giá (${response.status})`);
@@ -139,9 +172,17 @@ function loadRegularAssessments(slotId) {
                     Object.entries(data.assessments || {}).forEach(([studentId, assessment]) => {
                         const normalized = {
                             learningLevel: app.normalizeLearningLevel(assessment?.learningLevel),
-                            note: String(assessment?.note ?? '').trim()
+                            note: assessment?.inherited ? '' : String(assessment?.note ?? '').trim()
                         };
-                        state.regularServerSyncedAssessments[studentId] = normalized;
+                        if (assessment?.inherited) {
+                            state.regularInheritedAssessments[studentId] = {
+                                learningLevel: normalized.learningLevel,
+                                sourceSlotId: String(assessment?.sourceSlotId || assessment?.slotId || '')
+                            };
+                        } else {
+                            state.regularServerSyncedAssessments[studentId] = normalized;
+                            delete state.regularInheritedAssessments[studentId];
+                        }
                         if (!Object.prototype.hasOwnProperty.call(state.regularLearningLevelDrafts, studentId)) {
                             state.regularLearningLevelDrafts[studentId] = normalized.learningLevel;
                         }
@@ -170,7 +211,11 @@ function retryRegularAssessments() {
             state.regularNoteDrafts = {};
             state.regularLearningLevelDrafts = {};
             state.regularServerSyncedAssessments = {};
+            state.regularInheritedAssessments = {};
             state.regularAssessmentTouched.clear();
+            state.regularAssessmentAutoSaveBusy.clear();
+            state.regularAssessmentAutoSaveErrors = {};
+            state.regularAssessmentContextEpoch += 1;
             app.loadRegularAssessments(state.selectedSlot._id);
             app.renderStudents();
             app.updateStats();
@@ -320,7 +365,7 @@ function buildRegularStudentDetail(att, idx) {
                         <fieldset class="learning-level-fieldset" ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error || app.isRegularOperationActive()) ? 'disabled' : ''}>
                             <legend class="learning-level-legend">
                                 <span>Mức độ nắm bài</span>
-                                <small>${studentState.assessmentStatus.loading ? 'Đang tải đánh giá đã lưu...' : studentState.assessmentStatus.error ? 'Vui lòng thử tải lại' : 'Level 3 được dùng mặc định và tự lưu khi tạo'}</small>
+                                <small>${studentState.assessmentStatus.loading ? 'Đang tải đánh giá đã lưu...' : studentState.assessmentStatus.error ? 'Vui lòng thử tải lại' : 'Chọn mức để tự lưu; AI chỉ tạo khi nhấn nút'}</small>
                             </legend>
                             <div class="learning-level-grid">
                                 ${Object.entries(app.LEARNING_LEVELS).map(([value, info]) => `
@@ -521,6 +566,79 @@ function refreshRegularAssessmentIndicators(studentId) {
             }
         }
 
+function applyRegularSyncedAssessment(studentId, assessment) {
+            const normalized = {
+                learningLevel: app.normalizeLearningLevel(assessment?.learningLevel),
+                note: String(assessment?.note ?? '').trim()
+            };
+            state.regularServerSyncedAssessments[studentId] = normalized;
+            delete state.regularInheritedAssessments[studentId];
+            delete state.regularAssessmentAutoSaveErrors[studentId];
+
+            const draft = app.getRegularAssessmentDraft(studentId);
+            if (draft.learningLevel === normalized.learningLevel && draft.note === normalized.note) {
+                state.regularAssessmentTouched.delete(studentId);
+            } else {
+                state.regularAssessmentTouched.add(studentId);
+            }
+            app.refreshRegularAssessmentIndicators(studentId);
+        }
+
+function waitForRegularAssessmentAutosave(studentId) {
+            return state.regularAssessmentAutoSavePromises[studentId] || Promise.resolve();
+        }
+
+function queueRegularLearningLevelAutosave(studentId) {
+            const context = app.captureRegularContext();
+            if (!context) return Promise.resolve();
+
+            const learningLevel = app.getRegularLearningLevel(studentId);
+            const token = (state.regularAssessmentAutoSaveTokens[studentId] || 0) + 1;
+            state.regularAssessmentAutoSaveTokens[studentId] = token;
+            state.regularAssessmentAutoSaveBusy.add(studentId);
+            delete state.regularAssessmentAutoSaveErrors[studentId];
+            app.refreshRegularAssessmentIndicators(studentId);
+
+            const previous = state.regularAssessmentAutoSavePromises[studentId] || Promise.resolve();
+            const queued = previous.catch(() => undefined).then(async () => {
+                await app.ensureRegularAssessmentsLoaded(context);
+                if (!app.isRegularContextCurrent(context)) return;
+
+                const response = await fetch(
+                    `/api/assessments/${encodeURIComponent(context.slotId)}/${encodeURIComponent(studentId)}/learning-level`,
+                    {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            class_id: context.classId,
+                            learning_level: learningLevel
+                        })
+                    }
+                );
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || `Không thể lưu mức học (${response.status})`);
+                }
+                if (!app.isRegularContextCurrent(context)) return;
+                app.applyRegularSyncedAssessment(studentId, data.assessment);
+            }).catch(error => {
+                if (!app.isRegularContextCurrent(context) || state.regularAssessmentAutoSaveTokens[studentId] !== token) return;
+                state.regularAssessmentAutoSaveErrors[studentId] = error?.message || 'Không thể lưu mức học';
+                app.refreshRegularAssessmentIndicators(studentId);
+                app.showToast('Lỗi tự lưu mức học: ' + state.regularAssessmentAutoSaveErrors[studentId], 'error');
+            }).finally(() => {
+                if (state.regularAssessmentAutoSavePromises[studentId] === queued) {
+                    delete state.regularAssessmentAutoSavePromises[studentId];
+                }
+                if (!app.isRegularContextCurrent(context) || state.regularAssessmentAutoSaveTokens[studentId] !== token) return;
+                state.regularAssessmentAutoSaveBusy.delete(studentId);
+                app.refreshRegularAssessmentIndicators(studentId);
+            });
+
+            state.regularAssessmentAutoSavePromises[studentId] = queued;
+            return queued;
+        }
+
 function onRegularLearningLevelChange(studentId, value) {
             state.regularLearningLevelDrafts[studentId] = app.normalizeLearningLevel(value);
             state.regularAssessmentTouched.add(studentId);
@@ -529,6 +647,7 @@ function onRegularLearningLevelChange(studentId, value) {
                 input.closest('.learning-level-option')?.classList.toggle('is-selected', input.checked);
             });
             app.refreshRegularAssessmentIndicators(studentId);
+            app.queueRegularLearningLevelAutosave(studentId);
         }
 
 function onRegularNoteInput(studentId, value) {
@@ -1049,7 +1168,11 @@ async function persistStudentAssessment(context, studentId, assessment) {
             if (synced
                 && synced.learningLevel === normalized.learningLevel
                 && synced.note === normalized.note) {
-                if (app.isRegularContextCurrent(context)) state.regularAssessmentTouched.delete(studentId);
+                if (app.isRegularContextCurrent(context)) {
+                    state.regularAssessmentTouched.delete(studentId);
+                    delete state.regularAssessmentAutoSaveErrors[studentId];
+                    app.refreshRegularAssessmentIndicators(studentId);
+                }
                 return false;
             }
 
@@ -1068,15 +1191,15 @@ async function persistStudentAssessment(context, studentId, assessment) {
                 throw new Error(data.error || `Không thể lưu đánh giá (${response.status})`);
             }
             if (app.isRegularContextCurrent(context)) {
-                state.regularServerSyncedAssessments[studentId] = normalized;
-                state.regularAssessmentTouched.delete(studentId);
-                app.refreshRegularAssessmentIndicators(studentId);
+                const data = await response.json().catch(() => ({}));
+                app.applyRegularSyncedAssessment(studentId, data.assessment || normalized);
             }
             return true;
         }
 
 async function persistRegularStudentSnapshots(context, studentSnapshots, concurrency = 3) {
             await app.runWithConcurrency(studentSnapshots, concurrency, async snapshot => {
+                await app.waitForRegularAssessmentAutosave(snapshot.studentId);
                 if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
                 await app.persistStudentAssessment(context, snapshot.studentId, snapshot.assessment);
             });
@@ -1103,6 +1226,7 @@ async function saveAssessment(studentId) {
 
             try {
                 await app.ensureRegularAssessmentsLoaded(context);
+                await app.waitForRegularAssessmentAutosave(studentId);
                 if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
                 const changed = await app.persistStudentAssessment(context, studentId, app.getRegularAssessmentDraft(studentId));
                 app.showToast(changed ? 'Đã lưu đánh giá!' : 'Không có thay đổi', changed ? 'success' : 'info');
@@ -1138,6 +1262,7 @@ Object.assign(app, {
     snapshotRegularStudent,
     runWithConcurrency,
     ensureRegularAssessmentsLoaded,
+    getPreviousRegularSlotIds,
     loadRegularAssessments,
     retryRegularAssessments,
     getAttendancePresentation,
@@ -1149,6 +1274,9 @@ Object.assign(app, {
     selectRegularStudent,
     syncRegularDetailPlacement,
     refreshRegularAssessmentIndicators,
+    applyRegularSyncedAssessment,
+    waitForRegularAssessmentAutosave,
+    queueRegularLearningLevelAutosave,
     onRegularLearningLevelChange,
     onRegularNoteInput,
     renderStudents,

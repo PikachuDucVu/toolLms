@@ -49,6 +49,7 @@ async function generateSingle(studentId, studentName, idx) {
 
             try {
                 await app.ensureRegularAssessmentsLoaded(context);
+                await app.waitForRegularAssessmentAutosave(studentId);
                 if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
                 const att = state.students.find(s => s.student.id === studentId);
                 if (!att) throw new Error('Không tìm thấy học sinh trong buổi học hiện tại');
@@ -251,6 +252,7 @@ async function submitSingle(studentId, attendanceId) {
             try {
                 if (!isFinal) {
                     await app.ensureRegularAssessmentsLoaded(context);
+                    await app.waitForRegularAssessmentAutosave(studentId);
                     if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
                     snapshot = app.snapshotRegularStudent(att);
                     await app.persistStudentAssessment(context, studentId, snapshot.assessment);

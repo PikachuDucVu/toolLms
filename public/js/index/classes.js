@@ -545,11 +545,15 @@ async function loadSlotStudents() {
             state.manualComments = {};
 
             if (slotChanged) {
+                state.regularAssessmentContextEpoch += 1;
                 state.selectedRegularStudentId = null;
                 state.regularNoteDrafts = {};
                 state.regularLearningLevelDrafts = {};
                 state.regularServerSyncedAssessments = {};
+                state.regularInheritedAssessments = {};
                 state.regularAssessmentTouched.clear();
+                state.regularAssessmentAutoSaveBusy.clear();
+                state.regularAssessmentAutoSaveErrors = {};
                 state.regularListScrollTop = 0;
             }
             state.regularUiSlotId = state.selectedSlot?._id || null;

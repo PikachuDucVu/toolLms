@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS student_session_assessments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_session_assessments_owner_slot ON student_session_assessments(teacher_email, slot_id);
+CREATE INDEX IF NOT EXISTS idx_session_assessments_owner_class_slot_student ON student_session_assessments(teacher_email, class_id, slot_id, student_id);
 CREATE INDEX IF NOT EXISTS idx_session_assessments_student ON student_session_assessments(student_id);
 
 CREATE TABLE IF NOT EXISTS comment_log (

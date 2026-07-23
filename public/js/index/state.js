@@ -29,7 +29,13 @@ export const state = {
     regularNoteDrafts: {},
     regularLearningLevelDrafts: {},
     regularServerSyncedAssessments: {},
+    regularInheritedAssessments: {},
     regularAssessmentTouched: new Set(),
+    regularAssessmentAutoSaveBusy: new Set(),
+    regularAssessmentAutoSaveErrors: {},
+    regularAssessmentAutoSaveTokens: {},
+    regularAssessmentAutoSavePromises: {},
+    regularAssessmentContextEpoch: 0,
     regularAssessmentLoad: {
         slotId: null,
         token: 0,

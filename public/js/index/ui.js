@@ -415,10 +415,14 @@ function hasUnsavedRegularWork() {
 
 function discardRegularWorkState() {
             state.generatedComments = {};
+            state.regularAssessmentContextEpoch += 1;
             state.regularNoteDrafts = {};
             state.regularLearningLevelDrafts = {};
             state.regularServerSyncedAssessments = {};
+            state.regularInheritedAssessments = {};
             state.regularAssessmentTouched.clear();
+            state.regularAssessmentAutoSaveBusy.clear();
+            state.regularAssessmentAutoSaveErrors = {};
             state.selectedRegularStudentId = null;
             state.regularUiSlotId = null;
         }
