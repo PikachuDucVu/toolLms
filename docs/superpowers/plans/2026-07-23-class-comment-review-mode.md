@@ -174,3 +174,16 @@ Add a regular-session “Review cả lớp” mode that shows all drafts in one 
   "manualNotes": "Recommended architecture is a new review.js module with pure selectors plus thin integration changes to existing assessment/comment handlers; no backend/API change is needed."
 }
 ```
+
+## Modal conversion amendment
+
+The approved follow-up changes the mounted review workspace into a modal shell without changing its table, drawer, filters, scope logic, or shared draft state.
+
+1. Add a persistent modal host to `public/index.html` with backdrop, dialog semantics, title linkage, and close control.
+2. Keep the normal student list rendered behind the modal; `renderStudents()` must no longer replace `#studentList` when review opens.
+3. Render `renderRegularReview()` into the modal body, with `96vw × 92vh` desktop sizing and full-screen mobile sizing.
+4. Lock background scrolling while open, trap focus inside the modal, and return focus to `#reviewAllBtn` when closed.
+5. Preserve existing review filters, selected student, table scroll, drawer scroll, scoped operations, and warnings across close/reopen.
+6. Handle `Esc` hierarchically: close drawer first, then close modal.
+7. Ensure existing confirmation/past-comment dialogs render above the review modal and do not get clipped by its overflow.
+8. Add tests for modal open/close state and focus/scroll preservation; run the existing review and assessment suites unchanged.
