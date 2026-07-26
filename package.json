@@ -7,18 +7,22 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "node --import ./tests/register-loader.mjs --test tests/*.test.js",
+    "test:vitest": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "cf-typegen": "wrangler types",
     "db:migrate:local": "wrangler d1 execute lms_auto_comment --local --file=src/db/schema.sql",
     "db:migrate:remote": "wrangler d1 execute lms_auto_comment --remote --file=src/db/schema.sql"
   },
   "dependencies": {
+    "@anthropic-ai/claude-code": "^2.1.220",
     "fflate": "^0.8.3",
     "hono": "^4.6.16"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251218.0",
     "typescript": "^5.7.3",
+    "vitest": "^4.1.10",
     "wrangler": "^4.0.0"
   }
 }

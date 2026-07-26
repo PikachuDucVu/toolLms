@@ -1683,15 +1683,15 @@
     font-size: 12px
     }
 
-.toolbar-menu, .quick-template-menu, .detail-overflow, .batch-overflow {
+.toolbar-menu, .quick-template-menu, .detail-overflow, .batch-overflow, .batch-level-menu {
     position: relative
     }
 
-.toolbar-menu > summary, .quick-template-menu > summary, .detail-overflow > summary, .batch-overflow > summary {
+.toolbar-menu > summary, .quick-template-menu > summary, .detail-overflow > summary, .batch-overflow > summary, .batch-level-menu > summary {
     list-style: none
     }
 
-.toolbar-menu > summary::-webkit-details-marker, .quick-template-menu > summary::-webkit-details-marker, .detail-overflow > summary::-webkit-details-marker, .batch-overflow > summary::-webkit-details-marker {
+.toolbar-menu > summary::-webkit-details-marker, .quick-template-menu > summary::-webkit-details-marker, .detail-overflow > summary::-webkit-details-marker, .batch-overflow > summary::-webkit-details-marker, .batch-level-menu > summary::-webkit-details-marker {
     display: none
     }
 
@@ -1889,6 +1889,7 @@
     }
 
 .learning-level-option {
+    width: 100%;
     position: relative;
     display: flex;
     align-items: flex-start;
@@ -1900,6 +1901,8 @@
     border-radius: var(--radius-sm);
     background: var(--surface-card);
     color: var(--gray-700);
+    font: inherit;
+    text-align: left;
     cursor: pointer;
     transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast)
     }
@@ -1948,17 +1951,30 @@
     background: var(--primary)
     }
 
-.learning-level-option:focus-within {
+.learning-level-option:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px
     }
 
-.learning-level-option input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-    pointer-events: none
+.learning-level-action.is-loading {
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-dark);
+    font-weight: 800
+    }
+
+.learning-level-action.is-loading::after {
+    content: "";
+    position: static;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(8, 145, 178, 0.24);
+    border-top-color: var(--primary);
+    animation: learning-level-spin 0.75s linear infinite
+    }
+
+@keyframes learning-level-spin {
+    to { transform: rotate(360deg) }
     }
 
 .learning-level-code {
@@ -2032,6 +2048,74 @@
 .regular-note-editor {
     display: grid;
     gap: 8px
+    }
+
+.regular-extra-details {
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    background: var(--gray-50)
+    }
+
+.regular-extra-details > summary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    color: var(--gray-700);
+    cursor: pointer;
+    list-style: none
+    }
+
+.regular-extra-details > summary::-webkit-details-marker {
+    display: none
+    }
+
+.regular-extra-details > summary span {
+    font-size: 13px;
+    font-weight: 800
+    }
+
+.regular-extra-details > summary small {
+    color: var(--gray-500);
+    font-size: 11px;
+    font-weight: 600
+    }
+
+.regular-extra-details > summary::after {
+    content: "+";
+    flex: 0 0 auto;
+    color: var(--primary-dark);
+    font-size: 18px;
+    font-weight: 700
+    }
+
+.regular-extra-details[open] > summary::after {
+    content: "−"
+    }
+
+.regular-extra-details > summary:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm)
+    }
+
+.regular-extra-details .regular-note-editor {
+    padding: 0 12px 12px
+    }
+
+.regular-absence-action-copy {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid var(--feature-checkpoint-border);
+    border-radius: var(--radius-sm);
+    background: var(--feature-checkpoint-bg);
+    color: var(--feature-checkpoint-dark);
+    font-size: 13px;
+    line-height: 1.5
     }
 
 .regular-note-editor textarea, .student-detail-panel .comment-edit {
@@ -2134,6 +2218,26 @@
     font-size: 13px
     }
 
+.regular-ai-empty {
+    align-items: center
+    }
+
+.regular-ai-visual {
+    flex: 0 0 auto;
+    width: 76px;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    border: 1px solid rgba(8, 145, 178, 0.14);
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+    box-shadow: var(--shadow-sm)
+    }
+
+[data-theme="dark"] .regular-ai-visual {
+    opacity: 0.82;
+    filter: brightness(0.72) saturate(0.9)
+    }
+
 .regular-absent-note {
     margin-top: 14px;
     border-style: solid;
@@ -2174,12 +2278,51 @@
     gap: 8px
     }
 
-.action-bar .batch-action-buttons > .btn, .action-bar .batch-overflow > summary.btn {
+.action-bar .batch-action-buttons > .btn, .action-bar .batch-overflow > summary.btn, .action-bar .batch-level-menu > summary.btn {
     flex: 0 0 auto
     }
 
 .batch-overflow .detail-menu-popover {
     min-width: 220px
+    }
+
+.batch-level-popover {
+    right: auto;
+    left: 0;
+    min-width: 270px
+    }
+
+.batch-level-menu-title {
+    padding: 8px 12px 6px;
+    color: var(--gray-500);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase
+    }
+
+.batch-level-action {
+    min-height: 44px;
+    gap: 10px
+    }
+
+.batch-level-code {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--gray-100);
+    color: var(--primary-dark);
+    font-size: 11px;
+    font-weight: 900
+    }
+
+.batch-level-menu.is-disabled > summary {
+    cursor: not-allowed;
+    opacity: 0.62
     }
 
 @media (max-width: 1100px) {
@@ -2290,7 +2433,15 @@
     grid-column: 3;
     grid-row: 2
     }
-.action-bar .batch-action-buttons > .btn, .action-bar .batch-overflow > summary.btn {
+.batch-level-menu {
+    grid-column: 1/-1
+    }
+.batch-level-popover {
+    right: 0;
+    left: 0;
+    min-width: 100%
+    }
+.action-bar .batch-action-buttons > .btn, .action-bar .batch-overflow > summary.btn, .action-bar .batch-level-menu > summary.btn {
     width: 100%;
     min-height: 44px
     }

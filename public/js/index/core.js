@@ -22,18 +22,19 @@ async function fetchJSON(url, body) {
         }
 
 function cleanDirectAiResponse(content) {
-            let cleaned = String(content || '').trim().replaceAll('"', '').replaceAll("'", '');
-            if (cleaned.startsWith('-')) cleaned = cleaned.slice(1).trim();
-            return cleaned.startsWith('<p>') ? cleaned : `<p>${cleaned}</p>`;
+            const cleaned = app.normalizeDirectAiComment(content);
+            return `<p>${app.escapeHtml(cleaned)}</p>`;
         }
 
 function shouldUseDirectAiFallback(data) {
-            return data?.comment && /error code:\s*522|Lỗi AI .*522/.test(data.comment);
+            return !!data?.direct_fallback || (data?.comment && /error code:\s*522|Lỗi AI .*522/.test(data.comment));
         }
 
-async function callDirectAntigravity(model, apiKey, prompt, thinkingLevel = 'high') {
+async function callDirectAntigravity(model, apiKey, promptOrMessages, thinkingLevel = 'high') {
             if (!apiKey) throw new Error('Vui lòng nhập API Key trong phần Cấu hình');
-            const body = { model, messages: [{ role: 'user', content: prompt }] };
+            const isMessages = Array.isArray(promptOrMessages)
+                && promptOrMessages.every(item => item && typeof item === 'object' && item.role && Object.prototype.hasOwnProperty.call(item, 'content'));
+            const body = { model, messages: isMessages ? promptOrMessages : [{ role: 'user', content: promptOrMessages }] };
             if (thinkingLevel && thinkingLevel !== 'off') {
                 body.reasoning_effort = thinkingLevel;
                 body.reasoning = { effort: thinkingLevel };
@@ -58,38 +59,106 @@ async function callDirectAntigravity(model, apiKey, prompt, thinkingLevel = 'hig
             }
             const content = payload?.choices?.[0]?.message?.content;
             if (!content) throw new Error('AI không trả về nội dung');
-            return { comment: app.cleanDirectAiResponse(content) };
+            return content;
         }
 
-function formatHomeworkStatusForPrompt(homeworkStatus) {
-            if (!homeworkStatus || homeworkStatus.shouldMention === false) return '';
-            const previousSession = homeworkStatus.previous_session || homeworkStatus.previousSession;
-            const previousSessionLabel = previousSession ? `buổi ${previousSession}` : 'buổi trước';
-            if (homeworkStatus.submitted === true) {
-                const markedText = homeworkStatus.marked ? 'Bài đã được chấm/ghi nhận trên LMS.' : 'Bài đã được ghi nhận đã nộp trên LMS.';
-                const scoreText = homeworkStatus.score != null && String(homeworkStatus.score).trim() !== '' ? ` Điểm hiện có: ${homeworkStatus.score}.` : '';
-                return `Học sinh ĐÃ NỘP BTVN ${previousSessionLabel}. ${markedText}${scoreText}`;
-            }
-            if (homeworkStatus.submitted === false) {
-                return `Chưa thấy học sinh nộp BTVN ${previousSessionLabel} trên LMS.`;
-            }
-            return '';
+function stripDirectCommentMarkup(value) {
+            return String(value || '')
+                .replace(/^```(?:\w+)?\s*/i, '')
+                .replace(/\s*```$/i, '')
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/^\s*(?:nhận xét|noi dung nhan xet)\s*:\s*/i, '')
+                .replace(/^\s*[-–]\s+/, '')
+                .replace(/\s+/g, ' ')
+                .trim();
         }
 
-function buildDirectCommentPrompt(body) {
-            const studentName = body.student_name || '';
-            const shortName = studentName ? studentName.trim().split(/\s+/).pop() : 'em';
-            const pastComments = (body.past_slots || []).map(slot => {
-                const content = (slot.commentByAreas || []).find(area => area.type === 'CONTENT' && area.content)?.content || '';
-                return content ? `- Buổi ${slot.index || '?'}: ${content}` : '';
-            }).filter(Boolean).join('\n') || 'Buổi đầu tiên';
-            const localNote = body.teacher_note ?? body.teacherNote ?? (body.student_id ? app.getRegularNoteValue(body.student_id) : '');
-            const notes = `${body.is_late ? 'Học sinh đi học muộn buổi này.\n' : ''}${localNote || 'Chưa có ghi chú bổ sung từ giáo viên'}`;
-            const learningLevel = app.normalizeLearningLevel(body.learning_level ?? body.learningLevel);
-            const learningLevelInfo = app.LEARNING_LEVELS[learningLevel];
-            const lengthGuide = body.comment_length === 'short' ? '2-3 câu ngắn gọn' : body.comment_length === 'long' ? '4-5 câu chi tiết' : '3-4 câu';
-            const homeworkStatusLine = app.formatHomeworkStatusForPrompt(body.homework_status || body.homeworkStatus);
-            return `Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét ngắn gọn cho học sinh gửi phụ huynh, theo văn phong giáo viên nhắn trong nhóm Zalo.\n\nHỌC SINH: ${studentName} (gọi: ${shortName})\nNỘI DUNG BUỔI HỌC: ${body.session_summary || 'Thực hành lập trình'}\nNHẬN XÉT BUỔI TRƯỚC: ${pastComments}\nMỨC ĐỘ NẮM BÀI: ${learningLevelInfo.code} — ${learningLevelInfo.label}. ${learningLevelInfo.prompt}\nGHI CHÚ BỔ SUNG TỪ GIÁO VIÊN: ${notes}\n${homeworkStatusLine ? `TÌNH TRẠNG BTVN BUỔI TRƯỚC: ${homeworkStatusLine}\n` : ''}\nHƯỚNG DẪN VIẾT:\n- Viết ${lengthGuide}, mỗi câu nối tiếp tự nhiên.\n- Câu 1: học sinh đi học đúng giờ/muộn và mức độ tuân thủ nội quy lớp học.\n- Câu tiếp theo: bắt buộc diễn đạt mức độ nắm bài bằng hành vi có thể quan sát: tự vận dụng, chủ động hỏi lại, cần gợi ý hay cần hỗ trợ sát. Kết hợp ghi chú giáo viên làm bằng chứng hoặc ngoại lệ.\n- Không viết nguyên văn mã L1/L2/L3/L4 hoặc từ level trong nhận xét gửi phụ huynh. Không dùng “học bình thường”, “mức bình thường”, “học ổn”, “thực hành ở mức ổn” hoặc “không có vấn đề đặc biệt” làm đánh giá; phải nói rõ con hiểu đến đâu, tự làm được không và cần hỗ trợ thế nào.\n- Câu cuối: động viên nếu học tốt; hoặc nhắc phụ huynh hỗ trợ/nhắc nhở nếu còn vấn đề. Chỉ nhắc BTVN/ôn bài khi có dòng TÌNH TRẠNG BTVN BUỔI TRƯỚC hoặc ghi chú cho thấy cần, không bắt buộc nhắc BTVN ở mọi nhận xét.\n- Nếu có dòng TÌNH TRẠNG BTVN BUỔI TRƯỚC: học sinh ĐÃ NỘP thì có thể ghi nhận ngắn gọn; nếu chưa thấy nộp thì nhắc rõ phụ huynh hỗ trợ con bổ sung/hoàn thiện bài đầy đủ hơn.\n- Nếu không có dòng TÌNH TRẠNG BTVN BUỔI TRƯỚC thì không tự bịa và không đề cập BTVN.\n- KHÔNG lặp lại chi tiết nội dung buổi học trong nhận xét cá nhân. Nội dung buổi học chỉ dùng để hiểu bối cảnh. Tuyệt đối không viết kiểu: \"Trong buổi học về ...\", \"về xây dựng ...\", hoặc nhắc lại tên bài/chủ đề cụ thể.\n- Thay bằng câu chung như: \"Trong buổi học, con luôn tập trung tốt, hiểu và nắm rõ các nội dung được học, con thực hành nhanh chóng và chính xác, không gặp vướng mắc gì.\"\n- Dùng em hoặc ${shortName} để gọi học sinh; dùng con khi nói về học sinh với phụ huynh.\n- Nếu ghi chú có vấn đề, diễn đạt nhẹ nhàng nhưng rõ ràng: nói chuyện riêng/mất tập trung, làm việc riêng, thực hành chậm, thiếu BTVN, thầy phải nhắc nhở.\n- Không viết markdown, không bullet list, không tiêu đề.\n\nVÍ DỤ:\n${shortName} đi học đúng giờ và tuân thủ tốt nội quy lớp học. Trong buổi học, con luôn tập trung tốt, hiểu và nắm rõ các nội dung được học, con thực hành nhanh chóng và chính xác, không gặp vướng mắc gì. ${shortName} hoàn thành nội dung bài học theo đúng tiến độ của lớp. Cố gắng phát huy ở các buổi học tiếp theo.\n\n${shortName} đi học đúng giờ và nhìn chung tuân thủ nội quy lớp học. Trong buổi học, con tập trung theo dõi bài, nắm được nội dung chính và thao tác lập trình theo hướng dẫn. Tuy nhiên, đôi lúc con còn nói chuyện riêng và mất tập trung nên thầy cần nhắc nhở thêm trong giờ học. Về nhà, ${shortName} nên ôn lại bài và cố gắng tập trung hơn trong các buổi học tới.\n${body.custom_prompt ? `\nYÊU CẦU THÊM: ${body.custom_prompt}\n` : ''}\nCHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT, KHÔNG GIẢI THÍCH.`;
+function normalizeDirectAiComment(value) {
+            let cleaned = app.stripDirectCommentMarkup(value);
+            const pairs = [['"', '"'], ["'", "'"], ['“', '”'], ['‘', '’']];
+            for (const [start, end] of pairs) {
+                if (cleaned.startsWith(start) && cleaned.endsWith(end) && cleaned.length > start.length + end.length) {
+                    cleaned = cleaned.slice(start.length, -end.length).trim();
+                    break;
+                }
+            }
+            return cleaned;
+        }
+
+function normalizeDirectForMatch(value) {
+            return app.stripDirectCommentMarkup(value)
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/đ/g, 'd')
+                .replace(/Đ/g, 'D')
+                .toLowerCase();
+        }
+
+function countDirectSentences(value) {
+            const text = app.stripDirectCommentMarkup(value);
+            if (!text) return 0;
+            return text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(item => item.trim()).filter(Boolean).length || 0;
+        }
+
+function validateDirectComment(value, policy = {}) {
+            const plain = app.stripDirectCommentMarkup(value);
+            const normalized = app.normalizeDirectForMatch(plain);
+            const issues = [];
+            const requiredConcepts = policy.requiredConcepts || policy.required_concepts || [];
+            const bannedPatterns = policy.bannedPatterns || policy.banned_patterns || [];
+            const behaviorPatterns = policy.behaviorPatterns || policy.behavior_patterns || [];
+            const allowedBehaviorPatterns = policy.allowedBehaviorPatterns || policy.allowed_behavior_patterns || [];
+            const absenceLearningPatterns = policy.absenceLearningPatterns || policy.absence_learning_patterns || [];
+            const attendanceStatus = policy.attendanceStatus || policy.attendance_status || 'UNKNOWN';
+            const allowHomework = policy.allowHomework ?? policy.allow_homework ?? false;
+            const mode = policy.mode || 'quick';
+            const minSentences = Number(policy.minSentences ?? policy.min_sentences ?? 1);
+            const maxSentences = Number(policy.maxSentences ?? policy.max_sentences ?? 6);
+
+            if (!plain) issues.push('Nhận xét đang trống.');
+            if (/```|\*\*|^\s*#{1,6}\s|(?:^|\n)\s*[-*]\s+/m.test(String(value || ''))) issues.push('Nhận xét chứa markdown hoặc danh sách.');
+            if (/\b(?:l[1-4]|level)\b/i.test(normalized)) issues.push('Nhận xét làm lộ mã level nội bộ.');
+            if (bannedPatterns.some(pattern => new RegExp(pattern, 'i').test(normalized))) issues.push('Nhận xét dùng cụm đánh giá mơ hồ.');
+
+            requiredConcepts.forEach(concept => {
+                const matched = (concept.patterns || []).some(pattern => new RegExp(pattern, 'i').test(normalized));
+                if (!matched) issues.push(`Thiếu ${concept.label}.`);
+            });
+
+            if (!allowHomework && /\bbtvn\b|bai tap ve nha/.test(normalized)) issues.push('Nhận xét nhắc BTVN khi không có dữ kiện.');
+            const hasUnsupportedBehavior = behaviorPatterns.some(pattern =>
+                new RegExp(pattern, 'i').test(normalized) && !allowedBehaviorPatterns.includes(pattern));
+            if (hasUnsupportedBehavior) {
+                issues.push('Nhận xét tự suy diễn hành vi hoặc nội quy.');
+            }
+
+            if (attendanceStatus === 'ATTENDED' && !/dung gio/.test(normalized)) issues.push('Thiếu thông tin đi học đúng giờ.');
+            if (attendanceStatus === 'LATE_ARRIVED' && !/(di hoc|den (lop )?).*(muon|tre)/.test(normalized)) issues.push('Thiếu thông tin đi học muộn.');
+            if (attendanceStatus === 'ABSENT_WITH_NOTICE' && !/vang.*co phep/.test(normalized)) issues.push('Thiếu thông tin vắng có phép.');
+            if (attendanceStatus === 'ABSENT' && !/vang (hoc|buoi)/.test(normalized)) issues.push('Thiếu thông tin vắng học.');
+            if (attendanceStatus === 'UNKNOWN' && /(dung gio|di hoc muon|den lop muon|vang hoc|vang co phep)/.test(normalized)) {
+                issues.push('Nhận xét tự suy diễn tình trạng chuyên cần.');
+            }
+            if (mode === 'absence' && absenceLearningPatterns.some(pattern => new RegExp(pattern, 'i').test(normalized))) {
+                issues.push('Nhận xét học sinh vắng không được đánh giá mức độ nắm bài.');
+            }
+
+            const sentenceCount = app.countDirectSentences(plain);
+            if (sentenceCount < minSentences || sentenceCount > maxSentences) {
+                issues.push(`Độ dài chưa phù hợp (${sentenceCount} câu; cần ${minSentences}–${maxSentences} câu).`);
+            }
+            return { valid: issues.length === 0, issues };
+        }
+
+function buildDirectRepairMessages(messages, originalComment, issues) {
+            return [
+                ...messages,
+                { role: 'assistant', content: app.normalizeDirectAiComment(originalComment) || '(không có nội dung)' },
+                {
+                    role: 'user',
+                    content: `Bản nháp trên chưa đạt vì:\n- ${issues.join('\n- ')}\nHãy viết lại toàn bộ nhận xét, sửa đúng các lỗi này, vẫn chỉ dùng dữ kiện ban đầu và chỉ trả về đoạn nhận xét.`
+                }
+            ];
         }
 
 function buildDirectCheckpointPrompt(body) {
@@ -101,13 +170,58 @@ function buildDirectCheckpointPrompt(body) {
 async function maybeDirectAiFallback(url, body, data) {
             if (!app.shouldUseDirectAiFallback(data)) return data;
             const model = body.model_id === '__custom__' ? (body.custom_model_id || 'claude-sonnet-4-6') : (body.model_id || 'claude-sonnet-4-6');
-            const prompt = url.includes('generate_checkpoint_comment') ? app.buildDirectCheckpointPrompt(body) : app.buildDirectCommentPrompt(body);
-            return app.callDirectAntigravity(
-                model,
-                body.ai_api_key || body.api_key || localStorage.getItem('ai_api_key') || '',
-                prompt,
-                body.thinking_level || 'high'
-            );
+            const apiKey = body.ai_api_key || body.api_key || localStorage.getItem('ai_api_key') || '';
+            const thinkingLevel = body.thinking_level || 'high';
+
+            if (data.direct_fallback) {
+                const fallback = data.direct_fallback;
+                const messages = fallback.messages || [];
+                const policy = fallback.validation_policy || fallback.validationPolicy || {};
+                const safeComment = fallback.safe_comment || fallback.safeComment || '<p>Không thể tạo nhận xét.</p>';
+                let accumulatedIssues = [];
+                try {
+                    const firstContent = await app.callDirectAntigravity(model, apiKey, messages, thinkingLevel);
+                    const firstValidation = app.validateDirectComment(firstContent, policy);
+                    if (firstValidation.valid) {
+                        return {
+                            comment: app.cleanDirectAiResponse(firstContent),
+                            generation_meta: { source: 'ai', transport: 'direct' }
+                        };
+                    }
+
+                    accumulatedIssues = firstValidation.issues;
+                    const repairMessages = app.buildDirectRepairMessages(messages, firstContent, firstValidation.issues);
+                    const repairedContent = await app.callDirectAntigravity(model, apiKey, repairMessages, thinkingLevel);
+                    const repairedValidation = app.validateDirectComment(repairedContent, policy);
+                    if (repairedValidation.valid) {
+                        return {
+                            comment: app.cleanDirectAiResponse(repairedContent),
+                            generation_meta: {
+                                source: 'ai_repair',
+                                transport: 'direct',
+                                validation_issues: firstValidation.issues
+                            }
+                        };
+                    }
+                    accumulatedIssues = [...new Set([...firstValidation.issues, ...repairedValidation.issues])];
+                } catch (error) {
+                    accumulatedIssues = [...accumulatedIssues, `Direct AI thất bại: ${error?.message || 'Không xác định'}`];
+                }
+
+                return {
+                    comment: safeComment,
+                    generation_meta: {
+                        source: 'safe_template',
+                        transport: 'direct',
+                        validation_issues: accumulatedIssues
+                    }
+                };
+            }
+
+            if (!url.includes('generate_checkpoint_comment')) return data;
+            const prompt = app.buildDirectCheckpointPrompt(body);
+            const content = await app.callDirectAntigravity(model, apiKey, prompt, thinkingLevel);
+            return { comment: app.cleanDirectAiResponse(content) };
         }
 
 function getPresentStudents() {
@@ -595,8 +709,12 @@ Object.assign(app, {
     cleanDirectAiResponse,
     shouldUseDirectAiFallback,
     callDirectAntigravity,
-    formatHomeworkStatusForPrompt,
-    buildDirectCommentPrompt,
+    stripDirectCommentMarkup,
+    normalizeDirectAiComment,
+    normalizeDirectForMatch,
+    countDirectSentences,
+    validateDirectComment,
+    buildDirectRepairMessages,
     buildDirectCheckpointPrompt,
     maybeDirectAiFallback,
     getPresentStudents,

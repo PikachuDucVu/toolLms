@@ -16,7 +16,7 @@ initTheme();
 initKeyboardShortcuts();
 
 // Init
-        const managedDetailsSelector = 'details.toolbar-menu, details.quick-template-menu, details.detail-overflow, details.batch-overflow';
+        const managedDetailsSelector = 'details.toolbar-menu, details.quick-template-menu, details.detail-overflow, details.batch-overflow, details.batch-level-menu';
         const managedDetailsOpenSelector = managedDetailsSelector.split(',').map(selector => `${selector.trim()}[open]`).join(',');
         document.addEventListener('click', event => {
             const target = event.target instanceof Element ? event.target : null;
@@ -88,6 +88,7 @@ Object.assign(window, {
     exportToCSV: app.exportToCSV,
     filterStudents: app.filterStudents,
     generateCheckpointComment: app.generateCheckpointComment,
+    generateAtLearningLevel: app.generateAtLearningLevel,
     generateSingle: app.generateSingle,
     hideConfirmModal: app.hideConfirmModal,
     hideCopyModal: app.hideCopyModal,
@@ -121,6 +122,7 @@ Object.assign(window, {
     saveConfig: app.saveConfig,
     saveNote: app.saveNote,
     selectRegularStudent: app.selectRegularStudent,
+    setLearningLevelForAll: app.setLearningLevelForAll,
     setCheckpointBranch: app.setCheckpointBranch,
     showConfirmModal: app.showConfirmModal,
     showPastComments: app.showPastComments,

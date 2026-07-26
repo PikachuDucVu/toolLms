@@ -98,10 +98,14 @@ function getRegularAssessmentStatus(studentId) {
 
 function snapshotRegularStudent(att) {
             const assessment = app.getRegularAssessmentDraft(att.student.id);
+            const attendanceStatus = att.status === 'ATTENDED' || att.status === 'LATE_ARRIVED' || att.status === 'ABSENT_WITH_NOTICE'
+                ? att.status
+                : 'ABSENT';
             return {
                 attendanceId: att._id,
                 studentId: att.student.id,
                 studentName: att.student.fullName || '',
+                attendanceStatus,
                 isLate: att.status === 'LATE_ARRIVED',
                 assessment,
                 pastSlots: app.getPastComments(att.student.id)
@@ -269,8 +273,9 @@ function getRegularStudentPreview(att) {
             const preview = [studentState.note, studentState.generatedComment, studentState.existingComment]
                 .map(app.stripHtmlText)
                 .find(Boolean);
-            if (studentState.assessmentStatus.loading) return 'Đang tải mức độ nắm bài và ghi chú đã lưu...';
+            if (studentState.assessmentStatus.loading) return studentState.isPresent ? 'Đang tải mức độ nắm bài và ghi chú đã lưu...' : 'Đang tải ghi chú đã lưu...';
             if (studentState.assessmentStatus.error) return 'Không tải được đánh giá — vui lòng thử lại';
+            if (!studentState.isPresent) return preview || 'Chưa có nhận xét chuyên cần';
             return preview || studentState.learningLevelInfo.help;
         }
 
@@ -295,7 +300,7 @@ function buildRegularStudentListItem(att, inlineDetail = '') {
                                 <span class="student-list-badges">
                                     <span class="badge ${studentState.attendance.badgeClass}">${studentState.attendance.text}</span>
                                     <span class="badge ${studentState.progress.badgeClass}">${studentState.progress.text}</span>
-                                    <span class="badge badge-learning-level ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error) ? 'is-loading' : ''}" id="student-level-badge-${domId}">${studentState.assessmentStatus.loading ? 'Đang tải đánh giá' : studentState.assessmentStatus.error ? 'Không tải được' : `${studentState.learningLevelInfo.code} · ${studentState.learningLevelInfo.shortLabel}`}</span>
+                                    ${studentState.isPresent ? `<span class="badge badge-learning-level ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error) ? 'is-loading' : ''}" id="student-level-badge-${domId}">${studentState.assessmentStatus.loading ? 'Đang tải đánh giá' : studentState.assessmentStatus.error ? 'Không tải được' : `${studentState.learningLevelInfo.code} · ${studentState.learningLevelInfo.shortLabel}`}</span>` : ''}
                                     ${studentState.hasRateScore ? '<span class="badge badge-gray badge-rate-score">Điểm NL</span>' : ''}
                                 </span>
                                 <span class="student-list-preview ${previewIsEmpty ? 'is-empty' : ''}" id="student-preview-${domId}">${app.escapeHtml(preview)}</span>
@@ -320,9 +325,8 @@ function buildRegularStudentDetail(att, idx) {
             const cleanGeneratedComment = app.stripHtmlText(studentState.generatedComment);
             const hasAnyCopyableComment = !!(studentState.generatedComment || studentState.existingComment);
             const actionsDisabled = app.isRegularOperationActive() || studentState.assessmentStatus.loading || studentState.assessmentStatus.error;
-            const generateLabel = studentState.generatedComment
-                ? 'Tạo lại nhận xét'
-                : studentState.isPresent ? 'Tạo nhận xét' : 'Tạo nhận xét cho học sinh vắng';
+            const isGenerating = state.regularStudentBusy.has(studentState.studentId);
+            const absenceGenerateLabel = isGenerating ? 'Đang tạo...' : studentState.generatedComment ? 'Tạo lại nhận xét vắng' : 'Tạo nhận xét vắng';
 
             return `
                 <div class="student-detail-header">
@@ -333,7 +337,7 @@ function buildRegularStudentDetail(att, idx) {
                             <div class="student-detail-meta">
                                 <span class="badge ${studentState.attendance.badgeClass}">${studentState.attendance.text}</span>
                                 <span class="badge ${studentState.progress.badgeClass}">${studentState.progress.text}</span>
-                                <span class="badge badge-learning-level ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error) ? 'is-loading' : ''}" id="regular-level-badge-${domId}">${studentState.assessmentStatus.loading ? 'Đang tải đánh giá' : studentState.assessmentStatus.error ? 'Không tải được' : `${studentState.learningLevelInfo.code} · ${studentState.learningLevelInfo.shortLabel}`}</span>
+                                ${studentState.isPresent ? `<span class="badge badge-learning-level ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error) ? 'is-loading' : ''}" id="regular-level-badge-${domId}">${studentState.assessmentStatus.loading ? 'Đang tải đánh giá' : studentState.assessmentStatus.error ? 'Không tải được' : `${studentState.learningLevelInfo.code} · ${studentState.learningLevelInfo.shortLabel}`}</span>` : ''}
                                 ${studentState.hasRateScore ? '<span class="badge badge-gray">Đã có điểm năng lực</span>' : ''}
                             </div>
                         </div>
@@ -362,60 +366,81 @@ function buildRegularStudentDetail(att, idx) {
                         <button type="button" class="btn-link" onclick="showPastComments('${studentIdJs}', '${studentNameJs}')">Xem buổi trước</button>
                     </div>
                     <div class="regular-assessment-editor" aria-busy="${studentState.assessmentStatus.loading}">
-                        <fieldset class="learning-level-fieldset" ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error || app.isRegularOperationActive()) ? 'disabled' : ''}>
-                            <legend class="learning-level-legend">
-                                <span>Mức độ nắm bài</span>
-                                <small>${studentState.assessmentStatus.loading ? 'Đang tải đánh giá đã lưu...' : studentState.assessmentStatus.error ? 'Vui lòng thử tải lại' : 'Chọn mức để tự lưu; AI chỉ tạo khi nhấn nút'}</small>
-                            </legend>
-                            <div class="learning-level-grid">
-                                ${Object.entries(app.LEARNING_LEVELS).map(([value, info]) => `
-                                    <label class="learning-level-option ${studentState.learningLevel === value ? 'is-selected' : ''}">
-                                        <input type="radio" name="learning-level-${domId}" value="${value}"
-                                            ${studentState.learningLevel === value ? 'checked' : ''}
-                                            onchange="onRegularLearningLevelChange('${studentIdJs}', this.value)">
-                                        <span class="learning-level-code">${info.code}</span>
-                                        <span class="learning-level-copy">
-                                            <strong>${info.label}</strong>
-                                            <small>${info.help}</small>
-                                        </span>
-                                    </label>
-                                `).join('')}
-                            </div>
-                        </fieldset>
-                        <div class="regular-note-editor">
-                            <label class="regular-note-label" for="note-${domId}">
-                                <span>Ghi chú bổ sung</span>
-                                <small>Không bắt buộc</small>
-                            </label>
-                            <textarea id="note-${domId}" rows="2" placeholder="Ví dụ: chưa hiểu một phần nhưng chủ động hỏi; thực hành chậm ở một số bước..."
-                                ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error || app.isRegularOperationActive()) ? 'disabled' : ''}
-                                oninput="onRegularNoteInput('${studentIdJs}', this.value)">${app.escapeHtml(studentState.note)}</textarea>
-                            <div class="regular-note-toolbar">
-                                <div class="regular-note-toolbar-left">
-                                    ${studentState.assessmentStatus.error ? `
-                                        <button type="button" class="btn btn-sm btn-outline" onclick="retryRegularAssessments()">Thử tải lại</button>
-                                    ` : studentState.assessmentStatus.loading ? '' : `
-                                        <details class="quick-template-menu">
-                                            <summary class="btn btn-sm btn-outline">Mẫu ghi chú nhanh</summary>
-                                            <div class="quick-template-popover">
-                                                <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'good'); closeDetailsMenu(this)">Tự làm tốt</button>
-                                                <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'asks'); closeDetailsMenu(this)">Chủ động hỏi</button>
-                                                <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'needwork'); closeDetailsMenu(this)">Cần gợi ý</button>
-                                                <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'naughty'); closeDetailsMenu(this)">Hay mất tập trung</button>
-                                            </div>
-                                        </details>
-                                    `}
+                        ${studentState.isPresent ? `
+                            <fieldset class="learning-level-fieldset" ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error || app.isRegularOperationActive()) ? 'disabled' : ''}>
+                                <legend class="learning-level-legend">
+                                    <span>Chọn mức và tạo ngay</span>
+                                    <small>${studentState.assessmentStatus.loading ? 'Đang tải đánh giá đã lưu...' : studentState.assessmentStatus.error ? 'Vui lòng thử tải lại' : 'L3 là mặc định · bấm một mức để lưu và tạo'}</small>
+                                </legend>
+                                <div class="learning-level-grid" role="group" aria-label="Chọn mức độ nắm bài và tạo nhận xét cho ${studentNameAttr}">
+                                    ${Object.entries(app.LEARNING_LEVELS).sort(([, left], [, right]) => left.code.localeCompare(right.code)).map(([value, info]) => {
+                                        const isSelected = studentState.learningLevel === value;
+                                        const isCurrentGenerating = isGenerating && isSelected;
+                                        return `
+                                        <button type="button"
+                                            class="learning-level-option learning-level-action ${isSelected ? 'is-selected' : ''} ${isCurrentGenerating ? 'is-loading' : ''}"
+                                            id="level-action-${domId}-${value}"
+                                            data-learning-level-student="${domId}"
+                                            data-level-value="${value}"
+                                            aria-pressed="${isSelected}"
+                                            aria-busy="${isCurrentGenerating}"
+                                            aria-label="Tạo nhận xét ${info.code}: ${info.label} cho ${studentNameAttr}"
+                                            onclick="generateAtLearningLevel('${studentIdJs}', '${value}')">
+                                            ${isCurrentGenerating ? 'Đang tạo...' : `
+                                                <span class="learning-level-code">${info.code}</span>
+                                                <span class="learning-level-copy">
+                                                    <strong>${info.label}</strong>
+                                                    <small>${info.help}</small>
+                                                </span>
+                                            `}
+                                        </button>
+                                    `;}).join('')}
                                 </div>
-                                <div class="regular-note-toolbar-right">
-                                    <span class="assessment-save-status ${studentState.assessmentStatus.className}" id="assessment-status-${domId}" aria-live="polite">${studentState.assessmentStatus.text}</span>
-                                    <button type="button" class="btn btn-sm btn-outline" id="save-note-${domId}" onclick="saveAssessment('${studentIdJs}')"
-                                        ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error || app.isRegularOperationActive()) ? 'disabled' : ''} aria-busy="${state.regularAssessmentSaveBusy.has(studentState.studentId)}">
-                                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.5 12.75 10.5 18l9-13.5"/></svg>
-                                        Lưu đánh giá
-                                    </button>
+                            </fieldset>
+                        ` : `
+                            <div class="regular-absence-action-copy">Không đánh giá level cho học sinh vắng. Nhận xét sẽ chỉ nêu tình trạng chuyên cần và nhắc con xem lại bài.</div>
+                        `}
+
+                        <details class="regular-extra-details">
+                            <summary>
+                                <span>Thêm chi tiết</span>
+                                <small>Ghi chú không bắt buộc</small>
+                            </summary>
+                            <div class="regular-note-editor">
+                                <label class="regular-note-label" for="note-${domId}">
+                                    <span>Ghi chú bổ sung</span>
+                                    <small>AI sẽ ưu tiên dữ kiện này</small>
+                                </label>
+                                <textarea id="note-${domId}" rows="2" placeholder="Ví dụ: chưa hiểu một phần nhưng chủ động hỏi; thực hành chậm ở một số bước..."
+                                    ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error || app.isRegularOperationActive()) ? 'disabled' : ''}
+                                    oninput="onRegularNoteInput('${studentIdJs}', this.value)">${app.escapeHtml(studentState.note)}</textarea>
+                                <div class="regular-note-toolbar">
+                                    <div class="regular-note-toolbar-left">
+                                        ${studentState.assessmentStatus.error ? `
+                                            <button type="button" class="btn btn-sm btn-outline" onclick="retryRegularAssessments()">Thử tải lại</button>
+                                        ` : studentState.assessmentStatus.loading ? '' : `
+                                            <details class="quick-template-menu">
+                                                <summary class="btn btn-sm btn-outline">Mẫu ghi chú nhanh</summary>
+                                                <div class="quick-template-popover">
+                                                    <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'good'); closeDetailsMenu(this)">Tự làm tốt</button>
+                                                    <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'asks'); closeDetailsMenu(this)">Chủ động hỏi</button>
+                                                    <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'needwork'); closeDetailsMenu(this)">Cần gợi ý</button>
+                                                    <button type="button" class="menu-action" onclick="applyTemplate('${studentIdJs}', 'naughty'); closeDetailsMenu(this)">Hay mất tập trung</button>
+                                                </div>
+                                            </details>
+                                        `}
+                                    </div>
+                                    <div class="regular-note-toolbar-right">
+                                        <span class="assessment-save-status ${studentState.assessmentStatus.className}" id="assessment-status-${domId}" aria-live="polite">${studentState.assessmentStatus.text}</span>
+                                        <button type="button" class="btn btn-sm btn-outline" id="save-note-${domId}" onclick="saveAssessment('${studentIdJs}')"
+                                            ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error || app.isRegularOperationActive()) ? 'disabled' : ''} aria-busy="${state.regularAssessmentSaveBusy.has(studentState.studentId)}">
+                                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.5 12.75 10.5 18l9-13.5"/></svg>
+                                            Lưu đánh giá
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </details>
                     </div>
                 </div>
 
@@ -429,17 +454,19 @@ function buildRegularStudentDetail(att, idx) {
                         <textarea class="comment-edit" id="comment-${domId}" oninput="updateComment('${studentIdJs}', this.value)">${app.escapeHtml(cleanGeneratedComment)}</textarea>
                     ` : `
                         <div class="regular-ai-empty">
-                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.591-2.591L3.5 12.5l2.096-.813a4.5 4.5 0 0 0 2.591-2.591L9 7l.813 2.096a4.5 4.5 0 0 0 2.591 2.591l2.096.813-2.096.813a4.5 4.5 0 0 0-2.591 2.591Z"/></svg>
+                            <img class="regular-ai-visual" src="/assets/empty-ai-comment.jpg" alt="Minh họa AI tạo nhận xét học sinh" width="640" height="480" loading="lazy" decoding="async">
                             <span>Chưa có bản nháp AI. Hệ thống sẽ dùng mức độ nắm bài và ghi chú bổ sung để tạo nhận xét cụ thể.</span>
                         </div>
                     `}
                 </div>
 
                 <div class="student-detail-actions">
-                    <button type="button" class="btn btn-sm ${studentState.generatedComment ? 'btn-outline' : 'btn-primary'}" onclick="generateSingle('${studentIdJs}', '${studentNameJs}', ${idx})" id="gen-btn-${domId}" ${actionsDisabled ? 'disabled' : ''}>
-                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.591-2.591L3.5 12.5l2.096-.813a4.5 4.5 0 0 0 2.591-2.591L9 7l.813 2.096a4.5 4.5 0 0 0 2.591 2.591l2.096.813-2.096.813a4.5 4.5 0 0 0-2.591 2.591Z"/></svg>
-                        ${generateLabel}
-                    </button>
+                    ${!studentState.isPresent ? `
+                        <button type="button" class="btn btn-sm ${studentState.generatedComment ? 'btn-outline' : 'btn-primary'}" onclick="generateSingle('${studentIdJs}')" id="gen-btn-${domId}" ${actionsDisabled ? 'disabled' : ''} aria-busy="${state.regularStudentBusy.has(studentState.studentId)}">
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.591-2.591L3.5 12.5l2.096-.813a4.5 4.5 0 0 0 2.591-2.591l2.096-.813-2.096-.813a4.5 4.5 0 0 0-2.591-2.591L9 7l-.813 2.096a4.5 4.5 0 0 1-2.591 2.591L3.5 12.5l2.096.813a4.5 4.5 0 0 1 2.591 2.591Z"/></svg>
+                            ${absenceGenerateLabel}
+                        </button>
+                    ` : ''}
                     ${studentState.generatedComment ? `
                         <button type="button" class="btn btn-sm btn-success detail-primary" id="submit-btn-${domId}" onclick="submitSingle('${studentIdJs}', '${attendanceIdJs}')" ${actionsDisabled ? 'disabled' : ''}>
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-8-4-4m0 0L8 8m4-4v12"/></svg>
@@ -544,12 +571,18 @@ function syncRegularDetailPlacement() {
 function refreshRegularAssessmentIndicators(studentId) {
             const domId = app.getRegularStudentDomId(studentId);
             const info = app.LEARNING_LEVELS[app.getRegularLearningLevel(studentId)];
+            const currentLevel = app.getRegularLearningLevel(studentId);
             const status = app.getRegularAssessmentStatus(studentId);
             [`student-level-badge-${domId}`, `regular-level-badge-${domId}`, `review-level-badge-${domId}`].forEach(id => {
                 const badge = document.getElementById(id);
                 if (!badge) return;
                 badge.textContent = status.loading ? 'Đang tải đánh giá' : status.error ? 'Không tải được' : `${info.code} · ${info.shortLabel}`;
                 badge.classList.toggle('is-loading', status.loading || status.error);
+            });
+            document.querySelectorAll(`[data-learning-level-student="${domId}"]`).forEach(button => {
+                const isSelected = button.dataset.levelValue === currentLevel;
+                button.classList.toggle('is-selected', isSelected);
+                button.setAttribute('aria-pressed', String(isSelected));
             });
 
             const statusElement = document.getElementById(`assessment-status-${domId}`);
@@ -679,11 +712,7 @@ function renderStudents(studentList = null) {
                 if (!isFinal && !isCheckpoint) state.selectedRegularStudentId = null;
                 list.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon" aria-hidden="true">
-                            <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:48px;height:48px;opacity:0.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-                            </svg>
-                        </div>
+                        <img class="empty-state-visual" src="/assets/empty-students.jpg" alt="Minh họa danh sách và tiến độ học sinh" width="640" height="480" loading="lazy" decoding="async">
                         <div class="empty-state-text">${state.students.length === 0 ? 'Chưa có học sinh trong buổi này' : 'Không tìm thấy học sinh phù hợp'}</div>
                         ${filtersActive && state.students.length > 0 ? '<button type="button" class="btn btn-sm btn-outline" style="margin-top:12px" onclick="resetStudentFilters()">Xóa bộ lọc</button>' : ''}
                     </div>
@@ -1214,6 +1243,131 @@ async function persistRegularStudentSnapshots(context, studentSnapshots, concurr
             });
         }
 
+async function setLearningLevelForAll(learningLevel) {
+            if (!Object.prototype.hasOwnProperty.call(app.LEARNING_LEVELS, learningLevel)) return;
+            const context = app.captureRegularContext();
+            if (!context) return;
+            if (app.isRegularOperationActive()) {
+                app.showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
+                return;
+            }
+
+            const normalizedLevel = app.normalizeLearningLevel(learningLevel);
+            const levelInfo = app.LEARNING_LEVELS[normalizedLevel];
+            const presentStudents = state.students.filter(app.isPresentAttendance);
+            if (presentStudents.length === 0) {
+                app.showToast('Không có học sinh có mặt để thay đổi level', 'info');
+                return;
+            }
+
+            const previousByStudent = new Map();
+            const successfulIds = new Set();
+            const failures = [];
+            let targets = [];
+            let localDraftsApplied = false;
+            let busyStarted = false;
+
+            try {
+                await app.ensureRegularAssessmentsLoaded(context);
+                if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+
+                targets = presentStudents.filter(att => app.getRegularLearningLevel(att.student.id) !== normalizedLevel);
+                if (targets.length === 0) {
+                    app.showToast(`Tất cả học sinh có mặt đã ở ${levelInfo.code}`, 'info');
+                    return;
+                }
+
+                const draftStudentIds = new Set(targets.filter(att => !!state.generatedComments[att.student.id]).map(att => att.student.id));
+                const existingDraftCount = draftStudentIds.size;
+                const confirmed = await app.confirmDialog({
+                    title: `Đặt ${levelInfo.code} cho cả lớp?`,
+                    message: `Mức độ hiểu bài của ${targets.length} học sinh có mặt sẽ đổi thành ${levelInfo.code} · ${levelInfo.label}.${existingDraftCount ? ` ${existingDraftCount} bản nháp AI hiện có sẽ được giữ nguyên và không tự tạo lại.` : ''}`,
+                    confirmText: `Đặt ${levelInfo.code}`,
+                    cancelText: 'Hủy',
+                    tone: existingDraftCount ? 'warning' : 'info'
+                });
+                if (!confirmed) return;
+                if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+
+                targets.forEach(att => {
+                    const studentId = att.student.id;
+                    previousByStudent.set(studentId, {
+                        hadDraft: Object.prototype.hasOwnProperty.call(state.regularLearningLevelDrafts, studentId),
+                        learningLevel: app.getRegularLearningLevel(studentId),
+                        wasTouched: state.regularAssessmentTouched.has(studentId)
+                    });
+                    state.regularLearningLevelDrafts[studentId] = normalizedLevel;
+                    state.regularAssessmentTouched.add(studentId);
+                });
+                localDraftsApplied = true;
+                state.regularBulkLevelBusy = true;
+                busyStarted = true;
+                app.renderStudents();
+                app.updateStats();
+
+                await app.runWithConcurrency(targets, 3, async att => {
+                    const studentId = att.student.id;
+                    try {
+                        if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
+                        await app.persistStudentAssessment(context, studentId, app.getRegularAssessmentDraft(studentId));
+                        successfulIds.add(studentId);
+                    } catch (error) {
+                        failures.push({
+                            studentId,
+                            studentName: att.student.fullName || '',
+                            message: error?.message || 'Không xác định'
+                        });
+                    }
+                });
+
+                if (!app.isRegularContextCurrent(context)) return;
+                failures.forEach(({ studentId }) => {
+                    const previous = previousByStudent.get(studentId);
+                    if (!previous) return;
+                    if (previous.hadDraft) state.regularLearningLevelDrafts[studentId] = previous.learningLevel;
+                    else delete state.regularLearningLevelDrafts[studentId];
+                    if (previous.wasTouched) state.regularAssessmentTouched.add(studentId);
+                    else state.regularAssessmentTouched.delete(studentId);
+                });
+
+                const successfulDraftCount = Array.from(successfulIds).filter(studentId => draftStudentIds.has(studentId)).length;
+                const draftWarning = successfulDraftCount
+                    ? ` ${successfulDraftCount} bản nháp AI được giữ nguyên; hãy tạo lại để nội dung khớp level mới.`
+                    : '';
+                if (failures.length > 0) {
+                    app.showToast(
+                        `Đã đặt ${levelInfo.code} cho ${successfulIds.size}/${targets.length} học sinh. Không lưu được: ${failures.slice(0, 3).map(item => item.studentName).join(', ')}${failures.length > 3 ? '...' : ''}.${draftWarning}`,
+                        'warning'
+                    );
+                } else {
+                    app.showToast(`Đã đặt ${levelInfo.code} cho ${presentStudents.length} học sinh có mặt.${draftWarning}`, successfulDraftCount ? 'warning' : 'success');
+                }
+            } catch (error) {
+                if (localDraftsApplied && app.isRegularContextCurrent(context)) {
+                    targets.forEach(att => {
+                        const studentId = att.student.id;
+                        if (successfulIds.has(studentId)) return;
+                        const previous = previousByStudent.get(studentId);
+                        if (!previous) return;
+                        if (previous.hadDraft) state.regularLearningLevelDrafts[studentId] = previous.learningLevel;
+                        else delete state.regularLearningLevelDrafts[studentId];
+                        if (previous.wasTouched) state.regularAssessmentTouched.add(studentId);
+                        else state.regularAssessmentTouched.delete(studentId);
+                    });
+                }
+                if (app.isRegularContextCurrent(context)) {
+                    app.showToast('Lỗi đổi level cả lớp: ' + (error.message || 'Không xác định'), 'error');
+                }
+            } finally {
+                if (busyStarted) state.regularBulkLevelBusy = false;
+                app.syncRegularOperationLock();
+                if (app.isRegularContextCurrent(context)) {
+                    app.renderStudents();
+                    app.updateStats();
+                }
+            }
+        }
+
 async function saveAssessment(studentId) {
             const context = app.captureRegularContext();
             if (!context) return;
@@ -1291,6 +1445,7 @@ Object.assign(app, {
     renderStudents,
     persistStudentAssessment,
     persistRegularStudentSnapshots,
+    setLearningLevelForAll,
     saveAssessment,
     saveNote
 });

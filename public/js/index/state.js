@@ -5,6 +5,7 @@ export const state = {
     selectedSlot: null,
     students: [],
     generatedComments: {},
+    generatedCommentMeta: {},
     checkpointScoresCache: {},
     checkpointDescriptionDrafts: {},
     demoScoresCache: {},
@@ -57,6 +58,7 @@ export const state = {
     regularReviewSubmitScopeIds: null,
     regularOperationErrors: {},
     regularBatchBusy: false,
+    regularBulkLevelBusy: false,
     regularRefreshBusy: false,
     regularStudentBusy: new Set(),
 

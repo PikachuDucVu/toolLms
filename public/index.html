@@ -181,11 +181,7 @@
                         </div>
                         <div class="class-list" id="classList" role="listbox" aria-label="Danh sách lớp học">
                             <div class="empty-state">
-                                <div class="empty-state-icon" aria-hidden="true">
-                                    <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:48px;height:48px;opacity:0.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                                    </svg>
-                                </div>
+                                <img class="empty-state-visual compact" src="/assets/empty-classes.jpg" alt="Minh họa danh sách lớp học" width="640" height="480" loading="lazy" decoding="async">
                                 <div class="empty-state-text">Đăng nhập để xem danh sách lớp</div>
                             </div>
                         </div>
@@ -308,11 +304,7 @@
                     </div>
                     <div class="student-grid" id="studentList" role="region" aria-label="Danh sách học sinh">
                         <div class="empty-state">
-                            <div class="empty-state-icon" aria-hidden="true">
-                                <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:48px;height:48px;opacity:0.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-                                </svg>
-                            </div>
+                            <img class="empty-state-visual" src="/assets/empty-students.jpg" alt="Minh họa danh sách và tiến độ học sinh" width="640" height="480" loading="lazy" decoding="async">
                             <div class="empty-state-text">Chọn lớp và buổi học để xem học sinh</div>
                         </div>
                     </div>
@@ -329,6 +321,29 @@
                         <span id="batchActionHint">Chọn lớp và buổi học để bắt đầu</span>
                     </div>
                     <div class="batch-action-buttons">
+                        <details class="batch-level-menu" id="batchLevelMenu">
+                            <summary class="btn btn-outline" id="batchLevelBtn" aria-label="Thay đổi mức độ hiểu bài cho toàn bộ học sinh có mặt" aria-busy="false">
+                                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.5 19.5v-6m5 6v-11m5 11v-8m5 8v-15"/>
+                                </svg>
+                                <span id="batchLevelBtnLabel">Level cả lớp</span>
+                            </summary>
+                            <div class="detail-menu-popover batch-level-popover">
+                                <div class="batch-level-menu-title">Áp dụng cho học sinh có mặt</div>
+                                <button type="button" class="menu-action batch-level-action" data-level-value="needs_support" onclick="closeDetailsMenu(this); setLearningLevelForAll('needs_support')">
+                                    <span class="batch-level-code">L1</span><span>Chưa nắm chắc, cần hỗ trợ</span>
+                                </button>
+                                <button type="button" class="menu-action batch-level-action" data-level-value="needs_prompting" onclick="closeDetailsMenu(this); setLearningLevelForAll('needs_prompting')">
+                                    <span class="batch-level-code">L2</span><span>Đang củng cố, cần gợi ý</span>
+                                </button>
+                                <button type="button" class="menu-action batch-level-action" data-level-value="understands_and_asks" onclick="closeDetailsMenu(this); setLearningLevelForAll('understands_and_asks')">
+                                    <span class="batch-level-code">L3</span><span>Nắm được, chủ động hỏi</span>
+                                </button>
+                                <button type="button" class="menu-action batch-level-action" data-level-value="independent" onclick="closeDetailsMenu(this); setLearningLevelForAll('independent')">
+                                    <span class="batch-level-code">L4</span><span>Nắm vững, tự vận dụng</span>
+                                </button>
+                            </div>
+                        </details>
                         <button class="btn btn-primary" onclick="autoCommentAll()" id="autoCommentBtn" disabled>
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.591-2.591L3.5 12.5l2.096-.813a4.5 4.5 0 0 0 2.591-2.591L9 7l.813 2.096a4.5 4.5 0 0 0 2.591 2.591l2.096.813-2.096.813a4.5 4.5 0 0 0-2.591 2.591Z"/>

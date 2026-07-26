@@ -410,7 +410,7 @@ function autoSelectLatestSlot() {
         }
 
 function isRegularOperationActive() {
-            return state.regularBatchBusy || state.regularRefreshBusy || state.regularStudentBusy.size > 0 || state.regularAssessmentSaveBusy.size > 0;
+            return state.regularBatchBusy || state.regularBulkLevelBusy || state.regularRefreshBusy || state.regularStudentBusy.size > 0 || state.regularAssessmentSaveBusy.size > 0;
         }
 
 function isRegularAssessmentUnavailable() {
@@ -432,6 +432,7 @@ function hasUnsavedRegularWork() {
 function discardRegularWorkState() {
             state.generatedComments = {};
             state.regularAssessmentContextEpoch += 1;
+            state.generatedCommentMeta = {};
             state.regularNoteDrafts = {};
             state.regularLearningLevelDrafts = {};
             state.regularServerSyncedAssessments = {};
@@ -482,11 +483,27 @@ function confirmRegularNavigation(event) {
             return false;
         }
 
+function setBatchLevelMenuDisabled(disabled) {
+            const details = document.getElementById('batchLevelMenu');
+            const summary = document.getElementById('batchLevelBtn');
+            details?.classList.toggle('is-disabled', disabled);
+            if (summary) {
+                summary.setAttribute('aria-disabled', String(disabled));
+                summary.tabIndex = disabled ? -1 : 0;
+                summary.style.pointerEvents = disabled ? 'none' : '';
+            }
+            document.querySelectorAll('#batchLevelMenu .batch-level-action').forEach(button => {
+                button.disabled = disabled;
+            });
+            if (disabled) details?.removeAttribute('open');
+        }
+
 function syncRegularOperationLock() {
             const operationLocked = app.isRegularOperationActive();
             const assessmentBlocked = operationLocked || app.isRegularAssessmentUnavailable();
             const slotSelect = document.getElementById('slotSelect');
             if (slotSelect) slotSelect.disabled = operationLocked;
+            app.setBatchLevelMenuDisabled(assessmentBlocked);
 
             document.querySelectorAll('#regularStudentDetail .learning-level-fieldset, #regularReviewDrawer .learning-level-fieldset').forEach(fieldset => {
                 fieldset.disabled = assessmentBlocked;
@@ -511,6 +528,14 @@ function syncRegularOperationLock() {
                     summary.style.pointerEvents = assessmentBlocked ? 'none' : '';
                 }
                 if (assessmentBlocked) details.removeAttribute('open');
+            });
+            document.querySelectorAll('#regularStudentDetail details.regular-extra-details').forEach(details => {
+                const summary = details.querySelector(':scope > summary');
+                if (summary) {
+                    summary.setAttribute('aria-disabled', String(assessmentBlocked));
+                    summary.tabIndex = assessmentBlocked ? -1 : 0;
+                    summary.style.pointerEvents = assessmentBlocked ? 'none' : '';
+                }
             });
         }
 
@@ -540,6 +565,8 @@ function updateStats() {
                 const submitBtn = document.getElementById('submitAllBtn');
                 const copyBtn = document.getElementById('copyZaloBtn');
                 const reviewBtn = document.getElementById('reviewAllBtn');
+                const batchLevelBtn = document.getElementById('batchLevelBtn');
+                const batchLevelLabel = document.getElementById('batchLevelBtnLabel');
                 const autoLabel = document.getElementById('autoCommentBtnLabel');
                 const submitLabel = document.getElementById('submitAllBtnLabel');
                 const copyLabel = document.getElementById('copyZaloBtnLabel');
@@ -555,6 +582,8 @@ function updateStats() {
                     ? 'Đóng review'
                     : `Review cả lớp · ${batchGenerated} bản nháp`;
                 if (reviewBtn) reviewBtn.style.display = total > 0 ? 'inline-flex' : 'none';
+                if (batchLevelLabel) batchLevelLabel.textContent = state.regularBulkLevelBusy ? 'Đang lưu level...' : `Level cả lớp (${present})`;
+                if (batchLevelBtn) batchLevelBtn.setAttribute('aria-busy', String(state.regularBulkLevelBusy));
                 if (hint) hint.textContent = state.regularAssessmentLoad.loading
                     ? 'Đang tải mức độ nắm bài và ghi chú đã lưu'
                     : `${present} có mặt · ${generated} bản nháp · ${submitted} đã gửi`;
@@ -564,13 +593,14 @@ function updateStats() {
                 if (submitBtn) submitBtn.disabled = operationLocked || assessmentUnavailable || batchGenerated === 0;
                 if (copyBtn) copyBtn.disabled = operationLocked || availableZalo === 0;
                 if (reviewBtn) reviewBtn.disabled = operationLocked || assessmentUnavailable || total === 0;
+                app.setBatchLevelMenuDisabled(operationLocked || assessmentUnavailable || present === 0);
             }
             app.syncRegularOperationLock();
         }
 
 async function deleteComment(studentId) {
             if (!state.generatedComments[studentId]) return;
-            if (app.getCurrentStudentMode() === 'regular' && (state.regularBatchBusy || state.regularStudentBusy.has(studentId))) {
+            if (app.getCurrentStudentMode() === 'regular' && app.isRegularOperationActive()) {
                 app.showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
                 return;
             }
@@ -584,6 +614,7 @@ async function deleteComment(studentId) {
             delete state.generatedComments[studentId];
             delete state.regularOperationErrors[studentId];
             if (state.regularReviewSelectedStudentId === studentId) state.regularReviewSelectedStudentId = null;
+            delete state.generatedCommentMeta[studentId];
             app.saveCheckpointScoresToCache();
             app.saveCheckpointDescriptionsToCache();
             app.renderStudents();
@@ -702,6 +733,7 @@ Object.assign(app, {
     discardRegularWorkState,
     confirmDiscardRegularWork,
     confirmRegularNavigation,
+    setBatchLevelMenuDisabled,
     syncRegularOperationLock,
     updateStats,
     deleteComment,

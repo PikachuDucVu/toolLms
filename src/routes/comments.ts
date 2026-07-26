@@ -38,18 +38,18 @@ commentsRoutes.post("/generate_comment", async (c) => {
   let pastComments = "";
   for (const slot of data.past_slots ?? []) {
     for (const area of slot.commentByAreas ?? []) {
-      if (area.type === "CONTENT" && area.content) pastComments += `- Buổi ${slot.index ?? "?"}: ${area.content}\n`;
+      if (area.type === "CONTENT" && area.content) pastComments = `Buổi ${slot.index ?? "?"}: ${area.content}`;
     }
   }
   const currentTeacherNote = String(data.teacher_note ?? data.teacherNote ?? "").trim();
-  let notesText = currentTeacherNote;
-  if (data.is_late) notesText = `Học sinh đi học muộn buổi này.${notesText ? `\n${notesText}` : ""}`;
 
-  const comment = await generateCommentWithAi(c.env, config, {
+  const generated = await generateCommentWithAi(c.env, config, {
     studentName: String(data.student_name || ""),
     pastComments,
-    notes: notesText,
+    notes: currentTeacherNote,
     learningLevel: normalizeLearningLevel(learningLevel),
+    attendanceStatus: data.attendance_status ?? data.attendanceStatus,
+    isLate: typeof data.is_late === "boolean" ? data.is_late : undefined,
     sessionSummary: String(data.session_summary || ""),
     modelId: data.model_id,
     customModelId: data.custom_model_id,
@@ -59,7 +59,28 @@ commentsRoutes.post("/generate_comment", async (c) => {
     aiApiKey: data.ai_api_key || data.api_key || "",
     homeworkStatus: data.homework_status || data.homeworkStatus,
   });
-  return c.json({ comment });
+  return c.json({
+    comment: generated.comment,
+    ...(generated.error ? { success: false, error: generated.error } : {}),
+    ...(generated.generationMeta
+      ? {
+          generation_meta: {
+            source: generated.generationMeta.source,
+            transport: generated.generationMeta.transport,
+            validation_issues: generated.generationMeta.validationIssues,
+          },
+        }
+      : {}),
+    ...(generated.directFallback
+      ? {
+          direct_fallback: {
+            messages: generated.directFallback.messages,
+            validation_policy: generated.directFallback.validationPolicy,
+            safe_comment: generated.directFallback.safeComment,
+          },
+        }
+      : {}),
+  });
 });
 
 commentsRoutes.post("/generate_checkpoint_comment", async (c) => {

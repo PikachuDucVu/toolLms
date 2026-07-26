@@ -88,11 +88,7 @@ function renderClassList(classes) {
             if (classes.length === 0) {
                 list.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon" aria-hidden="true">
-                            <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:48px;height:48px;opacity:0.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                            </svg>
-                        </div>
+                        <img class="empty-state-visual compact" src="/assets/empty-classes.jpg" alt="Minh họa danh sách lớp học" width="640" height="480" loading="lazy" decoding="async">
                         <div class="empty-state-text">Không có lớp nào</div>
                     </div>
                 `;
@@ -201,11 +197,7 @@ async function selectClass(cls, element) {
                 // Reset student list
                 studentList.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon" aria-hidden="true">
-                            <svg class="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:48px;height:48px;opacity:0.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                            </svg>
-                        </div>
+                        <img class="empty-state-visual" src="/assets/empty-session.jpg" alt="Minh họa lịch chọn buổi học" width="640" height="480" loading="lazy" decoding="async">
                         <div class="empty-state-text">Chọn buổi học để xem học sinh</div>
                     </div>
                 `;
@@ -538,6 +530,7 @@ async function loadSlotStudents() {
             state.selectedSlot = nextSlot;
             state.students = state.selectedSlot.studentAttendance || [];
             state.generatedComments = {};
+            state.generatedCommentMeta = {};
             state.checkpointScoresCache = {};
             state.checkpointDescriptionDrafts = {};
             state.demoScoresCache = {};

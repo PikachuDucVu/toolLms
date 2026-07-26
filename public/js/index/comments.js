@@ -24,15 +24,66 @@ function getPastComments(studentId) {
             return pastSlots;
         }
 
-async function generateSingle(studentId, studentName, idx) {
+function normalizeGenerationMeta(data) {
+            const meta = data?.generation_meta || data?.generationMeta;
+            if (!meta) return null;
+            return {
+                source: meta.source || 'ai',
+                transport: meta.transport || 'server',
+                validationIssues: meta.validation_issues || meta.validationIssues || []
+            };
+        }
+
+function getGenerationLogFields(studentId) {
+            const meta = state.generatedCommentMeta[studentId] || {};
+            return {
+                generation_source: meta.source || 'unknown',
+                transport: meta.transport || 'server',
+                repaired: meta.source === 'ai_repair',
+                validation_issues: Array.isArray(meta.validationIssues) ? meta.validationIssues : []
+            };
+        }
+
+function getNextPendingRegularStudentId(studentId) {
+            const visible = app.getVisibleStudents().filter(app.isPresentAttendance);
+            if (visible.length === 0) return null;
+            const currentIndex = Math.max(visible.findIndex(att => att.student.id === studentId), 0);
+            for (let offset = 1; offset <= visible.length; offset++) {
+                const att = visible[(currentIndex + offset) % visible.length];
+                const id = att.student.id;
+                const existingLmsComment = att.commentByAreas?.some(area =>
+                    area.type === 'CONTENT' && String(area.content || '').replace(/<[^>]*>/g, '').trim());
+                if (!state.generatedComments[id] && !existingLmsComment && !state.regularStudentBusy.has(id)) return id;
+            }
+            return null;
+        }
+
+async function generateRegularComment(studentId, options = {}) {
             const context = app.captureRegularContext();
-            const btn = document.getElementById(`gen-btn-${app.getRegularStudentDomId(studentId)}`);
+            const requestedLevel = options.learningLevel == null ? null : app.normalizeLearningLevel(options.learningLevel);
+            const domId = app.getRegularStudentDomId(studentId);
+            const buttonId = requestedLevel ? `level-action-${domId}-${requestedLevel}` : `gen-btn-${domId}`;
+            const btn = document.getElementById(buttonId);
             const originalButtonHtml = btn?.innerHTML;
+            const previousLevel = app.getRegularLearningLevel(studentId);
+            const wasTouched = state.regularAssessmentTouched.has(studentId);
+            let assessmentCommitted = false;
 
             if (!context) return;
             if (app.isRegularOperationActive()) {
                 app.showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
                 return;
+            }
+
+            if (options.confirmOverwrite && state.generatedComments[studentId]) {
+                const confirmed = await app.confirmDialog({
+                    title: 'Tạo lại nhận xét?',
+                    message: 'Bản nháp hiện tại sẽ được thay thế sau khi AI tạo thành công.',
+                    confirmText: 'Tạo lại',
+                    cancelText: 'Giữ bản nháp',
+                    tone: 'warning'
+                });
+                if (!confirmed) return;
             }
 
             const selectedModel = app.getSelectedModelConfig();
@@ -41,12 +92,20 @@ async function generateSingle(studentId, studentName, idx) {
                 return;
             }
 
+            if (requestedLevel) {
+                state.regularLearningLevelDrafts[studentId] = requestedLevel;
+                state.regularAssessmentTouched.add(studentId);
+                app.refreshRegularAssessmentIndicators(studentId);
+            }
+
             state.regularStudentBusy.add(studentId);
             delete state.regularOperationErrors[studentId];
             app.syncRegularOperationLock();
             app.updateStats();
             if (btn) {
                 btn.disabled = true;
+                btn.classList.add('is-loading');
+                btn.setAttribute('aria-busy', 'true');
                 btn.textContent = 'Đang tạo...';
             }
 
@@ -64,17 +123,19 @@ async function generateSingle(studentId, studentName, idx) {
                     ...selectedModel
                 };
                 await app.persistStudentAssessment(context, studentId, snapshot.assessment);
+                assessmentCommitted = true;
                 if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
 
                 const homeworkStatus = await app.getPreviousHomeworkStatusForStudent(att);
                 if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
                 const data = await app.fetchJSON('/api/generate_comment', {
                     student_id: snapshot.studentId,
-                    student_name: snapshot.studentName || studentName,
+                    student_name: snapshot.studentName,
                     past_slots: snapshot.pastSlots,
                     session_summary: context.summary,
                     teacher_note: snapshot.assessment.note,
                     learning_level: snapshot.assessment.learningLevel,
+                    attendance_status: snapshot.attendanceStatus,
                     is_late: snapshot.isLate,
                     homework_status: homeworkStatus,
                     model_id: requestOptions.aiModel,
@@ -87,8 +148,28 @@ async function generateSingle(studentId, studentName, idx) {
                 if (!app.isRegularContextCurrent(context)) return;
                 state.generatedComments[studentId] = data.comment;
                 delete state.regularOperationErrors[studentId];
-                app.showToast('Đã tạo nhận xét!');
+                state.generatedCommentMeta[studentId] = app.normalizeGenerationMeta(data);
+                const nextStudentId = options.autoAdvance ? app.getNextPendingRegularStudentId(studentId) : null;
+                if (nextStudentId) state.selectedRegularStudentId = nextStudentId;
+                app.renderStudents();
+                app.updateStats();
+                if (state.generatedCommentMeta[studentId]?.source === 'safe_template') {
+                    app.showToast('AI chưa bám đúng level; hệ thống đã dùng mẫu an toàn.', 'warning');
+                } else if (nextStudentId) {
+                    const nextStudent = state.students.find(attendance => attendance.student.id === nextStudentId);
+                    app.showToast(`Đã tạo nhận xét. Tiếp theo: ${nextStudent?.student?.fullName || 'học sinh kế tiếp'}.`);
+                } else if (options.autoAdvance) {
+                    app.showToast('Đã tạo nhận xét. Không còn học sinh chưa xử lý trong danh sách hiện tại.');
+                } else {
+                    app.showToast('Đã tạo nhận xét!');
+                }
             } catch (error) {
+                if (requestedLevel && !assessmentCommitted) {
+                    state.regularLearningLevelDrafts[studentId] = previousLevel;
+                    if (wasTouched) state.regularAssessmentTouched.add(studentId);
+                    else state.regularAssessmentTouched.delete(studentId);
+                    app.refreshRegularAssessmentIndicators(studentId);
+                }
                 if (app.isRegularContextCurrent(context)) {
                     state.regularOperationErrors[studentId] = error?.message || 'Lỗi không xác định';
                     app.showToast('Lỗi tạo nhận xét: ' + state.regularOperationErrors[studentId], 'error');
@@ -100,11 +181,29 @@ async function generateSingle(studentId, studentName, idx) {
                     app.renderStudents();
                     if (btn?.isConnected) {
                         btn.disabled = state.regularAssessmentLoad.loading;
+                        btn.classList.remove('is-loading');
+                        btn.setAttribute('aria-busy', 'false');
                         btn.innerHTML = originalButtonHtml;
                     }
                     app.updateStats();
                 }
             }
+        }
+
+async function generateAtLearningLevel(studentId, learningLevel) {
+            if (!Object.prototype.hasOwnProperty.call(app.LEARNING_LEVELS, learningLevel)) return;
+            return app.generateRegularComment(studentId, {
+                learningLevel,
+                confirmOverwrite: true,
+                autoAdvance: true
+            });
+        }
+
+async function generateSingle(studentId) {
+            return app.generateRegularComment(studentId, {
+                confirmOverwrite: true,
+                autoAdvance: false
+            });
         }
 
 async function autoCommentAll(studentIds = null) {
@@ -151,6 +250,7 @@ async function autoCommentAll(studentIds = null) {
             app.updateStats();
 
             let generatedCount = 0;
+            let safeTemplateCount = 0;
             const generationFailures = [];
             try {
                 await app.ensureRegularAssessmentsLoaded(context);
@@ -178,6 +278,7 @@ async function autoCommentAll(studentIds = null) {
                                 session_summary: context.summary,
                                 teacher_note: snapshot.assessment.note,
                                 learning_level: snapshot.assessment.learningLevel,
+                                attendance_status: snapshot.attendanceStatus,
                                 is_late: snapshot.isLate,
                                 homework_status: homeworkStatus,
                                 model_id: requestOptions.aiModel,
@@ -190,6 +291,8 @@ async function autoCommentAll(studentIds = null) {
                             if (!app.isRegularContextCurrent(context)) return;
                             state.generatedComments[snapshot.studentId] = data.comment;
                             delete state.regularOperationErrors[snapshot.studentId];
+                            state.generatedCommentMeta[snapshot.studentId] = app.normalizeGenerationMeta(data);
+                            if (state.generatedCommentMeta[snapshot.studentId]?.source === 'safe_template') safeTemplateCount++;
                             generatedCount++;
                         } catch (error) {
                             const message = error?.message || 'Lỗi không xác định';
@@ -220,9 +323,11 @@ async function autoCommentAll(studentIds = null) {
                     app.playSound(failedCount ? 'error' : 'success');
                     app.showToast(
                         failedCount
-                            ? `Đã tạo ${generatedCount}/${snapshots.length} nhận xét. Lỗi: ${generationFailures.slice(0, 3).map(item => item.studentName).join(', ')}${failedCount > 3 ? '...' : ''}`
-                            : `Đã tạo ${generatedCount} nhận xét!`,
-                        failedCount ? 'warning' : 'success'
+                            ? `Đã tạo ${generatedCount}/${snapshots.length} nhận xét. Lỗi: ${generationFailures.slice(0, 3).map(item => item.studentName).join(', ')}${failedCount > 3 ? '...' : ''}${safeTemplateCount ? ' AI chưa bám đúng level; hệ thống đã dùng mẫu an toàn.' : ''}`
+                            : safeTemplateCount
+                                ? 'AI chưa bám đúng level; hệ thống đã dùng mẫu an toàn.'
+                                : `Đã tạo ${generatedCount} nhận xét!`,
+                        failedCount || safeTemplateCount ? 'warning' : 'success'
                     );
                 }
             } catch (error) {
@@ -313,6 +418,7 @@ async function submitSingle(studentId, attendanceId) {
                     comment: isFinal ? '' : comment,
                     slot_type: isFinal ? 'Final' : 'Default',
                     learning_level: snapshot?.assessment.learningLevel,
+                    ...(!isFinal ? app.getGenerationLogFields(studentId) : {}),
                     scores: resultInfo,
                     success: true
                 });
@@ -321,18 +427,26 @@ async function submitSingle(studentId, attendanceId) {
                     const siblingDrafts = isFinal
                         ? {}
                         : Object.fromEntries(Object.entries(state.generatedComments).filter(([id]) => id !== studentId));
+                    const siblingGenerationMeta = isFinal
+                        ? {}
+                        : Object.fromEntries(Object.entries(state.generatedCommentMeta).filter(([id]) => id !== studentId));
                     delete state.generatedComments[studentId];
                     delete state.regularOperationErrors[studentId];
+                    delete state.generatedCommentMeta[studentId];
                     if (isFinal && resultInfo.demo_scores) {
                         const scores = Object.entries(resultInfo.demo_scores).map(([k,v]) => `${k}: ${v}`).join(', ');
                         app.showToast(`Đã submit Demo! Tổng: ${resultInfo.total_demo_score} điểm (${scores})`);
                     } else {
                         app.showToast('Đã gửi nhận xét lên LMS!');
                     }
-                    if (!isFinal) state.generatedComments = {};
+                    if (!isFinal) {
+                        state.generatedComments = {};
+                        state.generatedCommentMeta = {};
+                    }
                     await app.reloadAndRestoreCurrentSlot();
                     if (!isFinal && app.isRegularContextCurrent(context)) {
                         Object.assign(state.generatedComments, siblingDrafts);
+                        Object.assign(state.generatedCommentMeta, siblingGenerationMeta);
                         app.renderStudents();
                         app.updateStats();
                     }
@@ -650,17 +764,25 @@ async function submitAll(studentIds = null) {
             let failedCount = 0;
             let totalCount = 0;
             let preservedDrafts = {};
+            let preservedGenerationMeta = {};
             try {
                 await app.ensureRegularAssessmentsLoaded(context);
                 if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
                 const submissionSnapshots = Object.entries(state.generatedComments).map(([studentId, comment]) => {
                     const att = state.students.find(item => item.student.id === studentId);
                     if (!candidateIdSet.has(studentId) || !att || !app.isPresentAttendance(att)) return null;
-                    return { ...app.snapshotRegularStudent(att), comment };
+                    return {
+                        ...app.snapshotRegularStudent(att),
+                        comment,
+                        generationMeta: state.generatedCommentMeta[studentId] || null
+                    };
                 }).filter(Boolean);
                 const submittedStudentIds = new Set(submissionSnapshots.map(snapshot => snapshot.studentId));
                 preservedDrafts = Object.fromEntries(
                     Object.entries(state.generatedComments).filter(([studentId]) => !submittedStudentIds.has(studentId))
+                );
+                preservedGenerationMeta = Object.fromEntries(
+                    Object.entries(state.generatedCommentMeta).filter(([studentId]) => !submittedStudentIds.has(studentId))
                 );
                 totalCount = submissionSnapshots.length;
                 await app.persistRegularStudentSnapshots(context, submissionSnapshots, 3);
@@ -700,11 +822,16 @@ async function submitAll(studentIds = null) {
                                 comment: snapshot.comment,
                                 slot_type: 'Default',
                                 learning_level: snapshot.assessment.learningLevel,
+                                generation_source: snapshot.generationMeta?.source || 'unknown',
+                                transport: snapshot.generationMeta?.transport || 'server',
+                                repaired: snapshot.generationMeta?.source === 'ai_repair',
+                                validation_issues: snapshot.generationMeta?.validationIssues || [],
                                 success: true
                             });
                             if (app.isRegularContextCurrent(context)) {
                                 delete state.generatedComments[snapshot.studentId];
                                 delete state.regularOperationErrors[snapshot.studentId];
+                                delete state.generatedCommentMeta[snapshot.studentId];
                             }
                         }
                     } catch (error) {
@@ -723,9 +850,11 @@ async function submitAll(studentIds = null) {
                     app.playSound(failedCount ? 'error' : 'success');
                     if (failedCount === 0 && totalCount > 0) {
                         state.generatedComments = {};
+                        state.generatedCommentMeta = {};
                         await app.reloadAndRestoreCurrentSlot();
                         if (app.isRegularContextCurrent(context)) {
                             Object.assign(state.generatedComments, preservedDrafts);
+                            Object.assign(state.generatedCommentMeta, preservedGenerationMeta);
                             app.renderStudents();
                             app.updateStats();
                         }
@@ -758,6 +887,11 @@ async function submitAll(studentIds = null) {
 
 Object.assign(app, {
     getPastComments,
+    normalizeGenerationMeta,
+    getGenerationLogFields,
+    getNextPendingRegularStudentId,
+    generateRegularComment,
+    generateAtLearningLevel,
     generateSingle,
     autoCommentAll,
     submitSingle,
