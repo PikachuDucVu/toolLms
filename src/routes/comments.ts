@@ -45,6 +45,7 @@ commentsRoutes.post("/generate_comment", async (c) => {
 
   const generated = await generateCommentWithAi(c.env, config, {
     studentName: String(data.student_name || ""),
+    studentCallName: String(data.student_call_name ?? data.studentCallName ?? "").trim() || undefined,
     pastComments,
     notes: currentTeacherNote,
     learningLevel: normalizeLearningLevel(learningLevel),

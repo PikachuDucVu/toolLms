@@ -88,7 +88,6 @@ Object.assign(window, {
     exportToCSV: app.exportToCSV,
     filterStudents: app.filterStudents,
     generateCheckpointComment: app.generateCheckpointComment,
-    generateAtLearningLevel: app.generateAtLearningLevel,
     generateSingle: app.generateSingle,
     hideConfirmModal: app.hideConfirmModal,
     hideCopyModal: app.hideCopyModal,

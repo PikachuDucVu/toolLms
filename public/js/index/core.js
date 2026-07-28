@@ -100,6 +100,22 @@ function countDirectSentences(value) {
             return text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(item => item.trim()).filter(Boolean).length || 0;
         }
 
+function directCommentMentionsHomework(normalized) {
+            return /\bbtvn\b|bai tap ve nha|bai tap (?:buoi|o nha)/.test(normalized);
+        }
+
+function directCommentMentionsHomeworkScore(normalized) {
+            return [
+                '(?:btvn|bai tap ve nha)(?:\\s+buoi\\s+\\d+)?[\\s:;,.\\/=_\\-]+\\d+(?:[.,]\\d+)?(?:\\s*/\\s*\\d+(?:[.,]\\d+)?)?(?:\\s*diem)?',
+                '(?:btvn|bai tap ve nha).{0,60}(?:dat|duoc(?: cham)?|cham|nhan)\\s+(?:muc\\s+)?(?:diem\\s*)?\\d+(?:[.,]\\d+)?(?:\\s*/\\s*\\d+(?:[.,]\\d+)?)?(?:\\s*diem)?',
+                '(?:btvn|bai tap ve nha).{0,60}(?:muc\\s+)?diem\\s*(?:la|:)?\\s*\\d+(?:[.,]\\d+)?',
+                'diem\\s+(?:cua\\s+)?(?:btvn|bai tap ve nha).{0,30}(?:la\\s*)?\\d+(?:[.,]\\d+)?',
+                '(?:duoc|dat|cham)\\s+(?:muc\\s+)?diem\\s*(?:la|:)?\\s*\\d+(?:[.,]\\d+)?',
+                '(?:duoc|dat|cham)\\s+\\d+(?:[.,]\\d+)?\\s*diem',
+                '\\b\\d+(?:[.,]\\d+)?\\s*/\\s*(?:10|100)\\b'
+            ].some(pattern => new RegExp(pattern, 'i').test(normalized));
+        }
+
 function validateDirectComment(value, policy = {}) {
             const plain = app.stripDirectCommentMarkup(value);
             const normalized = app.normalizeDirectForMatch(plain);
@@ -111,6 +127,8 @@ function validateDirectComment(value, policy = {}) {
             const absenceLearningPatterns = policy.absenceLearningPatterns || policy.absence_learning_patterns || [];
             const attendanceStatus = policy.attendanceStatus || policy.attendance_status || 'UNKNOWN';
             const allowHomework = policy.allowHomework ?? policy.allow_homework ?? false;
+            const requireHomeworkEvaluation = policy.requireHomeworkEvaluation ?? policy.require_homework_evaluation ?? false;
+            const homeworkEvaluationKeywords = policy.homeworkEvaluationKeywords || policy.homework_evaluation_keywords || [];
             const mode = policy.mode || 'quick';
             const minSentences = Number(policy.minSentences ?? policy.min_sentences ?? 1);
             const maxSentences = Number(policy.maxSentences ?? policy.max_sentences ?? 6);
@@ -125,7 +143,17 @@ function validateDirectComment(value, policy = {}) {
                 if (!matched) issues.push(`Thiếu ${concept.label}.`);
             });
 
-            if (!allowHomework && /\bbtvn\b|bai tap ve nha/.test(normalized)) issues.push('Nhận xét nhắc BTVN khi không có dữ kiện.');
+            if (!allowHomework && app.directCommentMentionsHomework(normalized)) issues.push('Nhận xét nhắc BTVN khi không có dữ kiện.');
+            if (requireHomeworkEvaluation) {
+                const normalizedWords = new Set(normalized.match(/[a-z0-9]+/g) || []);
+                const keywordMatchCount = homeworkEvaluationKeywords.filter(keyword => normalizedWords.has(keyword)).length;
+                const requiredKeywordMatches = Math.min(2, homeworkEvaluationKeywords.length);
+                const includesEvaluation = requiredKeywordMatches === 0 || keywordMatchCount >= requiredKeywordMatches;
+                if (!app.directCommentMentionsHomework(normalized) || !includesEvaluation) {
+                    issues.push('Thiếu tóm tắt đánh giá BTVN.');
+                }
+            }
+            if (app.directCommentMentionsHomeworkScore(normalized)) issues.push('Nhận xét không được nêu điểm số BTVN.');
             const hasUnsupportedBehavior = behaviorPatterns.some(pattern =>
                 new RegExp(pattern, 'i').test(normalized) && !allowedBehaviorPatterns.includes(pattern));
             if (hasUnsupportedBehavior) {
@@ -713,6 +741,8 @@ Object.assign(app, {
     normalizeDirectAiComment,
     normalizeDirectForMatch,
     countDirectSentences,
+    directCommentMentionsHomework,
+    directCommentMentionsHomeworkScore,
     validateDirectComment,
     buildDirectRepairMessages,
     buildDirectCheckpointPrompt,

@@ -41,6 +41,8 @@ describe("regular-session quick comment UI contract", () => {
     state.regularBulkLevelBusy = false;
     state.regularStudentBusy.clear();
     state.regularAssessmentSaveBusy.clear();
+    state.selectedRegularStudentId = null;
+    state.regularReviewSelectedStudentId = null;
     app.getRegularStudentDomId = () => "student_1";
     app.getRegularStudentUiState = () => uiState();
     app.isRegularOperationActive = () => false;
@@ -54,26 +56,56 @@ describe("regular-session quick comment UI contract", () => {
     app.escapeInlineJsAttr = (value: unknown) => String(value || "").replaceAll("'", "\\'");
   });
 
-  it("renders L1–L4 as one-click actions with L3 selected and no separate generate button", () => {
+  it("renders save-only L1–L4 controls plus a separate AI generation button", () => {
     const html = app.buildRegularStudentDetail(attendance, 0);
     const renderedLevels = [...html.matchAll(/data-level-value="([^"]+)"/g)].map((match) => match[1]);
 
-    expect((html.match(/learning-level-action/g) || [])).toHaveLength(4);
     expect(renderedLevels).toEqual(["needs_support", "needs_prompting", "understands_and_asks", "independent"]);
     expect(html).toMatch(/data-level-value="understands_and_asks"[\s\S]*?aria-pressed="true"/);
-    expect(html).not.toContain('id="gen-btn-student_1"');
-    expect(html).toContain("L3 là mặc định · bấm một mức để lưu và tạo");
+    expect((html.match(/onclick="onRegularLearningLevelChange\('/g) || [])).toHaveLength(4);
+    expect(html).not.toContain("generateAtLearningLevel");
+    expect(html).toContain('id="gen-btn-student_1"');
+    expect(html).toContain("Tạo nhận xét AI");
+    expect(html).toContain("L3 là mặc định · chọn một mức để tự lưu");
     expect(html).toContain('<details class="regular-extra-details">');
     expect(html).not.toContain('<details class="regular-extra-details" open>');
   });
 
-  it("exposes a visible loading state on the selected level action", () => {
+  it("shows generation loading on the dedicated AI button without turning the level into an action", () => {
     state.regularStudentBusy.add(studentId);
     app.getRegularStudentUiState = () => uiState();
     const html = app.buildRegularStudentDetail(attendance, 0);
 
-    expect(html).toMatch(/learning-level-action is-selected is-loading[\s\S]*?aria-busy="true"/);
-    expect(html).toContain("Đang tạo...");
+    expect(html).toMatch(/id="gen-btn-student_1"[\s\S]*?aria-busy="true"[\s\S]*?Đang tạo\.\.\./);
+    expect(html).not.toMatch(/learning-level-option[^\"]*is-loading/);
+  });
+
+  it("changing a level queues autosave without invoking comment generation", () => {
+    const originals = {
+      refreshRegularAssessmentIndicators: app.refreshRegularAssessmentIndicators,
+      queueRegularLearningLevelAutosave: app.queueRegularLearningLevelAutosave,
+      generateRegularComment: app.generateRegularComment,
+    };
+    const saved: string[] = [];
+    let generationCalls = 0;
+    app.refreshRegularAssessmentIndicators = () => undefined;
+    app.queueRegularLearningLevelAutosave = (currentStudentId: string) => {
+      saved.push(currentStudentId);
+      return Promise.resolve();
+    };
+    app.generateRegularComment = async () => {
+      generationCalls += 1;
+    };
+
+    try {
+      app.onRegularLearningLevelChange(studentId, "independent");
+      expect(state.regularLearningLevelDrafts[studentId]).toBe("independent");
+      expect(state.regularAssessmentTouched.has(studentId)).toBe(true);
+      expect(saved).toEqual([studentId]);
+      expect(generationCalls).toBe(0);
+    } finally {
+      Object.assign(app, originals);
+    }
   });
 
   it("hides all learning levels for an absent student and shows the absence action", () => {
@@ -90,19 +122,125 @@ describe("regular-session quick comment UI contract", () => {
     expect(html).toContain("Không đánh giá level cho học sinh vắng");
   });
 
-  it("auto-advances circularly to the next visible present student without a draft or LMS comment", () => {
-    const students = [
-      { student: { id: "a" }, status: "ATTENDED", commentByAreas: [] },
-      { student: { id: "b" }, status: "ATTENDED", commentByAreas: [{ type: "CONTENT", content: "<p>Đã có</p>" }] },
-      { student: { id: "absent" }, status: "ABSENT", commentByAreas: [] },
-      { student: { id: "c" }, status: "LATE_ARRIVED", commentByAreas: [] },
+  it("derives the comment call name from the final two name components", () => {
+    expect(app.getStudentCallName("Nguyễn Minh Anh")).toBe("Minh Anh");
+    expect(app.getStudentCallName("Trần Gia Huy")).toBe("Gia Huy");
+    expect(app.getStudentCallName("Lê An")).toBe("Lê An");
+    expect(app.getStudentCallName("Bin")).toBe("Bin");
+  });
+
+  it("keeps both main and review selections on the requested student after single generation", async () => {
+    const currentAttendance = {
+      ...attendance,
+      status: "ATTENDED",
+      commentByAreas: [],
+    };
+    state.students = [
+      currentAttendance,
+      { _id: "attendance-2", student: { id: "student-2", fullName: "Trần Gia Huy" }, status: "ATTENDED", commentByAreas: [] },
     ];
-    state.students = students;
-    state.generatedComments = { a: "<p>Bản nháp hiện tại</p>" };
-    app.getVisibleStudents = () => students;
-    expect(app.getNextPendingRegularStudentId("a")).toBe("c");
-    state.generatedComments.c = "<p>Đã tạo</p>";
-    expect(app.getNextPendingRegularStudentId("a")).toBeNull();
+    state.selectedRegularStudentId = studentId;
+    state.regularReviewSelectedStudentId = studentId;
+    state.regularLearningLevelDrafts[studentId] = "independent";
+
+    const originalDocument = globalThis.document;
+    const originals = {
+      captureRegularContext: app.captureRegularContext,
+      ensureRegularAssessmentsLoaded: app.ensureRegularAssessmentsLoaded,
+      waitForRegularAssessmentAutosave: app.waitForRegularAssessmentAutosave,
+      snapshotRegularStudent: app.snapshotRegularStudent,
+      persistStudentAssessment: app.persistStudentAssessment,
+      getPreviousHomeworkStatusForStudent: app.getPreviousHomeworkStatusForStudent,
+      getSelectedModelConfig: app.getSelectedModelConfig,
+      fetchJSON: app.fetchJSON,
+      syncRegularOperationLock: app.syncRegularOperationLock,
+      renderStudents: app.renderStudents,
+      updateStats: app.updateStats,
+      showToast: app.showToast,
+      isRegularContextCurrent: app.isRegularContextCurrent,
+    };
+    let requestBody: Record<string, unknown> | null = null;
+    let selectionSeenDuringRender: { regular: string | null; review: string | null } | null = null;
+
+    globalThis.document = {
+      getElementById: () => null,
+    } as unknown as Document;
+    app.captureRegularContext = () => ({
+      classId: "class-1",
+      className: "Lớp thử nghiệm",
+      slotId: "slot-1",
+      sessionNumber: 3,
+      classSiteId: "site-1",
+      courseProcessId: "course-1",
+      assessmentEpoch: 1,
+      summary: "Ôn tập vòng lặp",
+    });
+    app.isRegularContextCurrent = () => true;
+    app.ensureRegularAssessmentsLoaded = async () => undefined;
+    app.waitForRegularAssessmentAutosave = async () => undefined;
+    app.snapshotRegularStudent = () => ({
+      attendanceId: "attendance-1",
+      studentId,
+      studentName: "Nguyễn Minh Anh",
+      studentCallName: "Minh Anh",
+      attendanceStatus: "ATTENDED",
+      isLate: false,
+      assessment: { learningLevel: "independent", note: "" },
+      pastSlots: [],
+    });
+    app.persistStudentAssessment = async () => true;
+    app.getPreviousHomeworkStatusForStudent = async () => null;
+    app.getSelectedModelConfig = () => ({
+      aiModel: "gpt-test",
+      customModelId: "",
+      thinkingLevel: "off",
+      aiApiKey: "test-key",
+    });
+    app.fetchJSON = async (_url: string, body: Record<string, unknown>) => {
+      requestBody = body;
+      return { comment: "<p>Minh Anh nắm vững kiến thức và tự hoàn thành bài.</p>" };
+    };
+    app.syncRegularOperationLock = () => undefined;
+    app.renderStudents = () => {
+      selectionSeenDuringRender = {
+        regular: state.selectedRegularStudentId,
+        review: state.regularReviewSelectedStudentId,
+      };
+    };
+    app.updateStats = () => undefined;
+    app.showToast = () => undefined;
+
+    try {
+      await app.generateSingle(studentId);
+      expect(state.selectedRegularStudentId).toBe(studentId);
+      expect(state.regularReviewSelectedStudentId).toBe(studentId);
+      expect(selectionSeenDuringRender).toEqual({ regular: studentId, review: studentId });
+      expect(state.generatedComments).toEqual({
+        [studentId]: "<p>Minh Anh nắm vững kiến thức và tự hoàn thành bài.</p>",
+      });
+      expect(requestBody).toMatchObject({
+        student_id: studentId,
+        student_name: "Nguyễn Minh Anh",
+        student_call_name: "Minh Anh",
+      });
+    } finally {
+      Object.assign(app, originals);
+      globalThis.document = originalDocument;
+    }
+  });
+
+  it("uses the full student name before the colon in class-wide Zalo output", () => {
+    const source = readFileSync("public/js/index/comments.js", "utf8");
+    expect(source).toContain("allText += `- ${studentName}: ${cleanComment}\\n\\n`;");
+    expect(source).not.toContain("allText += `- ${shortName}: ${cleanComment}\\n\\n`;");
+  });
+
+  it("passes the written homework evaluation to comments without passing the score", () => {
+    const source = readFileSync("public/js/index/classes.js", "utf8");
+    const helper = source.match(/async function getPreviousHomeworkStatusForStudent[\s\S]*?\nfunction getCheckpointNumber/)?.[0] || "";
+
+    expect(helper).toContain("evaluation_note: String(submission?.note || '').trim()");
+    expect(helper).not.toMatch(/\bscore\s*:/);
   });
 
   it("renders an accessible batch-level menu with L1–L4 actions", () => {

@@ -140,6 +140,7 @@ export async function generateCommentWithAi(
   config: AppConfig,
   input: {
     studentName: string;
+    studentCallName?: string;
     pastComments: string;
     notes: string;
     learningLevel?: LearningLevel;

@@ -44,30 +44,11 @@ function getGenerationLogFields(studentId) {
             };
         }
 
-function getNextPendingRegularStudentId(studentId) {
-            const visible = app.getVisibleStudents().filter(app.isPresentAttendance);
-            if (visible.length === 0) return null;
-            const currentIndex = Math.max(visible.findIndex(att => att.student.id === studentId), 0);
-            for (let offset = 1; offset <= visible.length; offset++) {
-                const att = visible[(currentIndex + offset) % visible.length];
-                const id = att.student.id;
-                const existingLmsComment = att.commentByAreas?.some(area =>
-                    area.type === 'CONTENT' && String(area.content || '').replace(/<[^>]*>/g, '').trim());
-                if (!state.generatedComments[id] && !existingLmsComment && !state.regularStudentBusy.has(id)) return id;
-            }
-            return null;
-        }
-
 async function generateRegularComment(studentId, options = {}) {
             const context = app.captureRegularContext();
-            const requestedLevel = options.learningLevel == null ? null : app.normalizeLearningLevel(options.learningLevel);
             const domId = app.getRegularStudentDomId(studentId);
-            const buttonId = requestedLevel ? `level-action-${domId}-${requestedLevel}` : `gen-btn-${domId}`;
-            const btn = document.getElementById(buttonId);
+            const btn = document.getElementById(`gen-btn-${domId}`);
             const originalButtonHtml = btn?.innerHTML;
-            const previousLevel = app.getRegularLearningLevel(studentId);
-            const wasTouched = state.regularAssessmentTouched.has(studentId);
-            let assessmentCommitted = false;
 
             if (!context) return;
             if (app.isRegularOperationActive()) {
@@ -90,12 +71,6 @@ async function generateRegularComment(studentId, options = {}) {
             if (!selectedModel.aiApiKey) {
                 app.showToast('Vui lòng nhập API Key trong phần Cấu hình', 'error');
                 return;
-            }
-
-            if (requestedLevel) {
-                state.regularLearningLevelDrafts[studentId] = requestedLevel;
-                state.regularAssessmentTouched.add(studentId);
-                app.refreshRegularAssessmentIndicators(studentId);
             }
 
             state.regularStudentBusy.add(studentId);
@@ -123,7 +98,6 @@ async function generateRegularComment(studentId, options = {}) {
                     ...selectedModel
                 };
                 await app.persistStudentAssessment(context, studentId, snapshot.assessment);
-                assessmentCommitted = true;
                 if (!app.isRegularContextCurrent(context)) throw new Error('Đã chuyển sang lớp hoặc buổi học khác');
 
                 const homeworkStatus = await app.getPreviousHomeworkStatusForStudent(att);
@@ -131,6 +105,7 @@ async function generateRegularComment(studentId, options = {}) {
                 const data = await app.fetchJSON('/api/generate_comment', {
                     student_id: snapshot.studentId,
                     student_name: snapshot.studentName,
+                    student_call_name: snapshot.studentCallName,
                     past_slots: snapshot.pastSlots,
                     session_summary: context.summary,
                     teacher_note: snapshot.assessment.note,
@@ -149,27 +124,12 @@ async function generateRegularComment(studentId, options = {}) {
                 state.generatedComments[studentId] = data.comment;
                 delete state.regularOperationErrors[studentId];
                 state.generatedCommentMeta[studentId] = app.normalizeGenerationMeta(data);
-                const nextStudentId = options.autoAdvance ? app.getNextPendingRegularStudentId(studentId) : null;
-                if (nextStudentId) state.selectedRegularStudentId = nextStudentId;
-                app.renderStudents();
-                app.updateStats();
                 if (state.generatedCommentMeta[studentId]?.source === 'safe_template') {
                     app.showToast('AI chưa bám đúng level; hệ thống đã dùng mẫu an toàn.', 'warning');
-                } else if (nextStudentId) {
-                    const nextStudent = state.students.find(attendance => attendance.student.id === nextStudentId);
-                    app.showToast(`Đã tạo nhận xét. Tiếp theo: ${nextStudent?.student?.fullName || 'học sinh kế tiếp'}.`);
-                } else if (options.autoAdvance) {
-                    app.showToast('Đã tạo nhận xét. Không còn học sinh chưa xử lý trong danh sách hiện tại.');
                 } else {
                     app.showToast('Đã tạo nhận xét!');
                 }
             } catch (error) {
-                if (requestedLevel && !assessmentCommitted) {
-                    state.regularLearningLevelDrafts[studentId] = previousLevel;
-                    if (wasTouched) state.regularAssessmentTouched.add(studentId);
-                    else state.regularAssessmentTouched.delete(studentId);
-                    app.refreshRegularAssessmentIndicators(studentId);
-                }
                 if (app.isRegularContextCurrent(context)) {
                     state.regularOperationErrors[studentId] = error?.message || 'Lỗi không xác định';
                     app.showToast('Lỗi tạo nhận xét: ' + state.regularOperationErrors[studentId], 'error');
@@ -190,19 +150,9 @@ async function generateRegularComment(studentId, options = {}) {
             }
         }
 
-async function generateAtLearningLevel(studentId, learningLevel) {
-            if (!Object.prototype.hasOwnProperty.call(app.LEARNING_LEVELS, learningLevel)) return;
-            return app.generateRegularComment(studentId, {
-                learningLevel,
-                confirmOverwrite: true,
-                autoAdvance: true
-            });
-        }
-
 async function generateSingle(studentId) {
             return app.generateRegularComment(studentId, {
-                confirmOverwrite: true,
-                autoAdvance: false
+                confirmOverwrite: true
             });
         }
 
@@ -274,6 +224,7 @@ async function autoCommentAll(studentIds = null) {
                             const data = await app.fetchJSON('/api/generate_comment', {
                                 student_id: snapshot.studentId,
                                 student_name: snapshot.studentName,
+                                student_call_name: snapshot.studentCallName,
                                 past_slots: snapshot.pastSlots,
                                 session_summary: context.summary,
                                 teacher_note: snapshot.assessment.note,
@@ -698,9 +649,7 @@ function copyAllZalo() {
             
             allComments.forEach(({studentName, comment}) => {
                 const cleanComment = comment.replace(/<[^>]*>/g, '').trim();
-                // Get short name (first name)
-                const shortName = studentName.split(' ').pop();
-                allText += `- ${shortName}: ${cleanComment}\n\n`;
+                allText += `- ${studentName}: ${cleanComment}\n\n`;
             });
             
             // Section 3: Homework / SPCK follow-up
@@ -889,9 +838,7 @@ Object.assign(app, {
     getPastComments,
     normalizeGenerationMeta,
     getGenerationLogFields,
-    getNextPendingRegularStudentId,
     generateRegularComment,
-    generateAtLearningLevel,
     generateSingle,
     autoCommentAll,
     submitSingle,

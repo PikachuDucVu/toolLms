@@ -67,4 +67,74 @@ describe("browser direct fallback", () => {
     expect(result.generation_meta).toMatchObject({ source: "ai_repair", transport: "direct" });
     expect(result.comment).toBe(`<p>${valid}</p>`);
   });
+
+  it("repairs a direct fallback response that exposes a homework score", async () => {
+    const facts = buildCommentFacts({
+      ...input,
+      homeworkStatus: { submitted: true, marked: true, previousSession: 3 },
+    });
+    const messages = buildCommentMessages(facts);
+    const policy = buildValidationPolicy(facts);
+    const valid = buildSafeComment(facts);
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(aiResponse(`${valid} BTVN/ 9.`))
+      .mockResolvedValueOnce(aiResponse(valid));
+
+    const result = await app.maybeDirectAiFallback(
+      "/api/generate_comment",
+      { model_id: "claude-sonnet-4-6", ai_api_key: "test-key", thinking_level: "off" },
+      {
+        error: "Lỗi AI: 522",
+        direct_fallback: {
+          messages,
+          validation_policy: policy,
+          safe_comment: `<p>${valid}</p>`,
+        },
+      },
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const repairRequest = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
+    expect(repairRequest.messages.at(-1).content).toContain("Nhận xét không được nêu điểm số BTVN.");
+    expect(result.generation_meta).toMatchObject({ source: "ai_repair", transport: "direct" });
+    expect(result.comment).toBe(`<p>${valid}</p>`);
+  });
+
+  it("repairs a direct fallback response that omits the written homework evaluation", async () => {
+    const facts = buildCommentFacts({
+      ...input,
+      homeworkStatus: {
+        submitted: true,
+        marked: true,
+        previousSession: 3,
+        evaluationNote: "Bài làm có logic rõ ràng và cách đặt tên biến dễ hiểu.",
+      },
+    });
+    const messages = buildCommentMessages(facts);
+    const policy = buildValidationPolicy(facts);
+    const valid = buildSafeComment(facts);
+    const withoutHomeworkSummary = buildSafeComment(buildCommentFacts(input));
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(aiResponse(`${withoutHomeworkSummary} Về BTVN, con cần đạt kết quả tốt hơn.`))
+      .mockResolvedValueOnce(aiResponse(valid));
+
+    const result = await app.maybeDirectAiFallback(
+      "/api/generate_comment",
+      { model_id: "claude-sonnet-4-6", ai_api_key: "test-key", thinking_level: "off" },
+      {
+        error: "Lỗi AI: 522",
+        direct_fallback: {
+          messages,
+          validation_policy: policy,
+          safe_comment: `<p>${valid}</p>`,
+        },
+      },
+    );
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const repairRequest = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
+    expect(repairRequest.messages.at(-1).content).toContain("Thiếu tóm tắt đánh giá BTVN.");
+    expect(result.generation_meta).toMatchObject({ source: "ai_repair", transport: "direct" });
+    expect(result.comment).toBe(`<p>${valid}</p>`);
+  });
 });

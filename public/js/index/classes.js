@@ -418,7 +418,7 @@ async function getPreviousHomeworkStatusForStudent(attendance) {
                 lesson_name: lesson.name || `BTVN buổi ${previousSession}`,
                 submitted,
                 marked: String(submission?.status || '').toUpperCase() === 'MARKED',
-                score: submission?.score ?? null,
+                evaluation_note: String(submission?.note || '').trim(),
                 status: submission?.status || (submitted ? 'SUBMITTED' : 'NOT_SUBMITTED')
             };
         }

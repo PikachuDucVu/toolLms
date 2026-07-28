@@ -15,6 +15,11 @@ export interface HomeworkStatusInput {
   previous_session?: number;
   submitted?: boolean;
   marked?: boolean;
+  evaluationNote?: string;
+  evaluation_note?: string;
+  evaluationSummary?: string;
+  evaluation_summary?: string;
+  note?: string;
   score?: string | number | null;
   status?: string;
   lessonName?: string;
@@ -23,6 +28,7 @@ export interface HomeworkStatusInput {
 
 export interface CommentPromptInput {
   studentName: string;
+  studentCallName?: string;
   pastComments?: string;
   notes?: string;
   learningLevel?: LearningLevel;
@@ -37,13 +43,13 @@ export interface CommentPromptInput {
 interface NormalizedHomeworkStatus {
   submitted: boolean;
   marked: boolean;
-  score: string;
+  evaluationSummary: string;
   previousSessionLabel: string;
 }
 
 export interface CommentFacts {
   studentName: string;
-  shortName: string;
+  studentCallName: string;
   previousComment: string;
   teacherNote: string;
   learningLevel: LearningLevel;
@@ -71,6 +77,8 @@ export interface CommentValidationPolicy {
   allowedBehaviorPatterns: string[];
   absenceLearningPatterns: string[];
   allowHomework: boolean;
+  requireHomeworkEvaluation: boolean;
+  homeworkEvaluationKeywords: string[];
   allowBehaviorClaims: boolean;
   minSentences: number;
   maxSentences: number;
@@ -92,8 +100,26 @@ const LEVEL_PROMPT_POLICIES: Record<LearningLevel, LevelPromptPolicy> = {
   independent: {
     meaning: "Học sinh nắm vững kiến thức, có thể tự vận dụng và hoàn thành phần thực hành độc lập.",
     requiredConcepts: [
-      { label: "mức độ nắm vững kiến thức", patterns: ["nam (vung|chac) (kien thuc|noi dung)", "hieu ro (kien thuc|noi dung)"] },
-      { label: "khả năng tự vận dụng hoặc làm độc lập", patterns: ["tu (van dung|thuc hanh|hoan thanh|lam)", "hoan thanh .* doc lap", "lam .* doc lap"] },
+      {
+        label: "mức độ nắm vững kiến thức",
+        patterns: [
+          "nam (?:rat )?(?:vung|chac)(?: (?:kien thuc|noi dung|bai hoc))?",
+          "hieu (?:rat )?ro (?:kien thuc|noi dung|bai hoc)",
+          "hieu (?:bai|kien thuc|noi dung) (?:rat )?(?:tot|chac|sau)",
+          "(?:tiep thu|nam bat) (?:rat )?tot (?:kien thuc|noi dung|bai hoc)",
+          "lam chu (?:kien thuc|noi dung|bai hoc)",
+        ],
+      },
+      {
+        label: "khả năng tự vận dụng hoặc làm độc lập",
+        patterns: [
+          "tu (?:minh )?(?:van dung|ap dung|thuc hanh|thuc hien|hoan thanh|lam)",
+          "tu tin (?:van dung|ap dung|thuc hanh|thuc hien|hoan thanh)",
+          "(?:van dung|ap dung|thuc hanh|thuc hien|hoan thanh|lam).{0,60}(?:doc lap|khong can (?:su )?(?:goi y|huong dan|ho tro))",
+          "doc lap.{0,40}(?:van dung|ap dung|thuc hanh|thuc hien|hoan thanh|lam)",
+          "chu dong (?:van dung|ap dung|thuc hanh|thuc hien|hoan thanh|lam)",
+        ],
+      },
     ],
     safeLearningSentence: "Trong buổi học, con nắm vững kiến thức, có thể tự vận dụng và hoàn thành phần thực hành độc lập.",
     safeClosingSentence: "Con cần tiếp tục phát huy khả năng tự học này trong các buổi tiếp theo.",
@@ -166,9 +192,9 @@ NGUYÊN TẮC BẮT BUỘC:
 2. Câu đánh giá học tập phải truyền đạt đầy đủ Ý NGHĨA LEVEL BẮT BUỘC. Không được làm nhẹ đi thành các cụm mơ hồ như “học bình thường”, “học ổn”, “ở mức khá ổn” hoặc “không có vấn đề đặc biệt”.
 3. Nếu không có ghi chú giáo viên, chỉ diễn đạt level và dữ kiện LMS một cách tự nhiên; không sáng tạo sự việc đã xảy ra.
 4. Có thể nhắc tối đa một ý ngắn từ NỘI DUNG BUỔI HỌC để tạo bối cảnh, nhưng không được khẳng định học sinh đã hoàn thành một kỹ năng cụ thể nếu ghi chú không cung cấp bằng chứng.
-5. Chỉ nhắc BTVN khi phần dữ kiện có TÌNH TRẠNG BTVN. Chỉ nhận xét hành vi khi có GHI CHÚ GIÁO VIÊN tương ứng.
+5. Chỉ nhắc BTVN khi phần dữ kiện có TÌNH TRẠNG BTVN. Nếu có ĐÁNH GIÁ BTVN, chỉ tóm tắt tối đa một ý ngắn và tuyệt đối không nêu điểm số BTVN. Chỉ nhận xét hành vi khi có GHI CHÚ GIÁO VIÊN tương ứng.
 6. Không viết mã L1/L2/L3/L4, từ “level”, markdown, tiêu đề hoặc danh sách.
-7. Dùng tên ngắn hoặc “em” để gọi học sinh; dùng “con” khi nói về học sinh với phụ huynh.
+7. Dùng đúng tên trong mục GỌI TRONG NHẬN XÉT hoặc “em” để gọi học sinh; dùng “con” khi nói về học sinh với phụ huynh.
 8. Chỉ trả về một đoạn nhận xét, không giải thích cách viết.`;
 
 export function normalizeAttendanceStatus(value: unknown, isLate?: boolean): AttendanceStatus {
@@ -200,21 +226,66 @@ function latestPastComment(value: string): string {
   return (lines.at(-1) || "").replace(/^[-–]\s*/, "").slice(0, 1_500);
 }
 
+function deriveStudentCallName(studentName: string): string {
+  const parts = studentName.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "em";
+  return parts.length === 1 ? parts[0] : parts.slice(-2).join(" ");
+}
+
+function normalizeHomeworkEvaluation(value: unknown): string {
+  const normalized = String(value ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/^(?:btvn|bài tập về nhà)(?:\s+buổi\s+\d+)?[\s:;,.\/=_\-–—]+\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)?(?:\s*điểm)?\s*/iu, "")
+    .replace(/((?:btvn|bài tập về nhà)).{0,50}?(?:đạt|được(?: chấm)?|chấm)\s+(?:mức\s+)?(?:điểm\s*)?\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)?(?:\s*điểm)?\s*[.,;:]?/giu, "$1: ")
+    .replace(/(?:^|[\s(])điểm(?:\s+(?:btvn|bài tập về nhà|hiện có|số|bài))?\s*[:\-]?\s*\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)?/giu, " ")
+    .replace(/điểm\s+(?:btvn|bài tập về nhà).{0,30}?\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)?/giu, " ")
+    .replace(/(?:được|đạt|chấm)\s+(?:mức\s+)?(?:điểm\s*)?\d+(?:[.,]\d+)?\s*(?:điểm|\/\s*\d+(?:[.,]\d+)?)/giu, " ")
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:điểm|\/\s*\d+(?:[.,]\d+)?)\b/giu, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .trim()
+    .replace(/^(?:btvn|bài tập về nhà)\s*[:;,.\/=_\-–—]\s*/iu, "")
+    .replace(/^\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)?(?:\s*điểm)?\s*[.;:,\-]\s*/iu, "")
+    .replace(/^[,.;:!?\-]+\s*/, "")
+    .slice(0, 1_500);
+
+  return /^\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)?(?:\s*điểm)?$/iu.test(normalized)
+    ? ""
+    : normalized;
+}
+
+const HOMEWORK_EVALUATION_STOPWORDS = new Set([
+  "bai", "lam", "con", "em", "hoc", "sinh", "btvn", "tap", "ve", "nha", "da", "duoc", "co", "va",
+  "nhung", "can", "them", "hon", "mot", "cac", "cua", "trong", "khi", "phan", "nen", "dat", "ket", "qua",
+]);
+
+function homeworkEvaluationKeywords(value: string): string[] {
+  const words = normalizeForMatch(value).match(/[a-z0-9]+/g) || [];
+  return [...new Set(words)]
+    .filter((word) => word.length >= 3 && !HOMEWORK_EVALUATION_STOPWORDS.has(word) && !/^\d+$/.test(word))
+    .slice(0, 16);
+}
+
 function normalizeHomeworkStatus(value: HomeworkStatusInput | undefined, isSpck: boolean): NormalizedHomeworkStatus | null {
   if (!value || value.shouldMention === false || typeof value.submitted !== "boolean" || isSpck) return null;
   const previousSession = value.previousSession ?? value.previous_session;
-  const score = value.score == null ? "" : String(value.score).trim();
+  const evaluationSource = value.evaluationNote
+    ?? value.evaluation_note
+    ?? value.evaluationSummary
+    ?? value.evaluation_summary
+    ?? value.note;
   return {
     submitted: value.submitted,
     marked: Boolean(value.marked),
-    score,
+    evaluationSummary: normalizeHomeworkEvaluation(evaluationSource),
     previousSessionLabel: previousSession ? `buổi ${previousSession}` : "buổi trước",
   };
 }
 
 export function buildCommentFacts(input: CommentPromptInput): CommentFacts {
   const studentName = String(input.studentName || "").trim();
-  const shortName = studentName.split(/\s+/).filter(Boolean).at(-1) || "em";
+  const providedCallName = String(input.studentCallName || "").trim();
+  const studentCallName = providedCallName || deriveStudentCallName(studentName);
   const attendanceStatus = normalizeAttendanceStatus(input.attendanceStatus, input.isLate);
   const teacherNote = String(input.notes || "").trim().slice(0, 2_000);
   const sessionSummary = String(input.sessionSummary || "").trim().slice(0, 3_000);
@@ -227,7 +298,7 @@ export function buildCommentFacts(input: CommentPromptInput): CommentFacts {
 
   return {
     studentName,
-    shortName,
+    studentCallName,
     previousComment: latestPastComment(String(input.pastComments || "")),
     teacherNote,
     learningLevel: normalizeLearningLevel(input.learningLevel),
@@ -251,8 +322,7 @@ function attendanceFact(status: AttendanceStatus): string {
 
 function homeworkFact(value: NormalizedHomeworkStatus): string {
   if (!value.submitted) return `Chưa thấy nộp BTVN ${value.previousSessionLabel} trên LMS; cần nhắc phụ huynh hỗ trợ con bổ sung.`;
-  const score = value.score ? ` Điểm hiện có: ${value.score}.` : "";
-  return `Đã nộp BTVN ${value.previousSessionLabel}; ${value.marked ? "bài đã được chấm" : "bài đã được ghi nhận trên LMS"}.${score}`;
+  return `Đã nộp BTVN ${value.previousSessionLabel}; ${value.marked ? "bài đã được chấm" : "bài đã được ghi nhận trên LMS"}.`;
 }
 
 function lengthInstruction(length: CommentLength, mode: CommentMode): string {
@@ -265,7 +335,8 @@ function lengthInstruction(length: CommentLength, mode: CommentMode): string {
 export function buildCommentMessages(facts: CommentFacts): ChatMessage[] {
   const lines = [
     "<THÔNG_TIN_HỌC_SINH>",
-    `HỌC SINH: ${facts.studentName || "Không rõ tên"} (gọi: ${facts.shortName})`,
+    `HỌC SINH: ${facts.studentName || "Không rõ tên"}`,
+    `GỌI TRONG NHẬN XÉT: ${facts.studentCallName}`,
     `CHẾ ĐỘ: ${facts.mode}`,
     `CHUYÊN CẦN: ${attendanceFact(facts.attendanceStatus)}`,
   ];
@@ -280,7 +351,17 @@ export function buildCommentMessages(facts: CommentFacts): ChatMessage[] {
 
   if (facts.sessionSummary) lines.push(`NỘI DUNG BUỔI HỌC: ${facts.sessionSummary}`);
   if (facts.teacherNote) lines.push(`GHI CHÚ GIÁO VIÊN: ${facts.teacherNote}`);
-  if (facts.homeworkStatus) lines.push(`TÌNH TRẠNG BTVN: ${homeworkFact(facts.homeworkStatus)}`);
+  if (facts.homeworkStatus) {
+    lines.push(`TÌNH TRẠNG BTVN: ${homeworkFact(facts.homeworkStatus)}`);
+    if (facts.homeworkStatus.submitted && facts.homeworkStatus.evaluationSummary) {
+      lines.push(`ĐÁNH GIÁ BTVN ĐỂ TÓM TẮT: ${facts.homeworkStatus.evaluationSummary}`);
+      lines.push("YÊU CẦU BTVN: Tóm tắt tối đa một ý ngắn từ đánh giá trên; không chép dài và không nêu điểm số.");
+    } else if (facts.homeworkStatus.submitted) {
+      lines.push("YÊU CẦU BTVN: Chỉ được nói bài đã nộp hoặc đã được ghi nhận; không tự suy diễn chất lượng và không nêu điểm số.");
+    } else {
+      lines.push("YÊU CẦU BTVN: Chỉ nhắc ngắn gọn việc cần bổ sung bài; không nêu điểm số.");
+    }
+  }
   if (facts.previousComment) {
     lines.push(`NHẬN XÉT GẦN NHẤT (chỉ dùng để tránh lặp cách diễn đạt, không phải dữ kiện buổi này): ${facts.previousComment}`);
   }
@@ -309,8 +390,9 @@ function sentenceRange(length: CommentLength, mode: CommentMode): { min: number;
 
 export function buildValidationPolicy(facts: CommentFacts): CommentValidationPolicy {
   const range = sentenceRange(facts.commentLength, facts.mode);
-  const normalizedNote = normalizeForMatch(facts.teacherNote);
-  const allowedBehaviorPatterns = BEHAVIOR_PATTERNS.filter((pattern) => new RegExp(pattern, "i").test(normalizedNote));
+  const normalizedEvidence = normalizeForMatch(`${facts.teacherNote} ${facts.homeworkStatus?.evaluationSummary || ""}`);
+  const allowedBehaviorPatterns = BEHAVIOR_PATTERNS.filter((pattern) => new RegExp(pattern, "i").test(normalizedEvidence));
+  const requireHomeworkEvaluation = Boolean(facts.homeworkStatus?.submitted && facts.homeworkStatus.evaluationSummary);
   return {
     mode: facts.mode,
     learningLevel: facts.mode === "absence" ? null : facts.learningLevel,
@@ -321,6 +403,10 @@ export function buildValidationPolicy(facts: CommentFacts): CommentValidationPol
     allowedBehaviorPatterns,
     absenceLearningPatterns: ABSENCE_LEARNING_PATTERNS,
     allowHomework: Boolean(facts.homeworkStatus),
+    requireHomeworkEvaluation,
+    homeworkEvaluationKeywords: requireHomeworkEvaluation
+      ? homeworkEvaluationKeywords(facts.homeworkStatus?.evaluationSummary || "")
+      : [],
     allowBehaviorClaims: allowedBehaviorPatterns.length > 0,
     minSentences: range.min,
     maxSentences: range.max,
@@ -378,6 +464,22 @@ function matchesAny(normalized: string, patterns: string[]): boolean {
   return patterns.some((pattern) => new RegExp(pattern, "i").test(normalized));
 }
 
+function mentionsHomework(normalized: string): boolean {
+  return /\bbtvn\b|bai tap ve nha|bai tap (?:buoi|o nha)/.test(normalized);
+}
+
+function mentionsHomeworkScore(normalized: string): boolean {
+  return [
+    "(?:btvn|bai tap ve nha)(?:\\s+buoi\\s+\\d+)?[\\s:;,.\\/=_\\-]+\\d+(?:[.,]\\d+)?(?:\\s*/\\s*\\d+(?:[.,]\\d+)?)?(?:\\s*diem)?",
+    "(?:btvn|bai tap ve nha).{0,60}(?:dat|duoc(?: cham)?|cham|nhan)\\s+(?:muc\\s+)?(?:diem\\s*)?\\d+(?:[.,]\\d+)?(?:\\s*/\\s*\\d+(?:[.,]\\d+)?)?(?:\\s*diem)?",
+    "(?:btvn|bai tap ve nha).{0,60}(?:muc\\s+)?diem\\s*(?:la|:)?\\s*\\d+(?:[.,]\\d+)?",
+    "diem\\s+(?:cua\\s+)?(?:btvn|bai tap ve nha).{0,30}(?:la\\s*)?\\d+(?:[.,]\\d+)?",
+    "(?:duoc|dat|cham)\\s+(?:muc\\s+)?diem\\s*(?:la|:)?\\s*\\d+(?:[.,]\\d+)?",
+    "(?:duoc|dat|cham)\\s+\\d+(?:[.,]\\d+)?\\s*diem",
+    "\\b\\d+(?:[.,]\\d+)?\\s*/\\s*(?:10|100)\\b",
+  ].some((pattern) => new RegExp(pattern, "i").test(normalized));
+}
+
 export function validateComment(value: string, policy: CommentValidationPolicy): CommentValidationResult {
   const plain = stripCommentMarkup(value);
   const normalized = normalizeForMatch(plain);
@@ -400,8 +502,20 @@ export function validateComment(value: string, policy: CommentValidationPolicy):
     if (!matchesAny(normalized, concept.patterns)) issues.push(`Thiếu ${concept.label}.`);
   }
 
-  if (!policy.allowHomework && /\bbtvn\b|bai tap ve nha/.test(normalized)) {
+  if (!policy.allowHomework && mentionsHomework(normalized)) {
     issues.push("Nhận xét nhắc BTVN khi không có dữ kiện.");
+  }
+  if (policy.requireHomeworkEvaluation) {
+    const normalizedWords = new Set(normalized.match(/[a-z0-9]+/g) || []);
+    const keywordMatchCount = policy.homeworkEvaluationKeywords.filter((keyword) => normalizedWords.has(keyword)).length;
+    const requiredKeywordMatches = Math.min(2, policy.homeworkEvaluationKeywords.length);
+    const includesEvaluation = requiredKeywordMatches === 0 || keywordMatchCount >= requiredKeywordMatches;
+    if (!mentionsHomework(normalized) || !includesEvaluation) {
+      issues.push("Thiếu tóm tắt đánh giá BTVN.");
+    }
+  }
+  if (mentionsHomeworkScore(normalized)) {
+    issues.push("Nhận xét không được nêu điểm số BTVN.");
   }
   const hasUnsupportedBehavior = policy.behaviorPatterns.some((pattern) =>
     new RegExp(pattern, "i").test(normalized) && !policy.allowedBehaviorPatterns.includes(pattern));
@@ -449,11 +563,21 @@ export function buildRepairMessages(
 }
 
 function attendanceSentence(facts: CommentFacts): string {
-  if (facts.attendanceStatus === "ATTENDED") return `${facts.shortName} đi học đúng giờ trong buổi này.`;
-  if (facts.attendanceStatus === "LATE_ARRIVED") return `${facts.shortName} đi học muộn trong buổi này.`;
-  if (facts.attendanceStatus === "ABSENT_WITH_NOTICE") return `${facts.shortName} vắng học có phép trong buổi này.`;
-  if (facts.attendanceStatus === "ABSENT") return `${facts.shortName} vắng học trong buổi này.`;
+  if (facts.attendanceStatus === "ATTENDED") return `${facts.studentCallName} đi học đúng giờ trong buổi này.`;
+  if (facts.attendanceStatus === "LATE_ARRIVED") return `${facts.studentCallName} đi học muộn trong buổi này.`;
+  if (facts.attendanceStatus === "ABSENT_WITH_NOTICE") return `${facts.studentCallName} vắng học có phép trong buổi này.`;
+  if (facts.attendanceStatus === "ABSENT") return `${facts.studentCallName} vắng học trong buổi này.`;
   return "";
+}
+
+function safeHomeworkEvaluationSentence(facts: CommentFacts): string {
+  const homework = facts.homeworkStatus;
+  if (!homework?.submitted || !homework.evaluationSummary) return "";
+  const firstSentence = homework.evaluationSummary.match(/[^.!?]+[.!?]?/)?.[0]?.trim() || "";
+  const summary = firstSentence.replace(/[.!?]+$/, "").trim().slice(0, 240);
+  if (!summary) return "";
+  const sentence = `Về BTVN ${homework.previousSessionLabel}: ${summary}.`;
+  return mentionsHomeworkScore(normalizeForMatch(sentence)) ? "" : sentence;
 }
 
 export function buildSafeComment(facts: CommentFacts): string {
@@ -469,6 +593,9 @@ export function buildSafeComment(facts: CommentFacts): string {
   const sentences = [attendance, levelPolicy.safeLearningSentence, levelPolicy.safeClosingSentence].filter(Boolean);
   if (facts.homeworkStatus?.submitted === false) {
     sentences.push(`Phụ huynh giúp em nhắc con bổ sung BTVN ${facts.homeworkStatus.previousSessionLabel} đầy đủ hơn.`);
+  } else {
+    const homeworkEvaluation = safeHomeworkEvaluationSentence(facts);
+    if (homeworkEvaluation) sentences.push(homeworkEvaluation);
   }
   return sentences.join(" ");
 }

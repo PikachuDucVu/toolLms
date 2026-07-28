@@ -11,6 +11,12 @@ function stripHtmlText(value) {
             return (container.textContent || container.innerText || '').replace(/\s+/g, ' ').trim();
         }
 
+function getStudentCallName(fullName) {
+            const nameParts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+            if (nameParts.length === 0) return 'em';
+            return nameParts.length === 1 ? nameParts[0] : nameParts.slice(-2).join(' ');
+        }
+
 function normalizeLearningLevel(value) {
             return Object.prototype.hasOwnProperty.call(app.LEARNING_LEVELS, value)
                 ? value
@@ -105,6 +111,7 @@ function snapshotRegularStudent(att) {
                 attendanceId: att._id,
                 studentId: att.student.id,
                 studentName: att.student.fullName || '',
+                studentCallName: app.getStudentCallName(att.student.fullName),
                 attendanceStatus,
                 isLate: att.status === 'LATE_ARRIVED',
                 assessment,
@@ -326,7 +333,11 @@ function buildRegularStudentDetail(att, idx) {
             const hasAnyCopyableComment = !!(studentState.generatedComment || studentState.existingComment);
             const actionsDisabled = app.isRegularOperationActive() || studentState.assessmentStatus.loading || studentState.assessmentStatus.error;
             const isGenerating = state.regularStudentBusy.has(studentState.studentId);
-            const absenceGenerateLabel = isGenerating ? 'Đang tạo...' : studentState.generatedComment ? 'Tạo lại nhận xét vắng' : 'Tạo nhận xét vắng';
+            const generateLabel = isGenerating
+                ? 'Đang tạo...'
+                : studentState.isPresent
+                    ? studentState.generatedComment ? 'Tạo lại nhận xét' : 'Tạo nhận xét AI'
+                    : studentState.generatedComment ? 'Tạo lại nhận xét vắng' : 'Tạo nhận xét vắng';
 
             return `
                 <div class="student-detail-header">
@@ -369,30 +380,26 @@ function buildRegularStudentDetail(att, idx) {
                         ${studentState.isPresent ? `
                             <fieldset class="learning-level-fieldset" ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error || app.isRegularOperationActive()) ? 'disabled' : ''}>
                                 <legend class="learning-level-legend">
-                                    <span>Chọn mức và tạo ngay</span>
-                                    <small>${studentState.assessmentStatus.loading ? 'Đang tải đánh giá đã lưu...' : studentState.assessmentStatus.error ? 'Vui lòng thử tải lại' : 'L3 là mặc định · bấm một mức để lưu và tạo'}</small>
+                                    <span>Chọn mức độ nắm bài</span>
+                                    <small>${studentState.assessmentStatus.loading ? 'Đang tải đánh giá đã lưu...' : studentState.assessmentStatus.error ? 'Vui lòng thử tải lại' : 'L3 là mặc định · chọn một mức để tự lưu'}</small>
                                 </legend>
-                                <div class="learning-level-grid" role="group" aria-label="Chọn mức độ nắm bài và tạo nhận xét cho ${studentNameAttr}">
+                                <div class="learning-level-grid" role="group" aria-label="Chọn mức độ nắm bài cho ${studentNameAttr}">
                                     ${Object.entries(app.LEARNING_LEVELS).sort(([, left], [, right]) => left.code.localeCompare(right.code)).map(([value, info]) => {
                                         const isSelected = studentState.learningLevel === value;
-                                        const isCurrentGenerating = isGenerating && isSelected;
                                         return `
                                         <button type="button"
-                                            class="learning-level-option learning-level-action ${isSelected ? 'is-selected' : ''} ${isCurrentGenerating ? 'is-loading' : ''}"
-                                            id="level-action-${domId}-${value}"
+                                            class="learning-level-option ${isSelected ? 'is-selected' : ''}"
+                                            id="level-option-${domId}-${value}"
                                             data-learning-level-student="${domId}"
                                             data-level-value="${value}"
                                             aria-pressed="${isSelected}"
-                                            aria-busy="${isCurrentGenerating}"
-                                            aria-label="Tạo nhận xét ${info.code}: ${info.label} cho ${studentNameAttr}"
-                                            onclick="generateAtLearningLevel('${studentIdJs}', '${value}')">
-                                            ${isCurrentGenerating ? 'Đang tạo...' : `
-                                                <span class="learning-level-code">${info.code}</span>
-                                                <span class="learning-level-copy">
-                                                    <strong>${info.label}</strong>
-                                                    <small>${info.help}</small>
-                                                </span>
-                                            `}
+                                            aria-label="Chọn ${info.code}: ${info.label} cho ${studentNameAttr}"
+                                            onclick="onRegularLearningLevelChange('${studentIdJs}', '${value}')">
+                                            <span class="learning-level-code">${info.code}</span>
+                                            <span class="learning-level-copy">
+                                                <strong>${info.label}</strong>
+                                                <small>${info.help}</small>
+                                            </span>
                                         </button>
                                     `;}).join('')}
                                 </div>
@@ -461,12 +468,10 @@ function buildRegularStudentDetail(att, idx) {
                 </div>
 
                 <div class="student-detail-actions">
-                    ${!studentState.isPresent ? `
-                        <button type="button" class="btn btn-sm ${studentState.generatedComment ? 'btn-outline' : 'btn-primary'}" onclick="generateSingle('${studentIdJs}')" id="gen-btn-${domId}" ${actionsDisabled ? 'disabled' : ''} aria-busy="${state.regularStudentBusy.has(studentState.studentId)}">
-                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.591-2.591L3.5 12.5l2.096-.813a4.5 4.5 0 0 0 2.591-2.591l2.096-.813-2.096-.813a4.5 4.5 0 0 0-2.591-2.591L9 7l-.813 2.096a4.5 4.5 0 0 1-2.591 2.591L3.5 12.5l2.096.813a4.5 4.5 0 0 1 2.591 2.591Z"/></svg>
-                            ${absenceGenerateLabel}
-                        </button>
-                    ` : ''}
+                    <button type="button" class="btn btn-sm ${studentState.generatedComment ? 'btn-outline' : 'btn-primary'}" onclick="generateSingle('${studentIdJs}')" id="gen-btn-${domId}" ${actionsDisabled ? 'disabled' : ''} aria-busy="${isGenerating}">
+                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.591-2.591L3.5 12.5l2.096-.813a4.5 4.5 0 0 0 2.591-2.591l2.096-.813-2.096-.813a4.5 4.5 0 0 0-2.591-2.591L9 7l-.813 2.096a4.5 4.5 0 0 1-2.591 2.591L3.5 12.5l2.096.813a4.5 4.5 0 0 1 2.591 2.591Z"/></svg>
+                        ${generateLabel}
+                    </button>
                     ${studentState.generatedComment ? `
                         <button type="button" class="btn btn-sm btn-success detail-primary" id="submit-btn-${domId}" onclick="submitSingle('${studentIdJs}', '${attendanceIdJs}')" ${actionsDisabled ? 'disabled' : ''}>
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-8-4-4m0 0L8 8m4-4v12"/></svg>
@@ -677,10 +682,6 @@ function queueRegularLearningLevelAutosave(studentId) {
 function onRegularLearningLevelChange(studentId, value) {
             state.regularLearningLevelDrafts[studentId] = app.normalizeLearningLevel(value);
             state.regularAssessmentTouched.add(studentId);
-            const domId = app.getRegularStudentDomId(studentId);
-            document.querySelectorAll(`input[name="learning-level-${domId}"]`).forEach(input => {
-                input.closest('.learning-level-option')?.classList.toggle('is-selected', input.checked);
-            });
             app.refreshRegularAssessmentIndicators(studentId);
             app.queueRegularLearningLevelAutosave(studentId);
         }
@@ -1165,7 +1166,7 @@ function renderStudents(studentList = null) {
                         <button class="btn btn-xs btn-template" onclick="showPastComments('${app.escapeInlineJsAttr(att.student.id)}', '${app.escapeInlineJsAttr(att.student.fullName)}')">Xem buổi trước</button>
                     </div>
                     <div class="student-actions">
-                        <button class="btn btn-sm btn-primary" onclick="generateSingle('${app.escapeInlineJsAttr(att.student.id)}', '${app.escapeInlineJsAttr(att.student.fullName)}', ${idx})" id="gen-btn-${att.student.id}">
+                        <button class="btn btn-sm btn-primary" onclick="generateSingle('${app.escapeInlineJsAttr(att.student.id)}')" id="gen-btn-${att.student.id}">
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
                             </svg>
@@ -1415,6 +1416,7 @@ async function saveNote(studentId) {
 Object.assign(app, {
     getRegularStudentDomId,
     stripHtmlText,
+    getStudentCallName,
     normalizeLearningLevel,
     getRegularLearningLevel,
     getRegularNoteValue,

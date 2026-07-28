@@ -176,7 +176,6 @@ function getRegularReviewWarningText(row) {
 function buildRegularReviewRow(row) {
     const domId = app.getRegularStudentDomId(row.studentId);
     const studentIdJs = app.escapeInlineJsAttr(row.studentId);
-    const studentNameJs = app.escapeInlineJsAttr(row.studentName);
     const commentId = `review-comment-${domId}`;
     const warningText = getRegularReviewWarningText(row);
     const selected = state.regularReviewSelectedStudentId === row.studentId;
@@ -242,7 +241,7 @@ function buildRegularReviewRow(row) {
                 </button>
                 <button type="button" class="btn btn-xs regular-review-row-generate ${row.isDraft ? 'btn-outline' : 'btn-primary'}"
                     id="review-generate-btn-${domId}" data-review-generate-student="${app.escapeAttr(row.studentId)}"
-                    onclick="generateSingle('${studentIdJs}', '${studentNameJs}', ${row.index})"
+                    onclick="generateSingle('${studentIdJs}')"
                     ${operationLocked || row.assessmentStatus.loading || row.assessmentStatus.error ? 'disabled' : ''}>
                     ${row.busy ? 'Đang tạo...' : generateLabel}
                 </button>

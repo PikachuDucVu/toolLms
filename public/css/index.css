@@ -1956,27 +1956,6 @@
     outline-offset: 2px
     }
 
-.learning-level-action.is-loading {
-    align-items: center;
-    justify-content: center;
-    color: var(--primary-dark);
-    font-weight: 800
-    }
-
-.learning-level-action.is-loading::after {
-    content: "";
-    position: static;
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(8, 145, 178, 0.24);
-    border-top-color: var(--primary);
-    animation: learning-level-spin 0.75s linear infinite
-    }
-
-@keyframes learning-level-spin {
-    to { transform: rotate(360deg) }
-    }
-
 .learning-level-code {
     flex: 0 0 auto;
     display: inline-flex;
