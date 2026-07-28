@@ -199,6 +199,20 @@ function buildRegularReviewRow(row) {
                 </div>
             </div>
             <div class="regular-review-level-cell">
+                ${row.isPresent ? `
+                    <label class="regular-review-level-control" for="review-level-select-${domId}">
+                        <span class="sr-only">Đổi mức học của ${app.escapeHtml(row.studentName)}</span>
+                        <select class="form-select regular-review-level-select" id="review-level-select-${domId}"
+                            data-review-level-student="${app.escapeAttr(row.studentId)}"
+                            aria-label="Đổi mức học của ${app.escapeAttr(row.studentName)}"
+                            onchange="setRegularReviewLearningLevel('${studentIdJs}', this.value)"
+                            ${(operationLocked || row.assessmentStatus.loading || row.assessmentStatus.error) ? 'disabled' : ''}>
+                            ${Object.entries(app.LEARNING_LEVELS).map(([value, info]) => `<option value="${value}" ${row.learningLevel === value ? 'selected' : ''}>${info.code} · ${app.escapeHtml(info.shortLabel)}</option>`).join('')}
+                        </select>
+                    </label>
+                ` : `
+                    <span class="regular-review-level-unavailable">Không đánh giá học sinh vắng</span>
+                `}
                 <span class="badge badge-learning-level" id="review-level-badge-${domId}">${row.learningLevelInfo.code} · ${row.learningLevelInfo.shortLabel}</span>
                 <small id="review-assessment-status-${domId}">${app.escapeHtml(row.assessmentStatus.text)}</small>
             </div>
@@ -386,8 +400,12 @@ function renderRegularReview(list = document.getElementById('regularReviewModalC
     const allDraftIds = allRows.filter(row => row.isPresent && row.isDraft).map(row => row.studentId);
     const filteredDraftIds = rows.filter(row => row.isPresent && row.isDraft).map(row => row.studentId);
     const filteredPresentIds = rows.filter(row => row.isPresent).map(row => row.studentId);
+    const allPresentIds = allRows.filter(row => row.isPresent).map(row => row.studentId);
     const warningCount = allRows.filter(row => row.hasWarning).length;
     const hasDrawer = !!state.regularReviewSelectedStudentId;
+    const operationLocked = app.isRegularOperationActive();
+    const assessmentUnavailable = app.isRegularAssessmentUnavailable();
+    const assessmentBlocked = operationLocked || assessmentUnavailable;
 
     captureRegularReviewFocusState(list);
     list.classList.add('regular-review-mode');
@@ -404,6 +422,19 @@ function renderRegularReview(list = document.getElementById('regularReviewModalC
                         </div>
                     </div>
                     <div class="regular-review-primary-actions">
+                        <details class="toolbar-menu regular-review-level-menu ${assessmentBlocked ? 'is-disabled' : ''}">
+                            <summary class="btn btn-sm btn-outline" id="regularReviewBulkLevelButton" aria-label="Đổi mức học cho toàn bộ học sinh có mặt" aria-disabled="${assessmentBlocked}" tabindex="${assessmentBlocked ? '-1' : '0'}">Mức cả lớp</summary>
+                            <div class="toolbar-menu-popover regular-review-level-popover">
+                                <div class="batch-level-menu-title">Áp dụng cho ${allPresentIds.length} học sinh có mặt</div>
+                                ${Object.entries(app.LEARNING_LEVELS).map(([value, info]) => `
+                                    <button type="button" class="menu-action batch-level-action review-bulk-level-action" data-level-value="${value}"
+                                        onclick="closeDetailsMenu(this); setLearningLevelForAll('${value}')" ${assessmentBlocked ? 'disabled' : ''}>
+                                        <span class="batch-level-code">${info.code}</span><span>${app.escapeHtml(info.label)}</span>
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </details>
+                        <button type="button" class="btn btn-sm btn-primary" id="regularReviewGenerateAll" data-regular-review-generate-all onclick="regenerateRegularReviewAll()" ${allPresentIds.length && !assessmentBlocked ? '' : 'disabled'}>Tạo nhận xét tất cả ${allPresentIds.length}</button>
                         <details class="toolbar-menu regular-review-overflow">
                             <summary class="btn btn-sm btn-outline" id="regularReviewMoreActions" aria-label="Mở thêm công cụ review">Thêm</summary>
                             <div class="toolbar-menu-popover">
@@ -412,7 +443,7 @@ function renderRegularReview(list = document.getElementById('regularReviewModalC
                             </div>
                         </details>
                         <button type="button" class="btn btn-sm btn-outline" id="regularReviewCopyAll" onclick="copyAllZalo()" ${allDraftIds.length ? '' : 'disabled'}>Sao chép Zalo</button>
-                        <button type="button" class="btn btn-sm btn-success" id="regularReviewSubmitAll" onclick="showConfirmModal()" ${allDraftIds.length && !app.isRegularOperationActive() ? '' : 'disabled'}>Gửi tất cả ${allDraftIds.length}</button>
+                        <button type="button" class="btn btn-sm btn-success" id="regularReviewSubmitAll" onclick="showConfirmModal()" ${allDraftIds.length && !operationLocked ? '' : 'disabled'}>Gửi tất cả ${allDraftIds.length}</button>
                     </div>
                 </div>
 
@@ -439,7 +470,7 @@ function renderRegularReview(list = document.getElementById('regularReviewModalC
                         <option value="attendance" ${state.regularReviewSort === 'attendance' ? 'selected' : ''}>Có mặt trước</option>
                     </select></label>
                     <div class="regular-review-filter-actions">
-                        <button type="button" class="btn btn-sm btn-outline" id="regularReviewGenerateFiltered" onclick="regenerateRegularReviewFiltered()" ${filteredPresentIds.length && !app.isRegularOperationActive() ? '' : 'disabled'}>Tạo AI ${filteredPresentIds.length} mục đang lọc</button>
+                        <button type="button" class="btn btn-sm btn-outline" id="regularReviewGenerateFiltered" onclick="regenerateRegularReviewFiltered()" ${filteredPresentIds.length && !assessmentBlocked ? '' : 'disabled'}>Tạo nhận xét ${filteredPresentIds.length} mục đang lọc</button>
                         <button type="button" class="btn btn-sm btn-outline" id="regularReviewSubmitFiltered" onclick="submitRegularReviewFiltered()" ${filteredDraftIds.length && !app.isRegularOperationActive() ? '' : 'disabled'}>Gửi ${filteredDraftIds.length} mục đang lọc</button>
                     </div>
                 </div>
@@ -604,6 +635,22 @@ function updateRegularReviewComment(studentId, textarea) {
     autosizeRegularReviewTextarea(textarea);
 }
 
+function setRegularReviewLearningLevel(studentId, learningLevel) {
+    if (!Object.prototype.hasOwnProperty.call(app.LEARNING_LEVELS, learningLevel)) return;
+    const attendance = state.students.find(item => item.student.id === studentId);
+    if (!attendance || !app.isPresentAttendance(attendance)) {
+        app.showToast('Chỉ có thể đổi mức học cho học sinh có mặt', 'info');
+        return;
+    }
+    if (app.isRegularOperationActive() || app.isRegularAssessmentUnavailable()) {
+        app.showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
+        return;
+    }
+
+    app.onRegularLearningLevelChange(studentId, learningLevel);
+    if (state.regularReviewMode) app.renderRegularReview();
+}
+
 function handleRegularReviewTextareaKeydown(event) {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
         event.preventDefault();
@@ -618,6 +665,14 @@ function submitRegularReviewFiltered() {
         return;
     }
     app.showConfirmModal(ids);
+}
+
+function regenerateRegularReviewAll() {
+    if (app.isRegularOperationActive() || app.isRegularAssessmentUnavailable()) {
+        app.showToast('Vui lòng đợi thao tác đang chạy hoàn tất', 'info');
+        return;
+    }
+    app.autoCommentAll();
 }
 
 function regenerateRegularReviewFiltered() {
@@ -715,8 +770,10 @@ Object.assign(app, {
     refreshRegularReviewWarnings,
     syncRegularReviewComment,
     updateRegularReviewComment,
+    setRegularReviewLearningLevel,
     handleRegularReviewTextareaKeydown,
     submitRegularReviewFiltered,
+    regenerateRegularReviewAll,
     regenerateRegularReviewFiltered,
 });
 

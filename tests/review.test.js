@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { app } from '../public/js/index/registry.js';
 import { state } from '../public/js/index/state.js';
 import '../public/js/index/constants.js';
@@ -125,6 +126,46 @@ test('all and filtered submit scopes include only present students with drafts',
   delete state.generatedComments['student-3'];
   assert.deepEqual(app.getRegularReviewFilteredDraftIds(), []);
   assert.deepEqual(app.getRegularReviewFilteredPresentIds(), ['student-3']);
+});
+
+test('review provides per-student and whole-class learning-level controls plus an all-student generation action', () => {
+  const source = readFileSync(new URL('../public/js/index/review.js', import.meta.url), 'utf8');
+
+  assert.match(source, /regular-review-level-select/);
+  assert.match(source, /setRegularReviewLearningLevel\('/);
+  assert.match(source, /regular-review-level-menu/);
+  assert.match(source, /setLearningLevelForAll\('\$\{value\}'\)/);
+  assert.match(source, /id="regularReviewGenerateAll"/);
+  assert.match(source, /function regenerateRegularReviewAll\(\)[\s\S]*?app\.autoCommentAll\(\)/);
+});
+
+test('review-level control saves one present student and refreshes the review', () => {
+  resetReviewState();
+  state.regularReviewMode = true;
+  const original = {
+    onRegularLearningLevelChange: app.onRegularLearningLevelChange,
+    renderRegularReview: app.renderRegularReview,
+    isRegularOperationActive: app.isRegularOperationActive,
+    isRegularAssessmentUnavailable: app.isRegularAssessmentUnavailable,
+    showToast: app.showToast,
+  };
+  const changes = [];
+  let renderCount = 0;
+  app.onRegularLearningLevelChange = (studentId, level) => changes.push([studentId, level]);
+  app.renderRegularReview = () => { renderCount += 1; };
+  app.isRegularOperationActive = () => false;
+  app.isRegularAssessmentUnavailable = () => false;
+  app.showToast = () => {};
+
+  try {
+    app.setRegularReviewLearningLevel('student-1', 'needs_support');
+    app.setRegularReviewLearningLevel('student-4', 'independent');
+
+    assert.deepEqual(changes, [['student-1', 'needs_support']]);
+    assert.equal(renderCount, 1);
+  } finally {
+    Object.assign(app, original);
+  }
 });
 
 test('confirmation freezes the explicit filtered submit scope', () => {

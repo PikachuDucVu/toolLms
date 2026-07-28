@@ -519,6 +519,27 @@ function syncRegularOperationLock() {
                 const status = studentId ? app.getRegularAssessmentStatus(studentId) : null;
                 button.disabled = assessmentBlocked || !!status?.loading || !!status?.error;
             });
+            document.querySelectorAll('.regular-review-level-select').forEach(select => {
+                const studentId = select.dataset.reviewLevelStudent;
+                const status = studentId ? app.getRegularAssessmentStatus(studentId) : null;
+                select.disabled = assessmentBlocked || !!status?.loading || !!status?.error;
+            });
+            document.querySelectorAll('.regular-review-level-menu').forEach(details => {
+                const summary = details.querySelector(':scope > summary');
+                details.classList.toggle('is-disabled', assessmentBlocked);
+                if (summary) {
+                    summary.setAttribute('aria-disabled', String(assessmentBlocked));
+                    summary.tabIndex = assessmentBlocked ? -1 : 0;
+                    summary.style.pointerEvents = assessmentBlocked ? 'none' : '';
+                }
+                details.querySelectorAll('.review-bulk-level-action').forEach(button => {
+                    button.disabled = assessmentBlocked;
+                });
+                if (assessmentBlocked) details.removeAttribute('open');
+            });
+            document.querySelectorAll('[data-regular-review-generate-all], #regularReviewGenerateFiltered').forEach(button => {
+                button.disabled = assessmentBlocked;
+            });
             document.querySelectorAll('#regularStudentDetail details.quick-template-menu, #regularReviewDrawer details.quick-template-menu').forEach(details => {
                 const summary = details.querySelector(':scope > summary');
                 details.classList.toggle('is-disabled', assessmentBlocked);
