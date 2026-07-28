@@ -11,10 +11,25 @@ function stripHtmlText(value) {
             return (container.textContent || container.innerText || '').replace(/\s+/g, ' ').trim();
         }
 
-function getStudentCallName(fullName) {
-            const nameParts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+function getStudentCallName(fullName, roster = state.students) {
+            const normalizedFullName = String(fullName || '').normalize('NFC').trim().replace(/\s+/g, ' ');
+            const nameParts = normalizedFullName.split(' ').filter(Boolean);
             if (nameParts.length === 0) return 'em';
-            return nameParts.length === 1 ? nameParts[0] : nameParts.slice(-2).join(' ');
+
+            const finalName = nameParts.at(-1);
+            const normalizedFinalName = finalName.toLocaleLowerCase('vi-VN');
+            const matchingFinalNameCount = (Array.isArray(roster) ? roster : []).reduce((count, entry) => {
+                const rosterFullName = String(entry?.student?.fullName ?? entry?.fullName ?? '')
+                    .normalize('NFC')
+                    .trim()
+                    .replace(/\s+/g, ' ');
+                const rosterFinalName = rosterFullName.split(' ').filter(Boolean).at(-1);
+                return rosterFinalName?.toLocaleLowerCase('vi-VN') === normalizedFinalName ? count + 1 : count;
+            }, 0);
+
+            return matchingFinalNameCount > 1 && nameParts.length > 1
+                ? nameParts.slice(-2).join(' ')
+                : finalName;
         }
 
 function normalizeLearningLevel(value) {
@@ -111,7 +126,7 @@ function snapshotRegularStudent(att) {
                 attendanceId: att._id,
                 studentId: att.student.id,
                 studentName: att.student.fullName || '',
-                studentCallName: app.getStudentCallName(att.student.fullName),
+                studentCallName: app.getStudentCallName(att.student.fullName, state.students),
                 attendanceStatus,
                 isLate: att.status === 'LATE_ARRIVED',
                 assessment,

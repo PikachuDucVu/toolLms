@@ -122,11 +122,28 @@ describe("regular-session quick comment UI contract", () => {
     expect(html).toContain("Không đánh giá level cho học sinh vắng");
   });
 
-  it("derives the comment call name from the final two name components", () => {
-    expect(app.getStudentCallName("Nguyễn Minh Anh")).toBe("Minh Anh");
-    expect(app.getStudentCallName("Trần Gia Huy")).toBe("Gia Huy");
-    expect(app.getStudentCallName("Lê An")).toBe("Lê An");
-    expect(app.getStudentCallName("Bin")).toBe("Bin");
+  it("uses the final name when unique and adds the preceding name only for duplicates", () => {
+    const uniqueRoster = [
+      { student: { fullName: "Nguyễn Minh Anh" } },
+      { student: { fullName: "Trần Gia Huy" } },
+      { student: { fullName: "Lê An" } },
+      { student: { fullName: "Bin" } },
+    ];
+    expect(app.getStudentCallName("Nguyễn Minh Anh", uniqueRoster)).toBe("Anh");
+    expect(app.getStudentCallName("Trần Gia Huy", uniqueRoster)).toBe("Huy");
+    expect(app.getStudentCallName("Lê An", uniqueRoster)).toBe("An");
+    expect(app.getStudentCallName("Bin", uniqueRoster)).toBe("Bin");
+
+    const duplicateRoster = [
+      { student: { fullName: "Nguyễn Minh Anh" } },
+      { student: { fullName: "Trần Hoàng Anh" } },
+      { student: { fullName: "Trần Gia Huy" } },
+      { student: { fullName: "  Phạm Đức HUY  " } },
+    ];
+    expect(app.getStudentCallName("Nguyễn Minh Anh", duplicateRoster)).toBe("Minh Anh");
+    expect(app.getStudentCallName("Trần Hoàng Anh", duplicateRoster)).toBe("Hoàng Anh");
+    expect(app.getStudentCallName("Trần Gia Huy", duplicateRoster)).toBe("Gia Huy");
+    expect(app.getStudentCallName("Phạm Đức HUY", duplicateRoster)).toBe("Đức HUY");
   });
 
   it("keeps both main and review selections on the requested student after single generation", async () => {
@@ -182,7 +199,7 @@ describe("regular-session quick comment UI contract", () => {
       attendanceId: "attendance-1",
       studentId,
       studentName: "Nguyễn Minh Anh",
-      studentCallName: "Minh Anh",
+      studentCallName: "Anh",
       attendanceStatus: "ATTENDED",
       isLate: false,
       assessment: { learningLevel: "independent", note: "" },
@@ -198,7 +215,7 @@ describe("regular-session quick comment UI contract", () => {
     });
     app.fetchJSON = async (_url: string, body: Record<string, unknown>) => {
       requestBody = body;
-      return { comment: "<p>Minh Anh nắm vững kiến thức và tự hoàn thành bài.</p>" };
+      return { comment: "<p>Anh nắm vững kiến thức và tự hoàn thành bài.</p>" };
     };
     app.syncRegularOperationLock = () => undefined;
     app.renderStudents = () => {
@@ -216,12 +233,12 @@ describe("regular-session quick comment UI contract", () => {
       expect(state.regularReviewSelectedStudentId).toBe(studentId);
       expect(selectionSeenDuringRender).toEqual({ regular: studentId, review: studentId });
       expect(state.generatedComments).toEqual({
-        [studentId]: "<p>Minh Anh nắm vững kiến thức và tự hoàn thành bài.</p>",
+        [studentId]: "<p>Anh nắm vững kiến thức và tự hoàn thành bài.</p>",
       });
       expect(requestBody).toMatchObject({
         student_id: studentId,
         student_name: "Nguyễn Minh Anh",
-        student_call_name: "Minh Anh",
+        student_call_name: "Anh",
       });
     } finally {
       Object.assign(app, originals);
