@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppConfig, Env } from "../src/types";
-import { generateCommentWithAi } from "../src/services/aiClient";
+import { generateCheckpointCommentWithAi, generateCommentWithAi } from "../src/services/aiClient";
 import {
   buildCommentFacts,
   buildCommentMessages,
@@ -31,6 +31,36 @@ function aiResponse(content: string, status = 200): Response {
     { status, headers: { "Content-Type": status === 200 ? "application/json" : "text/plain" } },
   );
 }
+
+describe("checkpoint comment AI orchestration", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("uses the standard checkpoint prompt for every individually generated comment", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(aiResponse("Điểm mạnh: Minh Anh có tư duy logic tốt. Điểm cần cải thiện: Em cần luyện thêm phần thực hành. Lời khuyên: Con nên làm thêm bài tập."));
+
+    await generateCheckpointCommentWithAi(env, config, {
+      studentName: "Nguyễn Minh Anh",
+      teacherDescription: "Tư duy logic tốt; cần luyện thêm phần thực hành",
+      modelId: "claude-sonnet-4-6",
+      aiApiKey: "test-key",
+    });
+
+    const body = JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body));
+    const prompt = body.messages[0].content;
+    expect(prompt).toContain("Điểm mạnh của học viên");
+    expect(prompt).toContain("Điểm cần cải thiện");
+    expect(prompt).toContain("Lời khuyên");
+    expect(prompt).toContain("Tư duy logic tốt; cần luyện thêm phần thực hành");
+    expect(prompt).not.toContain("TRẠNG THÁI: Học sinh vắng");
+  });
+});
 
 describe("regular comment AI orchestration", () => {
   beforeEach(() => {

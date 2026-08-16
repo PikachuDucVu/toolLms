@@ -84,7 +84,7 @@ describe("comment prompt facts and messages", () => {
     });
 
     expect(buildCommentMessages(withoutHomework)[1].content).not.toContain("TÌNH TRẠNG BTVN");
-    expect(buildCommentMessages(withHomework)[1].content).toContain("Chưa thấy nộp BTVN buổi 3");
+    expect(buildCommentMessages(withHomework)[1].content).toContain("Chưa hoàn thành BTVN buổi 3");
     expect(buildValidationPolicy(withHomework).allowHomework).toBe(true);
   });
 

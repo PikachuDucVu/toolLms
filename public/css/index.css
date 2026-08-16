@@ -1549,6 +1549,22 @@
     margin-top: 12px
     }
 
+.checkpoint-absence-card {
+    border-style: dashed;
+    background: var(--surface-subtle)
+    }
+
+.checkpoint-absence-card .checkpoint-score-title {
+    color: var(--gray-700)
+    }
+
+.checkpoint-absence-card p {
+    margin-top: 6px;
+    color: var(--gray-600);
+    font-size: 13px;
+    line-height: 1.5
+    }
+
 .checkpoint-inline-hint {
     font-size: 11px;
     font-weight: 700;

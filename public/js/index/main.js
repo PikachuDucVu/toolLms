@@ -128,6 +128,7 @@ Object.assign(window, {
     showConfirmModal: app.showConfirmModal,
     showPastComments: app.showPastComments,
     submitCheckpointAll: app.submitCheckpointAll,
+    submitCheckpointCommentOnly: app.submitCheckpointCommentOnly,
     submitCheckpointScoreSingle: app.submitCheckpointScoreSingle,
     submitCheckpointScoresAll: app.submitCheckpointScoresAll,
     submitCheckpointSingle: app.submitCheckpointSingle,

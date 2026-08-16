@@ -465,6 +465,32 @@ function buildCheckpointPayload(data) {
             };
         }
 
+function buildCheckpointCommentOnlyPayload(data) {
+            const contentArea = {
+                content: data.comment,
+                commentAreaId: "67b54307f79c7bc326e017ff",
+                type: "CONTENT"
+            };
+
+            return {
+                slotId: data.slot_id,
+                classSiteId: data.class_site_id,
+                sessionNumber: data.session_number,
+                classId: data.class_id,
+                courseProcessId: data.course_process_id,
+                slotType: "CheckPoint",
+                rank: "N/A",
+                totalScore: null,
+                ...(data.summary ? {summary: data.summary} : {}),
+                studentComment: {
+                    studentAttendanceId: data.student_attendance_id,
+                    studentId: data.student_id,
+                    content: `- Đánh giá chung: ${data.comment}`,
+                    byAreas: [contentArea]
+                }
+            };
+        }
+
 function formatScore(value) {
             const num = Number(value);
             if (!Number.isFinite(num)) return '0';
@@ -759,6 +785,7 @@ Object.assign(app, {
     isNewFormatClass,
     buildDefaultPayload,
     buildCheckpointPayload,
+    buildCheckpointCommentOnlyPayload,
     formatScore,
     getRankFromScore,
     getActiveCourseProcess,

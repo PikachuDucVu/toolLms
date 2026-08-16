@@ -505,8 +505,8 @@ function toggleCheckpointCard(studentId, event) {
             const card = document.getElementById(`cp-card-${scoreId}`);
             if (!card) return;
             const nowCollapsed = card.classList.toggle('collapsed');
-            if (nowCollapsed) delete state.checkpointExpanded[studentId];
-            else state.checkpointExpanded[studentId] = true;
+            state.checkpointExpanded[studentId] = !nowCollapsed;
+            card.querySelector('.cp-head')?.setAttribute('aria-expanded', String(!nowCollapsed));
         }
 
 function expandCheckpointCard(studentId) {

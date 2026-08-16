@@ -966,7 +966,8 @@ function renderStudents(studentList = null) {
                     // Accordion open/closed state persists across re-renders.
                     // Default: expand ungraded students, collapse already-graded ones.
                     const expandedState = state.checkpointExpanded[att.student.id];
-                    const isExpanded = expandedState === undefined ? !hasCheckpoint : expandedState;
+                    const hasCheckpointComment = !!existingContent;
+                    const isExpanded = expandedState === undefined ? !(hasCheckpoint || hasCheckpointComment) : expandedState;
                     const collapsedClass = isExpanded ? '' : 'collapsed';
 
                     // Compact score readout shown in the header (kept live by updateCheckpointTotal).
@@ -974,20 +975,94 @@ function renderStudents(studentList = null) {
                         ? `<span class="cp-head-score"><b id="cp-total-${studentScoreId}">${existingAverage}</b>/5</span><span class="checkpoint-rank ${existingRank}" id="cp-rank-${studentScoreId}">${existingRank}</span>`
                         : `<span class="cp-head-score cp-head-score-empty"><b id="cp-total-${studentScoreId}">${existingAverage}</b>/5</span><span class="checkpoint-rank ${existingRank}" id="cp-rank-${studentScoreId}">${existingRank}</span>`;
 
-                    div.className = `student-card cp-accordion ${collapsedClass} ${hasCheckpoint ? 'has-comment' : 'no-comment'}`;
+                    div.className = `student-card cp-accordion ${collapsedClass} ${hasCheckpoint || hasCheckpointComment ? 'has-comment' : 'no-comment'}`;
                     div.id = `cp-card-${studentScoreId}`;
 
                     if (!isPresent) {
                         div.innerHTML = `
-                            <div class="student-header">
-                                <div class="student-info">
+                            <div class="cp-head" onclick="toggleCheckpointCard('${app.escapeInlineJsAttr(att.student.id)}', event)" role="button" tabindex="0"
+                                 aria-expanded="${isExpanded}" aria-controls="cp-body-${studentScoreId}"
+                                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCheckpointCard('${app.escapeInlineJsAttr(att.student.id)}');}">
+                                <div class="cp-head-left">
                                     <div class="student-avatar">${initials}</div>
-                                    <div>
+                                    <div class="cp-head-info">
                                         <div class="student-name">${app.escapeHtml(att.student.fullName)}</div>
                                         <div class="student-meta"><span class="badge ${statusClass}">${statusText}</span></div>
                                     </div>
                                 </div>
-                                <span class="badge badge-gray">Vắng — không chấm</span>
+                                <div class="cp-head-right">
+                                    <span class="badge badge-gray">Vắng — không chấm</span>
+                                    <span class="badge ${hasCheckpointComment ? 'badge-checkpoint-done' : 'badge-checkpoint'}">${hasCheckpointComment ? '✓ Đã nhận xét' : '○ Chưa nhận xét'}</span>
+                                    <svg class="cp-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="cp-body" id="cp-body-${studentScoreId}">
+                                <div class="checkpoint-score-card checkpoint-absence-card">
+                                    <div class="checkpoint-score-title">Không chấm điểm checkpoint</div>
+                                    <p>Học sinh vắng nên hệ thống sẽ không tạo hoặc gửi điểm. Nhận xét AI vẫn được tạo theo cùng mẫu với học sinh đi học, dựa trên ghi chú bạn nhập.</p>
+                                </div>
+                                ${existingContent ? `
+                                    <details class="cp-existing-details">
+                                        <summary>Xem nhận xét hiện tại</summary>
+                                        <div class="checkpoint-existing-comment">${existingContent}</div>
+                                    </details>
+                                ` : ''}
+                                <div class="cp-comment-stack">
+                                    <div class="checkpoint-comment-section cp-note-compact">
+                                        <label class="checkpoint-label">
+                                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                            </svg>
+                                            Ghi chú cho AI
+                                        </label>
+                                        <textarea id="cp-desc-${studentScoreId}" rows="2" placeholder="VD: Tư duy logic tốt; chủ động; cần luyện thêm phần thực hành..."
+                                            oninput="updateCheckpointDescriptionDraft('${app.escapeInlineJsAttr(att.student.id)}', this.value)">${app.escapeHtml(app.getCheckpointDescriptionDraft(att.student.id))}</textarea>
+                                    </div>
+                                    ${state.generatedComments[att.student.id] ? `
+                                        <div class="checkpoint-ai-comment">
+                                            <div class="comment-box-label">
+                                                <span class="checkpoint-ai-title">
+                                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                                                    </svg>
+                                                    Nhận xét gửi phụ huynh (AI)
+                                                </span>
+                                                <button class="btn-icon" onclick="deleteComment('${app.escapeInlineJsAttr(att.student.id)}')" title="Xóa nhận xét">
+                                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                            <textarea class="comment-edit" id="comment-${att.student.id}" oninput="updateComment('${app.escapeInlineJsAttr(att.student.id)}', this.value)">${app.escapeHtml(state.generatedComments[att.student.id].replace(/<[^>]*>/g, ''))}</textarea>
+                                        </div>
+                                    ` : `
+                                        <div class="checkpoint-comment-section">
+                                            <label class="checkpoint-label">
+                                                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                                                </svg>
+                                                Nhận xét gửi phụ huynh
+                                            </label>
+                                            <textarea class="comment-edit" id="comment-${att.student.id}" placeholder="Nhập nhận xét thủ công, hoặc bấm AI nhận xét để tạo tự động..." oninput="updateComment('${app.escapeInlineJsAttr(att.student.id)}', this.value)">${app.escapeHtml(state.manualComments[att.student.id] || '')}</textarea>
+                                        </div>
+                                    `}
+                                </div>
+                                <div class="student-actions checkpoint-actions">
+                                    <button class="btn btn-sm btn-primary" onclick="generateCheckpointComment('${app.escapeInlineJsAttr(att.student.id)}', '${app.escapeInlineJsAttr(att.student.fullName)}', '${studentScoreId}')" id="cp-gen-btn-${studentScoreId}">
+                                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                                        </svg>
+                                        AI nhận xét
+                                    </button>
+                                    <button class="btn btn-sm btn-checkpoint" onclick="submitCheckpointCommentOnly('${app.escapeInlineJsAttr(att.student.id)}', '${app.escapeInlineJsAttr(att._id)}', '${studentScoreId}')" id="cp-comment-btn-${studentScoreId}">
+                                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                        </svg>
+                                        Gửi nhận xét
+                                    </button>
+                                </div>
                             </div>`;
                         list.appendChild(div);
                         return;

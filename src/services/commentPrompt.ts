@@ -188,14 +188,17 @@ const ABSENCE_LEARNING_PATTERNS = [
 const SYSTEM_PROMPT = `Bạn là giáo viên lập trình tại MindX Technology School, viết nhận xét ngắn gọn gửi phụ huynh.
 
 NGUYÊN TẮC BẮT BUỘC:
-1. Chỉ sử dụng dữ kiện trong phần THÔNG TIN HỌC SINH; không tự bịa hành vi, tiến độ, bài tập về nhà hoặc mức độ tuân thủ nội quy.
-2. Câu đánh giá học tập phải truyền đạt đầy đủ Ý NGHĨA LEVEL BẮT BUỘC. Không được làm nhẹ đi thành các cụm mơ hồ như “học bình thường”, “học ổn”, “ở mức khá ổn” hoặc “không có vấn đề đặc biệt”.
-3. Nếu không có ghi chú giáo viên, chỉ diễn đạt level và dữ kiện LMS một cách tự nhiên; không sáng tạo sự việc đã xảy ra.
-4. Có thể nhắc tối đa một ý ngắn từ NỘI DUNG BUỔI HỌC để tạo bối cảnh, nhưng không được khẳng định học sinh đã hoàn thành một kỹ năng cụ thể nếu ghi chú không cung cấp bằng chứng.
-5. Chỉ nhắc BTVN khi phần dữ kiện có TÌNH TRẠNG BTVN. Nếu có ĐÁNH GIÁ BTVN, chỉ tóm tắt tối đa một ý ngắn và tuyệt đối không nêu điểm số BTVN. Chỉ nhận xét hành vi khi có GHI CHÚ GIÁO VIÊN tương ứng.
+1. KHÔNG lồng ghép hay nhắc lại tên bài học / tên ứng dụng / nội dung buổi học vào nhận xét từng học sinh (vì tin nhắn gửi phụ huynh đã có mục nội dung chung ở đầu). Mở đầu ngắn gọn, tự nhiên, linh hoạt: "Buổi học hôm nay [Tên] tham gia lớp đầy đủ và đúng giờ...", "Trong buổi học hôm nay, [Tên]...", "Trong buổi học, [Tên]...".
+2. BTVN phải nhận xét cực kỳ NGẮN GỌN và TỰ NHIÊN, dứt khoát như lời thầy cô dặn dò:
+   - Nếu đã nộp: "Con hoàn thành BTVN buổi [X] đầy đủ, cố gắng phát huy ở các buổi học tới." (hoặc tương đương).
+   - Nếu chưa nộp: "Tuy nhiên con chưa hoàn thành BTVN đầy đủ, cần lưu ý." hoặc "Con chưa hoàn thành BTVN buổi [X], cần lưu ý.".
+   - Tuyệt đối KHÔNG viết rườm rà khách sáo kiểu "hệ thống LMS chưa ghi nhận", "kính nhờ phụ huynh hỗ trợ nhắc nhở con", "đã được nộp và ghi nhận trên hệ thống".
+3. Câu đánh giá học tập phải truyền đạt đầy đủ Ý NGHĨA LEVEL BẮT BUỘC và ghi chú giáo viên (nếu có). Nêu rõ mức độ tiếp thu, tính chủ động khi hỏi bài/thực hành, và mức độ hỗ trợ cần thiết. Không được làm nhẹ đi thành các cụm mơ hồ như “học bình thường”, “học ổn”, “ở mức khá ổn” hoặc “không có vấn đề đặc biệt”.
+4. Chỉ sử dụng dữ kiện trong phần THÔNG TIN HỌC SINH; không tự bịa hành vi, tiến độ, bài tập về nhà hoặc mức độ tuân thủ nội quy.
+5. Nếu có ĐÁNH GIÁ BTVN, chỉ tóm tắt tối đa một ý ngắn và tuyệt đối không nêu điểm số BTVN. Chỉ nhận xét hành vi khi có GHI CHÚ GIÁO VIÊN tương ứng.
 6. Không viết mã L1/L2/L3/L4, từ “level”, markdown, tiêu đề hoặc danh sách.
 7. Dùng đúng tên trong mục GỌI TRONG NHẬN XÉT hoặc “em” để gọi học sinh; dùng “con” khi nói về học sinh với phụ huynh.
-8. Chỉ trả về một đoạn nhận xét, không giải thích cách viết.`;
+8. Chỉ trả về một đoạn nhận xét duy nhất (2–3 câu), không giải thích cách viết.`;
 
 export function normalizeAttendanceStatus(value: unknown, isLate?: boolean): AttendanceStatus {
   if (value === "ATTENDED" || value === "LATE_ARRIVED" || value === "ABSENT" || value === "ABSENT_WITH_NOTICE") {
@@ -321,8 +324,8 @@ function attendanceFact(status: AttendanceStatus): string {
 }
 
 function homeworkFact(value: NormalizedHomeworkStatus): string {
-  if (!value.submitted) return `Chưa thấy nộp BTVN ${value.previousSessionLabel} trên LMS; cần nhắc phụ huynh hỗ trợ con bổ sung.`;
-  return `Đã nộp BTVN ${value.previousSessionLabel}; ${value.marked ? "bài đã được chấm" : "bài đã được ghi nhận trên LMS"}.`;
+  if (!value.submitted) return `Chưa hoàn thành BTVN ${value.previousSessionLabel}; cần nhận xét ngắn gọn dứt khoát ('Con chưa hoàn thành BTVN ${value.previousSessionLabel}, cần lưu ý.' hoặc 'Tuy nhiên con chưa hoàn thành BTVN đầy đủ, cần lưu ý.').`;
+  return `Đã hoàn thành BTVN ${value.previousSessionLabel} đầy đủ; ${value.marked ? "bài đã được chấm" : "bài đã nộp"}.`;
 }
 
 function lengthInstruction(length: CommentLength, mode: CommentMode): string {
@@ -357,9 +360,9 @@ export function buildCommentMessages(facts: CommentFacts): ChatMessage[] {
       lines.push(`ĐÁNH GIÁ BTVN ĐỂ TÓM TẮT: ${facts.homeworkStatus.evaluationSummary}`);
       lines.push("YÊU CẦU BTVN: Tóm tắt tối đa một ý ngắn từ đánh giá trên; không chép dài và không nêu điểm số.");
     } else if (facts.homeworkStatus.submitted) {
-      lines.push("YÊU CẦU BTVN: Chỉ được nói bài đã nộp hoặc đã được ghi nhận; không tự suy diễn chất lượng và không nêu điểm số.");
+      lines.push(`YÊU CẦU BTVN: Nhận xét ngắn gọn dứt khoát việc hoàn thành BTVN (ví dụ: 'Con hoàn thành BTVN ${facts.homeworkStatus.previousSessionLabel} đầy đủ, cố gắng phát huy ở các buổi học tới.'); không nêu điểm số.`);
     } else {
-      lines.push("YÊU CẦU BTVN: Chỉ nhắc ngắn gọn việc cần bổ sung bài; không nêu điểm số.");
+      lines.push(`YÊU CẦU BTVN: Nhắc ngắn gọn dứt khoát 1 vế (ví dụ: 'Con chưa hoàn thành BTVN ${facts.homeworkStatus.previousSessionLabel}, cần lưu ý.' hoặc 'Tuy nhiên con chưa hoàn thành BTVN đầy đủ, cần lưu ý.'); tuyệt đối không viết rườm rà khách sáo.`);
     }
   }
   if (facts.previousComment) {
@@ -592,10 +595,14 @@ export function buildSafeComment(facts: CommentFacts): string {
   const levelPolicy = LEVEL_PROMPT_POLICIES[facts.learningLevel];
   const sentences = [attendance, levelPolicy.safeLearningSentence, levelPolicy.safeClosingSentence].filter(Boolean);
   if (facts.homeworkStatus?.submitted === false) {
-    sentences.push(`Phụ huynh giúp em nhắc con bổ sung BTVN ${facts.homeworkStatus.previousSessionLabel} đầy đủ hơn.`);
+    sentences.push(`Con chưa hoàn thành BTVN ${facts.homeworkStatus.previousSessionLabel}, cần lưu ý.`);
   } else {
     const homeworkEvaluation = safeHomeworkEvaluationSentence(facts);
-    if (homeworkEvaluation) sentences.push(homeworkEvaluation);
+    if (homeworkEvaluation) {
+      sentences.push(homeworkEvaluation);
+    } else if (facts.homeworkStatus?.submitted === true) {
+      sentences.push(`Con hoàn thành BTVN ${facts.homeworkStatus.previousSessionLabel} đầy đủ, cố gắng phát huy.`);
+    }
   }
   return sentences.join(" ");
 }
