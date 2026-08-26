@@ -147,6 +147,7 @@ export async function generateCommentWithAi(
     attendanceStatus?: AttendanceStatus | string;
     isLate?: boolean;
     sessionSummary?: string;
+    sessionNumber?: number | string;
     modelId?: string;
     customModelId?: string;
     thinkingLevel?: string;

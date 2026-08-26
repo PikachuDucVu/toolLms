@@ -191,7 +191,8 @@ function exportToCSV() {
                 const aiComment = state.generatedComments[s.student.id]?.replace(/<[^>]*>/g, '') || '';
                 const status = s.status === 'ATTENDED' ? 'Có mặt' : s.status === 'LATE_ARRIVED' ? 'Đi muộn' : 'Vắng';
                 if (!isRegularMode) return [s.student.fullName, status, existingComment, aiComment];
-                const levelInfo = app.LEARNING_LEVELS[app.getRegularLearningLevel(s.student.id)];
+                const levelInfo = app.getCurrentLevelInfo?.(app.getRegularLearningLevel(s.student.id))
+                    || app.LEARNING_LEVELS[app.getRegularLearningLevel(s.student.id)];
                 return [
                     s.student.fullName,
                     status,

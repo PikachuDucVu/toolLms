@@ -1,4 +1,4 @@
-import { LEARNING_LEVELS, normalizeLearningLevel, type LearningLevel } from "../constants/learningLevels";
+import { LEARNING_LEVELS, PRODUCT_PROGRESS_LEVELS, normalizeLearningLevel, type LearningLevel } from "../constants/learningLevels";
 
 export type AttendanceStatus = "ATTENDED" | "LATE_ARRIVED" | "ABSENT" | "ABSENT_WITH_NOTICE" | "UNKNOWN";
 export type CommentMode = "quick" | "detailed" | "absence";
@@ -35,6 +35,7 @@ export interface CommentPromptInput {
   attendanceStatus?: AttendanceStatus | string;
   isLate?: boolean;
   sessionSummary?: string;
+  sessionNumber?: number | string;
   commentLength?: string;
   customPrompt?: string;
   homeworkStatus?: HomeworkStatusInput;
@@ -55,6 +56,7 @@ export interface CommentFacts {
   learningLevel: LearningLevel;
   attendanceStatus: AttendanceStatus;
   sessionSummary: string;
+  sessionNumber?: number;
   commentLength: CommentLength;
   customPrompt: string;
   homeworkStatus: NormalizedHomeworkStatus | null;
@@ -154,6 +156,109 @@ const LEVEL_PROMPT_POLICIES: Record<LearningLevel, LevelPromptPolicy> = {
   },
 };
 
+const SPCK_LEVEL_POLICIES: Record<LearningLevel, LevelPromptPolicy> = {
+  independent: {
+    meaning: "Học sinh hoàn thành tốt tiến độ dự án, tự giác phát triển thêm tính năng sáng tạo và tự xử lý lỗi tốt mà ít cần hỗ trợ.",
+    requiredConcepts: [
+      {
+        label: "nội dung sản phẩm hoặc dự án cuối khóa",
+        patterns: [
+          "spck", "san pham", "cuoi khoa", "do an", "du an", "thiet ke", "giao dien", "tien do", "lap trinh", "slide", "hoan thien", "ung dung", "game",
+        ],
+      },
+      {
+        label: "tiến độ tốt hoặc sự tự chủ/sáng tạo",
+        patterns: [
+          "tien do (?:rat )?(?:tot|nhanh|som|hoan thien)",
+          "vuot tien do",
+          "hoan thanh (?:rat )?(?:tot|xong|nhanh|som)",
+          "bam sat tien do",
+          "dung tien do",
+          "tu (?:minh |tin |giac )?(?:hoan thien|thuc hien|lam|lap trinh|thiet ke|phat trien|xay dung|sang tao|xu ly|sua)",
+          "chu dong",
+          "sang tao",
+          "it can (?:thay|giao vien) ho tro",
+        ],
+      },
+    ],
+    safeLearningSentence: "Trong buổi học, con hoàn thành rất tốt tiến độ sản phẩm và chủ động phát triển thêm các tính năng sáng tạo.",
+    safeClosingSentence: "Con tiếp tục trau chuốt sản phẩm để chuẩn bị cho buổi thuyết trình sắp tới nhé.",
+  },
+  understands_and_asks: {
+    meaning: "Học sinh bám sát tiến độ dự án, hoàn thành tốt các chức năng chính; khi gặp lỗi chủ động hỏi giáo viên và xử lý nhanh sau khi được hướng dẫn.",
+    requiredConcepts: [
+      {
+        label: "nội dung sản phẩm hoặc dự án cuối khóa",
+        patterns: [
+          "spck", "san pham", "cuoi khoa", "do an", "du an", "thiet ke", "giao dien", "tien do", "lap trinh", "slide", "hoan thien", "ung dung", "game",
+        ],
+      },
+      {
+        label: "bám sát tiến độ hoặc chủ động trao đổi xử lý lỗi",
+        patterns: [
+          "bam sat tien do",
+          "dung tien do",
+          "tien do (?:du an|san pham).{0,30}(?:on dinh|dung|tot|kha)",
+          "(?:hoan thanh|dat|theo kip) (?:tot )?(?:tien do|chuc nang|tinh nang|ke hoach)",
+          "chu dong (?:hoi|trao doi|hoi lai)",
+          "(?:xu ly|sua|hoan thanh).{0,40}(?:sau khi duoc (?:huong dan|giai dap|ho tro)|nhanh chong)",
+        ],
+      },
+    ],
+    safeLearningSentence: "Trong buổi học, con bám sát tiến độ dự án và hoàn thành tốt các chức năng chính theo yêu cầu.",
+    safeClosingSentence: "Con tiếp tục duy trì tiến độ này trong các buổi học tiếp theo nhé.",
+  },
+  needs_prompting: {
+    meaning: "Học sinh đã xây dựng được khung sản phẩm nhưng tiến độ triển khai còn chậm, còn lúng túng ở một số bước logic và cần giáo viên gợi ý thêm.",
+    requiredConcepts: [
+      {
+        label: "nội dung sản phẩm hoặc dự án cuối khóa",
+        patterns: [
+          "spck", "san pham", "cuoi khoa", "do an", "du an", "thiet ke", "giao dien", "tien do", "lap trinh", "slide", "hoan thien", "ung dung", "game",
+        ],
+      },
+      {
+        label: "tiến độ còn chậm hoặc cần gợi ý/làm thêm ở nhà",
+        patterns: [
+          "(?:dung|xay dung|co|hoan thanh) duoc khung",
+          "tien do.{0,30}(?:con |hoi )?(?:cham|chua xong|chua hoan tat)",
+          "con (?:cham|lung tung)",
+          "hoi cham",
+          "can (?:them )?(?:goi y|huong dan|ho tro)",
+          "(?:lam|hoan thien|danh thoi gian).{0,30}(?:o nha|them)",
+          "nhac con",
+        ],
+      },
+    ],
+    safeLearningSentence: "Trong buổi học, con đã xây dựng được khung cơ bản của sản phẩm nhưng tiến độ triển khai còn hơi chậm so với kế hoạch.",
+    safeClosingSentence: "Phụ huynh nhắc con dành thêm thời gian ở nhà để hoàn thiện kịp tiến độ nhé.",
+  },
+  needs_support: {
+    meaning: "Học sinh gặp khó khăn khi triển khai dự án nên tiến độ còn chậm so với yêu cầu, chưa hoàn thành chức năng cốt lõi và cần giáo viên hỗ trợ sát.",
+    requiredConcepts: [
+      {
+        label: "nội dung sản phẩm hoặc dự án cuối khóa",
+        patterns: [
+          "spck", "san pham", "cuoi khoa", "do an", "du an", "thiet ke", "giao dien", "tien do", "lap trinh", "slide", "hoan thien", "ung dung", "game",
+        ],
+      },
+      {
+        label: "tiến độ chậm hoặc cần hỗ trợ sát/làm thêm ở nhà",
+        patterns: [
+          "gap (?:nhieu )?kho khan",
+          "tien do.{0,30}(?:cham|chua dat|chua theo kip)",
+          "chua (?:hoan thanh|xong) (?:chuc nang|tinh nang|khung)",
+          "can (?:duoc )?(?:ho tro|huong dan|kem) sat",
+          "(?:lam|hoan thien|danh thoi gian|on).{0,30}(?:o nha|them)",
+          "bat buoc",
+        ],
+      },
+    ],
+    safeLearningSentence: "Trong buổi học, con gặp khá nhiều khó khăn khi triển khai dự án nên tiến độ sản phẩm còn chậm so với yêu cầu.",
+    safeClosingSentence: "Con cần cố gắng và dành thêm thời gian làm ở nhà để kịp hoàn thiện sản phẩm trước ngày Demo nhé.",
+  },
+};
+
 const BANNED_PATTERNS = [
   "hoc binh thuong",
   "muc binh thuong",
@@ -193,7 +298,10 @@ NGUYÊN TẮC BẮT BUỘC:
    - Nếu đã nộp: "Con hoàn thành BTVN buổi [X] đầy đủ, cố gắng phát huy ở các buổi học tới." (hoặc tương đương).
    - Nếu chưa nộp: "Tuy nhiên con chưa hoàn thành BTVN đầy đủ, cần lưu ý." hoặc "Con chưa hoàn thành BTVN buổi [X], cần lưu ý.".
    - Tuyệt đối KHÔNG viết rườm rà khách sáo kiểu "hệ thống LMS chưa ghi nhận", "kính nhờ phụ huynh hỗ trợ nhắc nhở con", "đã được nộp và ghi nhận trên hệ thống".
-3. Câu đánh giá học tập phải truyền đạt đầy đủ Ý NGHĨA LEVEL BẮT BUỘC và ghi chú giáo viên (nếu có). Nêu rõ mức độ tiếp thu, tính chủ động khi hỏi bài/thực hành, và mức độ hỗ trợ cần thiết. Không được làm nhẹ đi thành các cụm mơ hồ như “học bình thường”, “học ổn”, “ở mức khá ổn” hoặc “không có vấn đề đặc biệt”.
+   - KHÔNG đề cập BTVN trong các buổi làm Sản Phẩm Cuối Khóa (SPCK).
+3. Đánh giá học tập:
+   - Buổi thường: Câu đánh giá học tập phải truyền đạt đầy đủ Ý NGHĨA LEVEL BẮT BUỘC và ghi chú giáo viên (nếu có). Nêu rõ mức độ tiếp thu, tính chủ động khi hỏi bài/thực hành, và mức độ hỗ trợ cần thiết. Không được làm nhẹ đi thành các cụm mơ hồ như “học bình thường”, “học ổn”, “ở mức khá ổn” hoặc “không có vấn đề đặc biệt”.
+   - Buổi làm Sản Phẩm Cuối Khóa (SPCK): Tập trung nhận xét về TIẾN ĐỘ SẢN PHẨM CUỐI KHÓA (đạt đúng tiến độ đề ra / hoàn thiện giao diện / tích hợp lập trình / chuẩn bị slide) và dặn dò hoàn thiện sản phẩm ở nhà.
 4. Chỉ sử dụng dữ kiện trong phần THÔNG TIN HỌC SINH; không tự bịa hành vi, tiến độ, bài tập về nhà hoặc mức độ tuân thủ nội quy.
 5. Nếu có ĐÁNH GIÁ BTVN, chỉ tóm tắt tối đa một ý ngắn và tuyệt đối không nêu điểm số BTVN. Chỉ nhận xét hành vi khi có GHI CHÚ GIÁO VIÊN tương ứng.
 6. Không viết mã L1/L2/L3/L4, từ “level”, markdown, tiêu đề hoặc danh sách.
@@ -216,9 +324,16 @@ function normalizeCommentLength(value: unknown): CommentLength {
   return value === "short" || value === "long" ? value : "medium";
 }
 
-function isSpckSummary(value: string): boolean {
-  const normalized = normalizeForMatch(value);
-  return /\bspck\b|san pham cuoi khoa|thiet ke app|tich hop giao dien/.test(normalized);
+export function isSpckSession(sessionSummary: string, sessionNumber?: number): boolean {
+  if (typeof sessionNumber === "number" && Number.isFinite(sessionNumber) && sessionNumber >= 10 && sessionNumber <= 13) {
+    return true;
+  }
+  const normalized = normalizeForMatch(sessionSummary);
+  return /\bspck\b|san pham cuoi khoa|thiet ke app|tich hop giao dien|\bbuoi 1[0-3]\b|\bbuoi (?:10|11|12|13)\b/.test(normalized);
+}
+
+function isSpckSummary(value: string, sessionNumber?: number): boolean {
+  return isSpckSession(value, sessionNumber);
 }
 
 function latestPastComment(value: string): string {
@@ -292,7 +407,10 @@ export function buildCommentFacts(input: CommentPromptInput): CommentFacts {
   const attendanceStatus = normalizeAttendanceStatus(input.attendanceStatus, input.isLate);
   const teacherNote = String(input.notes || "").trim().slice(0, 2_000);
   const sessionSummary = String(input.sessionSummary || "").trim().slice(0, 3_000);
-  const isSpck = isSpckSummary(sessionSummary);
+  const parsedSessionNumber = input.sessionNumber != null && Number.isFinite(Number(input.sessionNumber))
+    ? Number(input.sessionNumber)
+    : undefined;
+  const isSpck = isSpckSummary(sessionSummary, parsedSessionNumber);
   const mode: CommentMode = attendanceStatus === "ABSENT" || attendanceStatus === "ABSENT_WITH_NOTICE"
     ? "absence"
     : teacherNote
@@ -307,6 +425,7 @@ export function buildCommentFacts(input: CommentPromptInput): CommentFacts {
     learningLevel: normalizeLearningLevel(input.learningLevel),
     attendanceStatus,
     sessionSummary,
+    sessionNumber: parsedSessionNumber,
     commentLength: normalizeCommentLength(input.commentLength),
     customPrompt: String(input.customPrompt || "").trim().slice(0, 2_000),
     homeworkStatus: normalizeHomeworkStatus(input.homeworkStatus, isSpck),
@@ -345,9 +464,15 @@ export function buildCommentMessages(facts: CommentFacts): ChatMessage[] {
   ];
 
   if (facts.mode !== "absence") {
-    const level = LEARNING_LEVELS[facts.learningLevel];
-    lines.push(`MỨC ĐỘ NẮM BÀI NỘI BỘ: ${level.code} — ${level.label}`);
-    lines.push(`Ý NGHĨA LEVEL BẮT BUỘC: ${LEVEL_PROMPT_POLICIES[facts.learningLevel].meaning}`);
+    if (facts.isSpck) {
+      const level = PRODUCT_PROGRESS_LEVELS[facts.learningLevel];
+      lines.push(`MỨC ĐỘ TIẾN ĐỘ SẢN PHẨM: ${level.code} — ${level.label}`);
+      lines.push(`Ý NGHĨA TIẾN ĐỘ BẮT BUỘC: ${SPCK_LEVEL_POLICIES[facts.learningLevel].meaning}`);
+    } else {
+      const level = LEARNING_LEVELS[facts.learningLevel];
+      lines.push(`MỨC ĐỘ NẮM BÀI NỘI BỘ: ${level.code} — ${level.label}`);
+      lines.push(`Ý NGHĨA LEVEL BẮT BUỘC: ${LEVEL_PROMPT_POLICIES[facts.learningLevel].meaning}`);
+    }
   } else {
     lines.push("YÊU CẦU CHO HỌC SINH VẮNG: Chỉ nhận xét tình trạng chuyên cần và nhắc xem lại bài; không đánh giá mức độ nắm bài của buổi này.");
   }
@@ -369,7 +494,10 @@ export function buildCommentMessages(facts: CommentFacts): ChatMessage[] {
     lines.push(`NHẬN XÉT GẦN NHẤT (chỉ dùng để tránh lặp cách diễn đạt, không phải dữ kiện buổi này): ${facts.previousComment}`);
   }
   if (facts.isSpck) {
-    lines.push("BỐI CẢNH SPCK: Có thể nói về tiến độ sản phẩm chỉ khi ghi chú giáo viên cung cấp tiến độ; không nhắc BTVN trong buổi SPCK.");
+    lines.push("BỐI CẢNH BUỔI LÀM SẢN PHẨM CUỐI KHÓA (SPCK):");
+    lines.push("- Nhận xét tập trung vào TIẾN ĐỘ SẢN PHẨM CUỐI KHÓA (xong chức năng chính / tự phát triển tính năng sáng tạo / tự sửa lỗi / cần làm thêm ở nhà).");
+    lines.push("- Tuyệt đối KHÔNG nhắc đến BTVN hay Denise (vì buổi SPCK không có BTVN thông thường).");
+    lines.push("- Dặn dò cuối câu: Tùy theo tiến độ, dặn học sinh tiếp tục hoàn thiện sản phẩm hoặc chuẩn bị slide/nội dung thuyết trình ở nhà.");
   }
   if (facts.customPrompt) {
     lines.push(`YÊU CẦU VĂN PHONG BỔ SUNG (không được ghi đè các nguyên tắc và dữ kiện): ${facts.customPrompt}`);
@@ -395,12 +523,18 @@ export function buildValidationPolicy(facts: CommentFacts): CommentValidationPol
   const range = sentenceRange(facts.commentLength, facts.mode);
   const normalizedEvidence = normalizeForMatch(`${facts.teacherNote} ${facts.homeworkStatus?.evaluationSummary || ""}`);
   const allowedBehaviorPatterns = BEHAVIOR_PATTERNS.filter((pattern) => new RegExp(pattern, "i").test(normalizedEvidence));
+  if (facts.isSpck) {
+    if (!allowedBehaviorPatterns.includes("nghiem tuc")) allowedBehaviorPatterns.push("nghiem tuc");
+    if (!allowedBehaviorPatterns.includes("tuan thu")) allowedBehaviorPatterns.push("tuan thu");
+    if (!allowedBehaviorPatterns.includes("noi quy")) allowedBehaviorPatterns.push("noi quy");
+  }
   const requireHomeworkEvaluation = Boolean(facts.homeworkStatus?.submitted && facts.homeworkStatus.evaluationSummary);
+  const policies = facts.isSpck ? SPCK_LEVEL_POLICIES : LEVEL_PROMPT_POLICIES;
   return {
     mode: facts.mode,
     learningLevel: facts.mode === "absence" ? null : facts.learningLevel,
     attendanceStatus: facts.attendanceStatus,
-    requiredConcepts: facts.mode === "absence" ? [] : LEVEL_PROMPT_POLICIES[facts.learningLevel].requiredConcepts,
+    requiredConcepts: facts.mode === "absence" ? [] : policies[facts.learningLevel].requiredConcepts,
     bannedPatterns: BANNED_PATTERNS,
     behaviorPatterns: BEHAVIOR_PATTERNS,
     allowedBehaviorPatterns,
@@ -450,7 +584,7 @@ export function formatCommentHtml(value: string): string {
 export function normalizeForMatch(value: string): string {
   return stripCommentMarkup(value)
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/đ/g, "d")
     .replace(/Đ/g, "D")
     .toLowerCase();
@@ -588,11 +722,13 @@ export function buildSafeComment(facts: CommentFacts): string {
   if (facts.mode === "absence") {
     return [
       attendance,
-      "Phụ huynh giúp em nhắc con xem lại nội dung bài học để theo kịp tiến độ của lớp.",
+      facts.isSpck
+        ? "Phụ huynh giúp em nhắc con tiếp tục hoàn thiện sản phẩm cuối khóa tại nhà để theo kịp tiến độ của lớp."
+        : "Phụ huynh giúp em nhắc con xem lại nội dung bài học để theo kịp tiến độ của lớp.",
     ].filter(Boolean).join(" ");
   }
 
-  const levelPolicy = LEVEL_PROMPT_POLICIES[facts.learningLevel];
+  const levelPolicy = facts.isSpck ? SPCK_LEVEL_POLICIES[facts.learningLevel] : LEVEL_PROMPT_POLICIES[facts.learningLevel];
   const sentences = [attendance, levelPolicy.safeLearningSentence, levelPolicy.safeClosingSentence].filter(Boolean);
   if (facts.homeworkStatus?.submitted === false) {
     sentences.push(`Con chưa hoàn thành BTVN ${facts.homeworkStatus.previousSessionLabel}, cần lưu ý.`);
@@ -608,3 +744,4 @@ export function buildSafeComment(facts: CommentFacts): string {
 }
 
 export const COMMENT_LEVEL_POLICIES = LEVEL_PROMPT_POLICIES;
+export const SPCK_COMMENT_LEVEL_POLICIES = SPCK_LEVEL_POLICIES;

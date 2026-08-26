@@ -157,7 +157,7 @@ describe("comment prompt facts and messages", () => {
     }
   });
 
-  it("suppresses homework in an SPCK session and conditions product progress on notes", () => {
+  it("suppresses homework in an SPCK session and includes product progress instructions", () => {
     const facts = factsFor("needs_prompting", {
       studentName: "Minh Anh",
       sessionSummary: "Buổi làm sản phẩm cuối khóa (SPCK)",
@@ -168,7 +168,8 @@ describe("comment prompt facts and messages", () => {
     expect(facts.isSpck).toBe(true);
     expect(facts.homeworkStatus).toBeNull();
     expect(userMessage).not.toContain("TÌNH TRẠNG BTVN");
-    expect(userMessage).toContain("chỉ khi ghi chú giáo viên cung cấp tiến độ");
+    expect(userMessage).toContain("TIẾN ĐỘ SẢN PHẨM CUỐI KHÓA");
+    expect(userMessage).toContain("Tuyệt đối KHÔNG nhắc đến BTVN");
   });
 
   it("includes session summary and subordinate custom instructions", () => {
@@ -315,5 +316,92 @@ describe("comment validator and cleanup", () => {
       'Con hiểu khái niệm "vòng lặp" và tự thực hành.',
     );
     expect(formatCommentHtml('Con gọi biến là "score".')).toBe('<p>Con gọi biến là "score".</p>');
+  });
+
+  describe("SPCK (final project progress) sessions for lessons 10-13", () => {
+    it.each([10, 11, 12, 13])("identifies session number %i as SPCK", (sessionNumber) => {
+      const facts = factsFor("independent", { sessionNumber, sessionSummary: "" });
+      expect(facts.isSpck).toBe(true);
+    });
+
+    it.each([
+      "Làm sản phẩm cuối khóa (SPCK)",
+      "Thiết kế app và lập trình",
+      "Tích hợp giao diện sản phẩm",
+      "Buổi 10: Xây dựng dự án",
+      "Buổi 11: Hoàn thiện tính năng",
+      "Buổi 12: Báo cáo sản phẩm",
+      "Buổi 13: Thuyết trình",
+    ])("identifies SPCK from session summary: %s", (sessionSummary) => {
+      const facts = factsFor("understands_and_asks", { sessionSummary });
+      expect(facts.isSpck).toBe(true);
+    });
+
+    it("includes SPCK prompt instructions and progress meaning in prompt messages", () => {
+      const facts = factsFor("independent", {
+        sessionNumber: 10,
+        studentName: "Nguyễn Gia Huy",
+        studentCallName: "Gia Huy",
+      });
+      const messages = buildCommentMessages(facts);
+      const userContent = messages[1].content;
+
+      expect(userContent).toContain("BỐI CẢNH BUỔI LÀM SẢN PHẨM CUỐI KHÓA (SPCK)");
+      expect(userContent).toContain("MỨC ĐỘ TIẾN ĐỘ SẢN PHẨM: L4 — Vượt tiến độ, tự chủ cao");
+      expect(userContent).toContain("TIẾN ĐỘ SẢN PHẨM CUỐI KHÓA");
+      expect(userContent).toContain("Tuyệt đối KHÔNG nhắc đến BTVN");
+    });
+
+    it.each(LEVELS)("validates safe SPCK comments for learning level %s", (learningLevel) => {
+      const facts = factsFor(learningLevel, {
+        sessionNumber: 11,
+        studentName: "Trần Minh Đức",
+        studentCallName: "Minh Đức",
+      });
+      const safeComment = buildSafeComment(facts);
+      const validation = validateComment(safeComment, buildValidationPolicy(facts));
+
+      expect(safeComment).toMatch(/sản phẩm|dự án/);
+      expect(validation.valid).toBe(true);
+      expect(validation.issues).toEqual([]);
+    });
+
+    it("validates realistic AI-generated SPCK comments without failing on textbook concepts", () => {
+      const facts = factsFor("independent", {
+        sessionNumber: 10,
+        studentName: "Phạm Tuấn Kiệt",
+        studentCallName: "Tuấn Kiệt",
+      });
+      const comment = "Buổi hôm nay em vào lớp rất đúng giờ, thực hiện tốt nội quy lớp học. Trong lớp em rất nghiêm túc thực hiện làm SPCK, đạt kết quả đúng tiến độ, em hoàn thành tốt các khâu thiết kế app và đang áp dụng các giao diện vào phần code. Cố gắng tiếp tục hoàn thiện phần tích hợp ở nhà.";
+      const validation = validateComment(comment, buildValidationPolicy(facts));
+
+      expect(validation.valid).toBe(true);
+      expect(validation.issues).toEqual([]);
+    });
+
+    it("validates slow progress SPCK comment with reminder for needs_prompting/needs_support", () => {
+      const facts = factsFor("needs_prompting", {
+        sessionNumber: 12,
+        studentName: "Lê Bảo Nam",
+        studentCallName: "Bảo Nam",
+      });
+      const comment = "Buổi hôm nay Bảo Nam đến lớp đúng giờ. Con hoàn thiện khá tốt phần thiết kế giao diện, tuy nhiên chưa tích hợp được vào code, tiến độ còn chậm so với lớp. Cần chú ý đẩy nhanh tiến độ và hoàn thiện tại nhà.";
+      const validation = validateComment(comment, buildValidationPolicy(facts));
+
+      expect(validation.valid).toBe(true);
+      expect(validation.issues).toEqual([]);
+    });
+
+    it("generates appropriate SPCK safe comment for absent student", () => {
+      const facts = factsFor("independent", {
+        sessionNumber: 13,
+        studentName: "Hoàng Yến Nhi",
+        studentCallName: "Yến Nhi",
+        attendanceStatus: "ABSENT_WITH_NOTICE",
+      });
+      const safeComment = buildSafeComment(facts);
+      expect(safeComment).toContain("hoàn thiện sản phẩm cuối khóa tại nhà");
+      expect(validateComment(safeComment, buildValidationPolicy(facts)).valid).toBe(true);
+    });
   });
 });

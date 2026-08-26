@@ -42,6 +42,14 @@ function getRegularLearningLevel(studentId) {
             return app.normalizeLearningLevel(state.regularLearningLevelDrafts[studentId]);
         }
 
+function getCurrentLevelCatalog() {
+            return app.isProductProgressSession?.() ? app.PRODUCT_PROGRESS_LEVELS : app.LEARNING_LEVELS;
+        }
+
+function getCurrentLevelInfo(learningLevel) {
+            return app.getCurrentLevelCatalog()[app.normalizeLearningLevel(learningLevel)];
+        }
+
 function getRegularNoteValue(studentId) {
             return Object.prototype.hasOwnProperty.call(state.regularNoteDrafts, studentId)
                 ? state.regularNoteDrafts[studentId]
@@ -99,7 +107,7 @@ function getRegularAssessmentStatus(studentId) {
                     text: touched
                         ? 'Chưa lưu'
                         : inherited
-                            ? `Kế thừa ${app.LEARNING_LEVELS[inherited.learningLevel].code} từ buổi trước`
+                            ? `Kế thừa ${app.getCurrentLevelInfo(inherited.learningLevel).code} từ buổi trước`
                             : 'Mặc định L3 · chưa lưu buổi này',
                     className: touched ? 'is-dirty' : '',
                     loading: false,
@@ -263,7 +271,7 @@ function getRegularStudentUiState(att) {
             const generatedComment = state.generatedComments[studentId] || '';
             const note = app.getRegularNoteValue(studentId);
             const learningLevel = app.getRegularLearningLevel(studentId);
-            const learningLevelInfo = app.LEARNING_LEVELS[learningLevel];
+            const learningLevelInfo = app.getCurrentLevelInfo(learningLevel);
             const assessmentStatus = app.getRegularAssessmentStatus(studentId);
             const progressState = app.getStudentProgressState(att, 'regular');
             const progress = progressState === 'draft'
@@ -395,11 +403,11 @@ function buildRegularStudentDetail(att, idx) {
                         ${studentState.isPresent ? `
                             <fieldset class="learning-level-fieldset" ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error || app.isRegularOperationActive()) ? 'disabled' : ''}>
                                 <legend class="learning-level-legend">
-                                    <span>Chọn mức độ nắm bài</span>
-                                    <small>${studentState.assessmentStatus.loading ? 'Đang tải đánh giá đã lưu...' : studentState.assessmentStatus.error ? 'Vui lòng thử tải lại' : 'L3 là mặc định · chọn một mức để tự lưu'}</small>
+                                    <span>${app.isProductProgressSession?.() ? 'Chọn mức độ tiến độ sản phẩm' : 'Chọn mức độ nắm bài'}</span>
+                                    <small>${studentState.assessmentStatus.loading ? 'Đang tải đánh giá đã lưu...' : studentState.assessmentStatus.error ? 'Vui lòng thử tải lại' : app.isProductProgressSession?.() ? 'L3 là mặc định · chọn một mức để tự lưu' : 'L3 là mặc định · chọn một mức để tự lưu'}</small>
                                 </legend>
                                 <div class="learning-level-grid" role="group" aria-label="Chọn mức độ nắm bài cho ${studentNameAttr}">
-                                    ${Object.entries(app.LEARNING_LEVELS).sort(([, left], [, right]) => left.code.localeCompare(right.code)).map(([value, info]) => {
+                                    ${Object.entries(app.getCurrentLevelCatalog()).sort(([, left], [, right]) => left.code.localeCompare(right.code)).map(([value, info]) => {
                                         const isSelected = studentState.learningLevel === value;
                                         return `
                                         <button type="button"
@@ -590,7 +598,7 @@ function syncRegularDetailPlacement() {
 
 function refreshRegularAssessmentIndicators(studentId) {
             const domId = app.getRegularStudentDomId(studentId);
-            const info = app.LEARNING_LEVELS[app.getRegularLearningLevel(studentId)];
+            const info = app.getCurrentLevelInfo(app.getRegularLearningLevel(studentId));
             const currentLevel = app.getRegularLearningLevel(studentId);
             const status = app.getRegularAssessmentStatus(studentId);
             [`student-level-badge-${domId}`, `regular-level-badge-${domId}`, `review-level-badge-${domId}`].forEach(id => {
@@ -1344,7 +1352,7 @@ async function setLearningLevelForAll(learningLevel) {
             }
 
             const normalizedLevel = app.normalizeLearningLevel(learningLevel);
-            const levelInfo = app.LEARNING_LEVELS[normalizedLevel];
+            const levelInfo = app.getCurrentLevelInfo(normalizedLevel);
             const presentStudents = state.students.filter(app.isPresentAttendance);
             if (presentStudents.length === 0) {
                 app.showToast('Không có học sinh có mặt để thay đổi level', 'info');
@@ -1508,6 +1516,8 @@ Object.assign(app, {
     stripHtmlText,
     getStudentCallName,
     normalizeLearningLevel,
+    getCurrentLevelCatalog,
+    getCurrentLevelInfo,
     getRegularLearningLevel,
     getRegularNoteValue,
     captureRegularContext,

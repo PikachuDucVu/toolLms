@@ -35,7 +35,38 @@ const LEARNING_LEVELS = {
             }
         };
 
-const _audioCache = {};
+const PRODUCT_PROGRESS_LEVELS = {
+            independent: {
+                code: 'L4',
+                label: 'Vượt tiến độ, tự chủ cao',
+                shortLabel: 'Vượt tiến độ',
+                help: 'Xong sớm tính năng chính, tự giác sáng tạo và debug tốt',
+                prompt: 'Học sinh hoàn thành tốt tiến độ dự án, tự giác phát triển thêm tính năng sáng tạo và tự xử lý lỗi tốt mà ít cần hỗ trợ.'
+            },
+            understands_and_asks: {
+                code: 'L3',
+                label: 'Đúng tiến độ, thao tác tốt',
+                shortLabel: 'Đúng tiến độ',
+                help: 'Bám sát kế hoạch, chủ động hỏi và xử lý khi gặp lỗi',
+                prompt: 'Học sinh bám sát tiến độ dự án, hoàn thành tốt các chức năng chính; khi gặp lỗi chủ động hỏi giáo viên và xử lý nhanh sau khi được hướng dẫn.'
+            },
+            needs_prompting: {
+                code: 'L2',
+                label: 'Hơi chậm tiến độ, cần gợi ý',
+                shortLabel: 'Hơi chậm',
+                help: 'Đã có khung, còn lúng túng khi code logic, cần làm thêm ở nhà',
+                prompt: 'Học sinh đã xây dựng được khung sản phẩm nhưng tiến độ triển khai còn chậm, còn lúng túng ở một số bước logic và cần giáo viên gợi ý thêm.'
+            },
+            needs_support: {
+                code: 'L1',
+                label: 'Chậm tiến độ, cần kèm sát',
+                shortLabel: 'Cần kèm sát',
+                help: 'Chưa xong chức năng cốt lõi, gặp nhiều lỗi, cần làm bù ở nhà',
+                prompt: 'Học sinh gặp khó khăn khi triển khai dự án nên tiến độ còn chậm so với yêu cầu, chưa hoàn thành chức năng cốt lõi và cần giáo viên hỗ trợ sát.'
+            }
+        };
+
+	const _audioCache = {};
 
 const LMS_GRAPHQL_URL = "/api/lms/graphql";
 
@@ -223,6 +254,7 @@ Object.assign(app, {
     KIEMTRA_BASE,
     DEFAULT_LEARNING_LEVEL,
     LEARNING_LEVELS,
+    PRODUCT_PROGRESS_LEVELS,
     _audioCache,
     LMS_GRAPHQL_URL,
     NEW_CLASS_CUTOFF_DATE,

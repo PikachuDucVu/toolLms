@@ -206,7 +206,7 @@ function buildRegularReviewRow(row) {
                             aria-label="Đổi mức học của ${app.escapeAttr(row.studentName)}"
                             onchange="setRegularReviewLearningLevel('${studentIdJs}', this.value)"
                             ${(operationLocked || row.assessmentStatus.loading || row.assessmentStatus.error) ? 'disabled' : ''}>
-                            ${Object.entries(app.LEARNING_LEVELS).map(([value, info]) => `<option value="${value}" ${row.learningLevel === value ? 'selected' : ''}>${info.code} · ${app.escapeHtml(info.shortLabel)}</option>`).join('')}
+                            ${Object.entries(app.getCurrentLevelCatalog?.() || app.LEARNING_LEVELS).map(([value, info]) => `<option value="${value}" ${row.learningLevel === value ? 'selected' : ''}>${info.code} · ${app.escapeHtml(info.shortLabel)}</option>`).join('')}
                         </select>
                     </label>
                 ` : `
@@ -425,7 +425,7 @@ function renderRegularReview(list = document.getElementById('regularReviewModalC
                             <summary class="btn btn-sm btn-outline" id="regularReviewBulkLevelButton" aria-label="Đổi mức học cho toàn bộ học sinh có mặt" aria-disabled="${assessmentBlocked}" tabindex="${assessmentBlocked ? '-1' : '0'}">Mức cả lớp</summary>
                             <div class="toolbar-menu-popover regular-review-level-popover">
                                 <div class="batch-level-menu-title">Áp dụng cho ${allPresentIds.length} học sinh có mặt</div>
-                                ${Object.entries(app.LEARNING_LEVELS).map(([value, info]) => `
+                                ${Object.entries(app.getCurrentLevelCatalog?.() || app.LEARNING_LEVELS).map(([value, info]) => `
                                     <button type="button" class="menu-action batch-level-action review-bulk-level-action" data-level-value="${value}"
                                         onclick="closeDetailsMenu(this); setLearningLevelForAll('${value}')" ${assessmentBlocked ? 'disabled' : ''}>
                                         <span class="batch-level-code">${info.code}</span><span>${app.escapeHtml(info.label)}</span>
@@ -460,7 +460,7 @@ function renderRegularReview(list = document.getElementById('regularReviewModalC
                     </select></label>
                     <label><span>Mức học</span><select class="form-select" id="regularReviewLevelFilter" onchange="setRegularReviewFilter('level', this.value)">
                         <option value="all" ${state.regularReviewLevelFilter === 'all' ? 'selected' : ''}>Tất cả</option>
-                        ${Object.entries(app.LEARNING_LEVELS).map(([value, info]) => `<option value="${value}" ${state.regularReviewLevelFilter === value ? 'selected' : ''}>${info.code}</option>`).join('')}
+                        ${Object.entries(app.getCurrentLevelCatalog?.() || app.LEARNING_LEVELS).map(([value, info]) => `<option value="${value}" ${state.regularReviewLevelFilter === value ? 'selected' : ''}>${info.code}</option>`).join('')}
                     </select></label>
                     <label><span>Sắp xếp</span><select class="form-select" id="regularReviewSort" onchange="setRegularReviewFilter('sort', this.value)">
                         <option value="name" ${state.regularReviewSort === 'name' ? 'selected' : ''}>Tên học sinh</option>
@@ -635,7 +635,8 @@ function updateRegularReviewComment(studentId, textarea) {
 }
 
 function setRegularReviewLearningLevel(studentId, learningLevel) {
-    if (!Object.prototype.hasOwnProperty.call(app.LEARNING_LEVELS, learningLevel)) return;
+    const levelCatalog = app.getCurrentLevelCatalog?.() || app.LEARNING_LEVELS;
+    if (!Object.prototype.hasOwnProperty.call(levelCatalog, learningLevel)) return;
     const attendance = state.students.find(item => item.student.id === studentId);
     if (!attendance || !app.isPresentAttendance(attendance)) {
         app.showToast('Chỉ có thể đổi mức học cho học sinh có mặt', 'info');

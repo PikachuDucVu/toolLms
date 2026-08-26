@@ -52,6 +52,7 @@ commentsRoutes.post("/generate_comment", async (c) => {
     attendanceStatus: data.attendance_status ?? data.attendanceStatus,
     isLate: typeof data.is_late === "boolean" ? data.is_late : undefined,
     sessionSummary: String(data.session_summary || ""),
+    sessionNumber: data.session_number ?? data.sessionNumber ?? data.slot_index ?? data.slotIndex,
     modelId: data.model_id,
     customModelId: data.custom_model_id,
     thinkingLevel: data.thinking_level,

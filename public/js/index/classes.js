@@ -276,6 +276,11 @@ function isCheckpointSession() {
             return [5, 9].includes(app.getCurrentSessionNumber());
         }
 
+function isProductProgressSession() {
+            const sessionNumber = app.getCurrentSessionNumber();
+            return sessionNumber >= 10 && sessionNumber <= 13;
+        }
+
 function shouldMentionPreviousHomework(sessionNumber = app.getCurrentSessionNumber()) {
             // Chỉ nhận xét BTVN ở các buổi thường trước checkpoint 2.
             // Bỏ qua buổi 1, buổi 6 (ngay sau checkpoint 1), checkpoint 9 và từ buổi 10 trở đi.
@@ -624,6 +629,7 @@ Object.assign(app, {
     getSessionNumberForTargets,
     isFinalSession,
     isCheckpointSession,
+    isProductProgressSession,
     shouldMentionPreviousHomework,
     loadHomeworkDataForClass,
     prefetchHomeworkData,
