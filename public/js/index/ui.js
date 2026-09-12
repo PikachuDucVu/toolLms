@@ -572,15 +572,48 @@ function updateStats() {
                 state.generatedComments[att.student.id] || att.commentByAreas?.some(area => area.type === 'CONTENT' && area.content?.trim())
             )).length;
 
-            document.getElementById('statPresent').textContent = present;
-            document.getElementById('statGenerated').textContent = generated;
-            document.getElementById('statSubmitted').textContent = submitted;
-            document.getElementById('statGeneratedItem').style.display = mode === 'demo' ? 'none' : 'flex';
-            document.getElementById('statGeneratedLabel').textContent = 'Bản nháp AI';
-            document.getElementById('statSubmittedLabel').textContent = mode === 'demo'
+            const missing = Math.max(0, total - submitted);
+            const submittedPercent = total > 0 ? Math.round((submitted / total) * 100) : 0;
+            const missingPercent = total > 0 ? Math.round((missing / total) * 100) : 0;
+            const presentPercent = total > 0 ? Math.round((present / total) * 100) : 0;
+
+            const statTotalEl = document.getElementById('statTotal');
+            if (statTotalEl) statTotalEl.textContent = total;
+
+            const statPresentEl = document.getElementById('statPresent');
+            if (statPresentEl) statPresentEl.textContent = present;
+
+            const statGeneratedEl = document.getElementById('statGenerated');
+            if (statGeneratedEl) statGeneratedEl.textContent = generated;
+
+            const statSubmittedEl = document.getElementById('statSubmitted');
+            if (statSubmittedEl) statSubmittedEl.textContent = submitted;
+
+            const statMissingEl = document.getElementById('statMissing');
+            if (statMissingEl) statMissingEl.textContent = missing;
+
+            const subBadge = document.getElementById('statSubmittedBadge');
+            if (subBadge) subBadge.textContent = `${submittedPercent}%`;
+
+            const missBadge = document.getElementById('statMissingBadge');
+            if (missBadge) missBadge.textContent = `${missingPercent}%`;
+
+            const presBadge = document.getElementById('statPresentBadge');
+            if (presBadge) presBadge.textContent = `${presentPercent}%`;
+
+            const statGenItem = document.getElementById('statGeneratedItem');
+            if (statGenItem) statGenItem.style.display = mode === 'demo' ? 'none' : 'flex';
+
+            const statGenLabel = document.getElementById('statGeneratedLabel');
+            if (statGenLabel) statGenLabel.textContent = 'Bản nháp AI';
+
+            const statSubLabel = document.getElementById('statSubmittedLabel');
+            if (statSubLabel) statSubLabel.textContent = mode === 'demo'
                 ? 'Đã chấm Demo'
-                : mode === 'checkpoint' ? 'Đã chấm' : 'Đã gửi LMS';
-            document.getElementById('statsBar').style.display = total > 0 ? 'flex' : 'none';
+                : mode === 'checkpoint' ? 'Đã chấm' : 'Đã nhận xét';
+
+            const statsBar = document.getElementById('statsBar');
+            if (statsBar) statsBar.style.display = total > 0 ? 'grid' : 'none';
 
             if (mode === 'regular') {
                 const autoBtn = document.getElementById('autoCommentBtn');
@@ -595,9 +628,34 @@ function updateStats() {
                 const reviewLabel = document.getElementById('reviewAllBtnLabel');
                 const hint = document.getElementById('batchActionHint');
 
-                if (autoLabel) autoLabel.textContent = state.regularAssessmentLoad.loading
-                    ? 'Đang tải đánh giá...'
-                    : `Tạo AI cho ${present} học sinh`;
+                if (state.regularBatchBusy) {
+                    const bp = state.regularBatchProgress;
+                    if (autoLabel) {
+                        autoLabel.textContent = (bp && bp.total)
+                            ? `Đang tạo AI (${bp.completed}/${bp.total})...`
+                            : 'Đang tạo AI...';
+                    }
+                    if (autoBtn) {
+                        autoBtn.classList.add('is-loading');
+                        autoBtn.setAttribute('aria-busy', 'true');
+                    }
+                    if (hint) {
+                        hint.textContent = (bp && bp.total)
+                            ? `Đang tạo nhận xét AI: ${bp.completed}/${bp.total} (${bp.percent}%)${bp.remaining > 0 ? ` · ~${bp.remaining}s còn lại` : ''}`
+                            : `Đang tạo nhận xét AI cho ${present} học sinh...`;
+                    }
+                } else {
+                    if (autoBtn) {
+                        autoBtn.classList.remove('is-loading');
+                        autoBtn.setAttribute('aria-busy', 'false');
+                    }
+                    if (autoLabel) autoLabel.textContent = state.regularAssessmentLoad.loading
+                        ? 'Đang tải đánh giá...'
+                        : `Tạo AI cho ${present} học sinh`;
+                    if (hint) hint.textContent = state.regularAssessmentLoad.loading
+                        ? 'Đang tải mức độ nắm bài và ghi chú đã lưu'
+                        : `${present} có mặt · ${generated} bản nháp · ${submitted} đã gửi`;
+                }
                 if (submitLabel) submitLabel.textContent = `Gửi tất cả (${batchGenerated})`;
                 if (copyLabel) copyLabel.textContent = `Sao chép Zalo (${availableZalo})`;
                 if (reviewLabel) reviewLabel.textContent = state.regularReviewMode
@@ -606,9 +664,6 @@ function updateStats() {
                 if (reviewBtn) reviewBtn.style.display = total > 0 ? 'inline-flex' : 'none';
                 if (batchLevelLabel) batchLevelLabel.textContent = state.regularBulkLevelBusy ? 'Đang lưu level...' : `Level cả lớp (${present})`;
                 if (batchLevelBtn) batchLevelBtn.setAttribute('aria-busy', String(state.regularBulkLevelBusy));
-                if (hint) hint.textContent = state.regularAssessmentLoad.loading
-                    ? 'Đang tải mức độ nắm bài và ghi chú đã lưu'
-                    : `${present} có mặt · ${generated} bản nháp · ${submitted} đã gửi`;
                 const operationLocked = app.isRegularOperationActive();
                 const assessmentUnavailable = app.isRegularAssessmentUnavailable();
                 if (autoBtn) autoBtn.disabled = operationLocked || assessmentUnavailable || present === 0;
@@ -721,7 +776,183 @@ function hideConfirmModal(restoreFocus = true) {
         }
 
 
+
+function filterClassStatus(status) {
+    state.classStatusFilter = status;
+    document.querySelectorAll('.legend-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.filter === status);
+    });
+    if (state.classesCache) app.renderClassList(state.classesCache);
+}
+
+function getSlotStatus(slot, slotIdx = null) {
+    if (!slot) return { state: 'future', color: 'gray', label: 'Chưa diễn ra' };
+
+    const attendance = Array.isArray(slot.studentAttendance) ? slot.studentAttendance : [];
+    const present = attendance.filter(app.isPresentAttendance);
+    const summary = (slot.summary || '').replace(/<[^>]*>/g, '').trim();
+    const hasSummary = Boolean(summary);
+
+    const now = new Date();
+    const slotDate = new Date(slot.date);
+    const isPastOrToday = !Number.isNaN(slotDate.getTime()) && slotDate <= now;
+
+    // Chưa diễn ra và chưa có điểm danh
+    if (!attendance.length && !isPastOrToday) {
+        return { state: 'future', color: 'gray', label: 'Chưa diễn ra' };
+    }
+
+    const completed = present.filter(att => app.isSlotCompletedForAttendance(att, slot, slotIdx)).length;
+    const missing = Math.max(present.length - completed, 0);
+
+    // 1. Chưa nhận xét -> Màu đỏ
+    if (present.length > 0 && missing > 0) {
+        return {
+            state: 'pending_comment',
+            color: 'red',
+            label: `Chưa nhận xét (${missing}/${present.length} học sinh)`
+        };
+    }
+
+    // 2. Chưa điền thông tin buổi học -> Màu vàng
+    if (!hasSummary) {
+        return {
+            state: 'missing_summary',
+            color: 'yellow',
+            label: 'Chưa điền thông tin buổi học'
+        };
+    }
+
+    // 3. Điền rồi (hoàn thành đầy đủ nhận xét và thông tin buổi học) -> Màu xanh
+    return {
+        state: 'completed',
+        color: 'green',
+        label: 'Đã hoàn thành'
+    };
+}
+
+function renderSlotCarousel() {
+    const track = document.getElementById('slotCarouselTrack');
+    const classTitle = document.getElementById('slotClassTitle');
+    const courseName = document.getElementById('slotCourseName');
+    const totalCount = document.getElementById('slotTotalCount');
+    const metaInfo = document.getElementById('selectedClassSlotMeta');
+    const topicDisplay = document.getElementById('slotTopicDisplay');
+    const summaryInput = document.getElementById('sessionSummary');
+
+    if (!state.classData) return;
+
+    if (classTitle) classTitle.textContent = state.classData.name || '';
+    if (courseName) courseName.textContent = state.classData.course?.name || '';
+    if (totalCount) totalCount.textContent = `Tổng: ${state.classData.slots?.length || 0} buổi`;
+
+    const currentIdx = state.selectedSlot ? state.selectedSlot.index : Number(document.getElementById('slotSelect')?.value || 0);
+
+    if (track && state.classData.slots) {
+        const total = state.classData.slots.length;
+        const windowSize = 5;
+        if (state.slotCarouselOffset === undefined || state.slotCarouselOffset === null) {
+            state.slotCarouselOffset = Math.max(0, Math.min(currentIdx - 2, total - windowSize));
+        }
+        const start = Math.max(0, Math.min(state.slotCarouselOffset, total - windowSize));
+        const visibleSlots = state.classData.slots.slice(start, start + windowSize);
+
+        track.innerHTML = visibleSlots.map((slot, offsetIdx) => {
+            const idx = start + offsetIdx;
+            const dateObj = new Date(slot.date);
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const dateShort = `${day}/${month}`;
+            const slotNum = app.getSlotDisplayNumber(slot, idx);
+            const isSelected = idx === currentIdx;
+            const status = app.getSlotStatus(slot, idx);
+            return `
+                <button type="button" class="slot-card-btn ${isSelected ? 'active' : ''} status-${status.color}"
+                    data-slot-idx="${idx}"
+                    onclick="onSlotCardClick(${idx})"
+                    aria-selected="${isSelected}"
+                    title="Buổi ${slotNum} (${dateShort}): ${status.label}">
+                    <span class="slot-status-dot ${status.color}" aria-hidden="true"></span>
+                    <span class="slot-title">Buổi ${slotNum}</span>
+                    <span class="slot-date">${dateShort}</span>
+                </button>
+            `;
+        }).join('');
+    }
+
+    if (state.selectedSlot) {
+        const slotDate = new Date(state.selectedSlot.date).toLocaleDateString('vi-VN');
+        const slotNum = app.getSlotDisplayNumber(state.selectedSlot, currentIdx);
+        if (metaInfo) {
+            metaInfo.innerHTML = `Lớp: <strong>${app.escapeHtml(state.classData.name)}</strong> &nbsp;|&nbsp; Buổi ${slotNum}: ${slotDate}`;
+        }
+    }
+
+    const rawSummary = summaryInput?.value || state.selectedSlot?.summary || '';
+    const cleanSummary = rawSummary.replace(/<[^>]*>/g, '').trim();
+    if (topicDisplay) {
+        topicDisplay.textContent = cleanSummary || 'Chưa có chủ đề buổi học';
+    }
+}
+
+function onSlotCardClick(idx) {
+    if (state.classData?.slots) {
+        const total = state.classData.slots.length;
+        const windowSize = 5;
+        state.slotCarouselOffset = Math.max(0, Math.min(idx - 2, total - windowSize));
+    }
+    const slotSelect = document.getElementById('slotSelect');
+    if (slotSelect) {
+        slotSelect.value = idx;
+        app.loadSlotStudents();
+    }
+}
+
+function scrollSlotCarousel(direction) {
+    if (!state.classData?.slots) return;
+    const total = state.classData.slots.length;
+    const windowSize = 5;
+    const maxOffset = Math.max(0, total - windowSize);
+    state.slotCarouselOffset = Math.max(0, Math.min((state.slotCarouselOffset || 0) + direction * 2, maxOffset));
+    renderSlotCarousel();
+}
+
+function toggleEditTopic(forceState) {
+    const panel = document.getElementById('summaryEditPanel');
+    if (!panel) return;
+    const isVisible = forceState !== undefined ? forceState : panel.style.display === 'none';
+    panel.style.display = isVisible ? 'block' : 'none';
+    if (isVisible) {
+        document.getElementById('sessionSummary')?.focus();
+    }
+}
+
+function closeStudentDetail() {
+    state.isStudentDrawerOpen = false;
+    state.selectedRegularStudentId = null;
+    const detail = document.getElementById('regularStudentDetail');
+    if (detail) {
+        detail.classList.remove('open');
+        detail.innerHTML = '<div class="student-detail-empty">Chọn học sinh để xem chi tiết</div>';
+    }
+    document.querySelectorAll('.student-list-item').forEach(btn => btn.classList.remove('active'));
+}
+
+function toggleSelectAll(checked) {
+    document.querySelectorAll('.student-cb').forEach(cb => {
+        cb.checked = checked;
+    });
+}
+
 Object.assign(app, {
+    getSlotStatus,
+    filterClassStatus,
+    renderSlotCarousel,
+    onSlotCardClick,
+    scrollSlotCarousel,
+    toggleEditTopic,
+    closeStudentDetail,
+    toggleSelectAll,
     getLocalNote,
     setLocalNote,
     getCurrentStudentMode,

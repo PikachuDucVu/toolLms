@@ -3,10 +3,10 @@ import { initTheme } from '../shared/theme.js';
 import { initKeyboardShortcuts } from '../shared/keyboard.js';
 import './constants.js';
 import './core.js';
-import './ui.js';
+import './ui.js?t=1789195005';
 import './auth.js';
-import './classes.js';
-import './assessments.js';
+import './classes.js?t=1789195005';
+import './assessments.js?t=1789195005';
 import './comments.js';
 import './review.js';
 import './demo.js';
@@ -14,6 +14,7 @@ import './checkpoint.js';
 
 initTheme();
 initKeyboardShortcuts();
+window.app = app;
 
 // Init
         const managedDetailsSelector = 'details.toolbar-menu, details.quick-template-menu, details.detail-overflow, details.batch-overflow, details.batch-level-menu';
@@ -61,16 +62,19 @@ initKeyboardShortcuts();
         (async () => {
             try {
                 if (await app.checkServerSession()) {
-                    app.updateLoginStatus(true);
+                    app.updateLoginStatus(true, state.currentUser?.displayName || state.currentUser?.email);
                     app.loadClasses();
                 } else {
+                    app.updateLoginStatus(false);
                     app.showLoginRequired();
                 }
             } catch(e) {
                 app.updateLoginStatus(false);
-                app.showToast(e.message || 'Không thể kiểm tra phiên đăng nhập. Vui lòng thử lại.', 'error');
+                app.showLoginRequired();
             }
         })();
+
+window.app = app;
 
 Object.assign(window, {
     applyTemplate: app.applyTemplate,
@@ -138,6 +142,13 @@ Object.assign(window, {
     submitSummary: app.submitSummary,
     toggleCheckpointCard: app.toggleCheckpointCard,
     toggleConfig: app.toggleConfig,
+    filterClassStatus: app.filterClassStatus,
+    renderSlotCarousel: app.renderSlotCarousel,
+    onSlotCardClick: app.onSlotCardClick,
+    scrollSlotCarousel: app.scrollSlotCarousel,
+    toggleEditTopic: app.toggleEditTopic,
+    closeStudentDetail: app.closeStudentDetail,
+    toggleSelectAll: app.toggleSelectAll,
     updateCheckpointDescriptionDraft: app.updateCheckpointDescriptionDraft,
     updateCheckpointTotal: app.updateCheckpointTotal,
     updateComment: app.updateComment,

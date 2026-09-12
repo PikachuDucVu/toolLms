@@ -156,20 +156,23 @@ async function autoCheckpointCommentAll() {
                 tone: 'info'
             }))) return;
 
-            btn.disabled = true;
+            const autoLabel = document.getElementById('autoCheckpointCommentBtnLabel');
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('is-loading');
+                btn.setAttribute('aria-busy', 'true');
+            }
+            if (autoLabel) autoLabel.textContent = `Đang tạo AI (0/${presentCountCp})...`;
             progressContainer.classList.add('show');
 
             const presentStudents = app.getCheckpointBulkStudents();
             app.saveCheckpointScoresToCache();
             app.saveCheckpointDescriptionsToCache();
-            const BATCH_SIZE = 3;
             let completed = 0;
             let generatedCount = 0;
 
-            for (let i = 0; i < presentStudents.length; i += BATCH_SIZE) {
-                const batch = presentStudents.slice(i, i + BATCH_SIZE);
-
-                const promises = batch.map(async (att) => {
+            try {
+                const promises = presentStudents.map(async (att) => {
                     const scoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
                     const desc = document.getElementById(`cp-desc-${scoreId}`)?.value ?? app.getCheckpointDescriptionDraft(att.student.id);
 
@@ -192,23 +195,30 @@ async function autoCheckpointCommentAll() {
                         }
                     } catch (e) {
                         console.error(e);
+                    } finally {
+                        completed++;
+                        const progress = Math.round((completed / presentStudents.length) * 100);
+                        progressFill.style.width = `${progress}%`;
+                        progressText.textContent = `${progress}% (${completed}/${presentStudents.length})`;
+                        if (autoLabel) autoLabel.textContent = `Đang tạo AI (${completed}/${presentStudents.length})...`;
+                        app.renderStudents();
+                        app.updateStats();
                     }
                 });
 
                 await Promise.all(promises);
-                completed += batch.length;
 
-                const progress = Math.round((completed / presentStudents.length) * 100);
-                progressFill.style.width = `${progress}%`;
-                progressText.textContent = `${progress}% (${completed}/${presentStudents.length})`;
-                app.renderStudents();
-                app.updateStats();
+                app.playSound('success');
+                app.showToast(`Đã tạo ${generatedCount} nhận xét checkpoint cho học sinh có mặt!`);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('is-loading');
+                    btn.setAttribute('aria-busy', 'false');
+                }
+                if (autoLabel) autoLabel.textContent = 'AI nhận xét tất cả';
+                progressContainer.classList.remove('show');
             }
-
-            btn.disabled = false;
-            progressContainer.classList.remove('show');
-            app.playSound('success');
-            app.showToast(`Đã tạo ${generatedCount} nhận xét checkpoint cho học sinh có mặt!`);
         }
 
 function getCheckpointScoreInput(scoreId) {
@@ -594,38 +604,37 @@ async function submitCheckpointAll() {
                 btn.disabled = true;
                 progressContainer.classList.add('show');
 
-                const BATCH_SIZE = 3;
                 let completed = 0;
-
-                for (let i = 0; i < needsComment.length; i += BATCH_SIZE) {
-                    const batch = needsComment.slice(i, i + BATCH_SIZE);
-                    const promises = batch.map(async (att) => {
-                        const scoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
-                        const desc = document.getElementById(`cp-desc-${scoreId}`)?.value ?? app.getCheckpointDescriptionDraft(att.student.id);
-                        try {
-                            const { aiModel, customModelId, thinkingLevel, aiApiKey } = app.getSelectedModelConfig();
-                            const data = await app.fetchJSON('/api/generate_checkpoint_comment', {
-                                student_name: att.student.fullName,
-                                teacher_description: desc,
-                                model_id: aiModel,
-                                custom_model_id: customModelId,
-                                thinking_level: thinkingLevel,
-                                ai_api_key: aiApiKey
-                            });
-                            const aiError = data.error || app.getCheckpointAiError(data.comment);
-                            if (!aiError) {
-                                state.generatedComments[att.student.id] = data.comment;
-                            } else {
-                                console.error('Checkpoint AI error:', att.student.id, aiError);
-                            }
-                        } catch (e) { console.error(e); }
-                    });
-                    await Promise.all(promises);
-                    completed += batch.length;
-                    const progress = Math.round((completed / needsComment.length) * 50);
-                    progressFill.style.width = `${progress}%`;
-                    progressText.textContent = `Tạo nhận xét: ${completed}/${needsComment.length}`;
-                }
+                const promises = needsComment.map(async (att) => {
+                    const scoreId = att.student.id.replace(/[^a-zA-Z0-9]/g, '_');
+                    const desc = document.getElementById(`cp-desc-${scoreId}`)?.value ?? app.getCheckpointDescriptionDraft(att.student.id);
+                    try {
+                        const { aiModel, customModelId, thinkingLevel, aiApiKey } = app.getSelectedModelConfig();
+                        const data = await app.fetchJSON('/api/generate_checkpoint_comment', {
+                            student_name: att.student.fullName,
+                            teacher_description: desc,
+                            model_id: aiModel,
+                            custom_model_id: customModelId,
+                            thinking_level: thinkingLevel,
+                            ai_api_key: aiApiKey
+                        });
+                        const aiError = data.error || app.getCheckpointAiError(data.comment);
+                        if (!aiError) {
+                            state.generatedComments[att.student.id] = data.comment;
+                        } else {
+                            console.error('Checkpoint AI error:', att.student.id, aiError);
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    } finally {
+                        completed++;
+                        const progress = Math.round((completed / needsComment.length) * 50);
+                        progressFill.style.width = `${progress}%`;
+                        progressText.textContent = `Tạo nhận xét: ${completed}/${needsComment.length}`;
+                        app.renderStudents();
+                    }
+                });
+                await Promise.all(promises);
                 app.saveCheckpointScoresToCache();
                 app.saveCheckpointDescriptionsToCache();
                 app.renderStudents();

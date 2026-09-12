@@ -15,6 +15,7 @@ export interface Env {
 export interface SessionRecord {
   id: string;
   email: string;
+  displayName?: string;
   firebaseKey?: string;
   lmsToken: string;
   refreshToken?: string;

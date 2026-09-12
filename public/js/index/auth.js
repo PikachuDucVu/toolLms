@@ -34,15 +34,31 @@ function initializeConfigPanel({ savedEmail, savedProxyKey } = {}) {
             }
         }
 
-function updateLoginStatus(loggedIn) {
+function updateLoginStatus(loggedIn, teacherInfo = null) {
             const dot = document.getElementById('statusDot');
             const text = document.getElementById('statusText');
+            const greeting = document.getElementById('headerGreeting');
+            const teacherNameEl = document.getElementById('teacherName');
+            const profileNameEl = document.getElementById('teacherProfileName');
+
             if (loggedIn) {
-                dot.classList.add('online');
-                text.textContent = 'Đã đăng nhập';
+                if (dot) dot.classList.add('online');
+                if (text) text.textContent = 'Đã đăng nhập';
+                const name = typeof teacherInfo === 'string'
+                    ? teacherInfo
+                    : (teacherInfo?.displayName || teacherInfo?.email?.split('@')[0] || localStorage.getItem('lms_teacher_name') || 'Giáo viên');
+                if (name && name !== 'Giáo viên') {
+                    localStorage.setItem('lms_teacher_name', name);
+                }
+                if (teacherNameEl) teacherNameEl.textContent = name;
+                if (profileNameEl) profileNameEl.textContent = name;
+                if (greeting) greeting.innerHTML = `Xin chào, thầy/cô <strong id="teacherName">${app.escapeHtml(name)}</strong>!`;
             } else {
-                dot.classList.remove('online');
-                text.textContent = 'Chưa đăng nhập';
+                if (dot) dot.classList.remove('online');
+                if (text) text.textContent = 'Chưa đăng nhập';
+                if (teacherNameEl) teacherNameEl.textContent = 'Khách';
+                if (profileNameEl) profileNameEl.textContent = 'Chưa đăng nhập';
+                if (greeting) greeting.textContent = 'Vui lòng đăng nhập để bắt đầu';
             }
         }
 
@@ -57,7 +73,8 @@ async function login() {
 
             try {
                 app.showToast('Đang đăng nhập...', 'info');
-                await app.firebaseLogin(email, password);
+                const loginResult = await app.firebaseLogin(email, password);
+                const teacherName = loginResult?.displayName || email.split('@')[0];
 
                 if (document.getElementById('rememberLogin').checked) {
                     localStorage.setItem('lms_email', email);
@@ -66,7 +83,7 @@ async function login() {
                     localStorage.removeItem('lms_email');
                     localStorage.removeItem('lms_password');
                 }
-                app.updateLoginStatus(true);
+                app.updateLoginStatus(true, teacherName);
                 app.showToast('Đăng nhập thành công!');
                 const returnTo = app.getReturnToPath();
                 if (returnTo) {

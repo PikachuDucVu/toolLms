@@ -18,6 +18,7 @@ const BROWSER_HEADERS = {
 
 interface LoginResult {
   email: string;
+  displayName?: string;
   lmsToken: string;
   refreshToken?: string;
   tokenExpiry: number;
@@ -64,6 +65,17 @@ function cookieHeaderFromResponse(headers: Headers): string {
     .join("; ");
 }
 
+export function decodeJwtName(token: string): string {
+  try {
+    const payload = token.split(".")[1];
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(payload.length / 4) * 4, "=");
+    const parsed = JSON.parse(atob(normalized)) as { name?: string; displayName?: string };
+    return parsed.name || parsed.displayName || "";
+  } catch {
+    return "";
+  }
+}
+
 function decodeJwtExpiry(token: string): number {
   try {
     const payload = token.split(".")[1];
@@ -106,11 +118,12 @@ export class LmsClient {
         clientType: "CLIENT_TYPE_WEB",
       }),
     });
-    const firebaseData = await readJsonResponse<{ idToken?: string; error?: { message?: string } }>(firebaseResp);
+    const firebaseData = await readJsonResponse<{ idToken?: string; displayName?: string; error?: { message?: string } }>(firebaseResp);
     if (!firebaseResp.ok || !firebaseData.idToken) {
       throw new Error(`Firebase login failed: ${firebaseData.error?.message || firebaseResp.status}`);
     }
     const firebaseToken = firebaseData.idToken;
+    const displayName = firebaseData.displayName || decodeJwtName(firebaseToken) || email.split("@")[0];
 
     const loginWithTokenResp = await fetch(BASE_API_URL, {
       method: "POST",
@@ -169,7 +182,7 @@ export class LmsClient {
       tokenExpiry = refresh.tokenExpiry || tokenExpiry;
     }
 
-    return { email, lmsToken, refreshToken, tokenExpiry };
+    return { email, displayName, lmsToken, refreshToken, tokenExpiry };
   }
 
   async ensureSession(session: SessionRecord): Promise<SessionRecord> {

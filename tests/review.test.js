@@ -274,3 +274,91 @@ test('review opens in a modal shell and restores focus when closed', () => {
   app.renderRegularReview = originalRender;
   app.updateStats = originalUpdateStats;
 });
+
+test('buildRegularReviewRow renders loading indicators when row.busy is true', () => {
+  resetReviewState();
+  globalThis.document = {
+    createElement() {
+      let text = '';
+      return {
+        set textContent(val) { text = String(val).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); },
+        get textContent() { return text; },
+        get innerHTML() { return text; },
+      };
+    },
+    getElementById: () => null,
+    querySelector: () => null,
+  };
+
+  const row = {
+    index: 0,
+    att: state.students[0],
+    studentId: 'student-1',
+    studentName: 'Nguyễn Minh Anh',
+    attendance: { badgeClass: 'badge-success', text: 'Có mặt' },
+    isPresent: true,
+    learningLevel: 'understands_and_asks',
+    learningLevelInfo: app.LEARNING_LEVELS.understands_and_asks,
+    assessmentStatus: { loading: false, error: false, text: 'Đã lưu' },
+    commentText: '',
+    isDraft: false,
+    hasExistingComment: false,
+    source: 'missing',
+    characterCount: 0,
+    operationError: '',
+    busy: true,
+    duplicateCount: 0,
+    hasWarning: false,
+  };
+
+  const html = app.buildRegularReviewRow(row);
+  assert.match(html, /class="[^"]*is-generating[^"]*"/);
+  assert.match(html, /class="regular-review-comment-generating"/);
+  assert.match(html, /AI đang tạo nhận xét cho Nguyễn Minh Anh/);
+  assert.match(html, /class="[^"]*regular-review-row-generate[^"]*is-loading[^"]*"/);
+  assert.match(html, /aria-busy="true"/);
+  assert.match(html, /Đang tạo\.\.\./);
+});
+
+test('renderRegularReview displays progress banner and loading state during batch AI generation', () => {
+  resetReviewState();
+  state.regularReviewMode = true;
+  state.regularBatchBusy = true;
+  state.regularBatchProgress = {
+    completed: 2,
+    total: 4,
+    percent: 50,
+    remaining: 10,
+  };
+
+  const container = {
+    classList: { add() {}, remove() {} },
+    setAttribute() {},
+    innerHTML: '',
+    querySelector() { return null; },
+    querySelectorAll() { return []; },
+  };
+
+  globalThis.document = {
+    createElement() {
+      let text = '';
+      return {
+        set textContent(val) { text = String(val).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); },
+        get textContent() { return text; },
+        set innerHTML(val) { text = String(val).replace(/<[^>]*>/g, ''); },
+        get innerHTML() { return text; },
+      };
+    },
+    getElementById: () => null,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    body: { classList: { add() {}, remove() {} } },
+  };
+
+  app.renderRegularReview(container);
+  assert.match(container.innerHTML, /class="regular-review-progress-banner show"/);
+  assert.match(container.innerHTML, /Đang tạo nhận xét AI: 50% \(2\/4\)/);
+  assert.match(container.innerHTML, /~10s còn lại/);
+  assert.match(container.innerHTML, /class="[^"]*is-loading[^"]*"[^>]*id="regularReviewGenerateAll"/);
+  assert.match(container.innerHTML, /id="regularReviewGenerateAll"[\s\S]*?Đang tạo AI \(2\/4\)\.\.\./);
+});

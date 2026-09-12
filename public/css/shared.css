@@ -6,14 +6,14 @@
 
 /* ---------- Design Tokens ---------- */
 :root {
-    /* Brand */
-    --primary: #0891B2;
-    --primary-dark: #0E7490;
-    --primary-light: #22D3EE;
-    --primary-lighter: #ECFEFF;
-    --primary-bg: #F0FDFA;
-    --accent: #0D9488;
-    --accent-light: #CCFBF1;
+    /* Brand - Refreshed to match design */
+    --primary: #0284c7;
+    --primary-dark: #0369a1;
+    --primary-light: #38bdf8;
+    --primary-lighter: #e0f2fe;
+    --primary-bg: #f0f9ff;
+    --accent: #0ea5e9;
+    --accent-light: #e0f2fe;
 
     /* Status */
     --success: #22C55E;
@@ -42,13 +42,14 @@
     --gray-900: #0F172A;
 
     /* Semantic surface tokens (GĐ2: calm UI — nền phẳng thay gradient) */
-    --surface-body: var(--gray-50);
+    --surface-body: #eff6f9;
+    --surface-body-gradient: linear-gradient(135deg, #e8f3fb 0%, #eff6f9 50%, #f4f9fb 100%);
     --surface-card: #FFFFFF;
-    --surface-subtle: var(--gray-50);
-    --border-color: var(--gray-200);
-    --text-primary: var(--gray-800);
-    --text-heading: var(--gray-900);
-    --text-muted: var(--gray-500);
+    --surface-subtle: #f8fafc;
+    --border-color: #e2edf0;
+    --text-primary: #1e293b;
+    --text-heading: #0f172a;
+    --text-muted: #64748b;
 
     /* Feature accents (chuẩn hoá thay vì hardcode hex rải rác) */
     --feature-demo: #7C3AED;
@@ -183,102 +184,187 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .app-container {
-    max-width: 1400px;
+    max-width: 1640px;
     margin: 0 auto;
-    padding: 24px;
+    padding: 16px 24px 40px;
 }
 
 /* ---------- Header ---------- */
 .header {
     position: relative;
-    isolation: isolate;
-    overflow: hidden;
     background: var(--surface-card);
     border-radius: var(--radius-lg);
-    padding: 16px 28px;
-    margin-bottom: 24px;
+    padding: 12px 24px;
+    margin-bottom: 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    flex-wrap: wrap;
-    box-shadow: var(--shadow);
+    flex-wrap: nowrap;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
     border: 1px solid var(--border-color);
-}
-
-.header::before {
-    content: "";
-    position: absolute;
-    z-index: 0;
-    top: 0;
-    bottom: 0;
-    left: 28%;
-    width: 46%;
-    background: url('/assets/ai-learning-header.jpg') center / cover no-repeat;
-    opacity: 0.72;
-    pointer-events: none;
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
-    mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
-}
-
-.header > * {
-    position: relative;
-    z-index: 1;
-}
-
-[data-theme="dark"] .header::before {
-    opacity: 0.16;
-    filter: brightness(0.72) saturate(1.2);
 }
 
 .header-left {
     display: flex;
     align-items: center;
-    gap: 14px;
-}
-
-.logo {
-    width: 44px;
-    height: 44px;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
+    gap: 12px;
     flex-shrink: 0;
 }
 
-.logo svg { width: 24px; height: 24px; }
-
-.header h1 {
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+.logo-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    object-fit: contain;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2);
+    display: block;
 }
 
-.header p {
-    font-size: 13px;
+.brand-text h1 {
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-heading);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.brand-text p {
+    font-size: 12px;
     color: var(--text-muted);
-    margin-top: 1px;
+    margin: 2px 0 0;
+    font-weight: 500;
+}
+
+.header-status-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex-shrink: 0;
 }
 
 .header-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #166534;
+    width: fit-content;
+}
+
+.header-greeting {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.header-center-illustration {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 14px;
-    background: var(--surface-subtle);
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
+    justify-content: center;
+    flex: 1;
+    min-width: 0;
+    padding: 0 8px;
+}
+
+.header-banner-img {
+    max-height: 64px;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.nav-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 999px;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.nav-tab-btn.active {
+    background: var(--primary);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.28);
+}
+
+.nav-tab-btn.outline {
+    background: var(--surface-card);
     color: var(--gray-600);
+    border: 1px solid var(--border-color);
+}
+
+.nav-tab-btn.outline:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-300);
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 2px 4px 2px 10px;
+    border-left: 1px solid var(--border-color);
+    margin-left: 2px;
+}
+
+.profile-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1.5px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.profile-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.profile-role {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-weight: 500;
+}
+
+.chevron-sm {
+    width: 13px;
+    height: 13px;
+    stroke-width: 2.2;
 }
 
 .status-dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: var(--gray-400);
     transition: background var(--transition);
@@ -286,7 +372,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .status-dot.online {
     background: var(--success);
-    box-shadow: 0 0 0 3px var(--success-light);
+    box-shadow: 0 0 0 2px #bbf7d0;
 }
 
 /* ---------- Theme Toggle ---------- */

@@ -136,6 +136,9 @@ function validateDirectComment(value, policy = {}) {
             if (!plain) issues.push('Nhận xét đang trống.');
             if (/```|\*\*|^\s*#{1,6}\s|(?:^|\n)\s*[-*]\s+/m.test(String(value || ''))) issues.push('Nhận xét chứa markdown hoặc danh sách.');
             if (/\b(?:l[1-4]|level)\b/i.test(normalized)) issues.push('Nhận xét làm lộ mã level nội bộ.');
+            if (/(?<=^|[\s\p{P}])(?:nhé|nè|nhe|(?<!(?:ở|về|tại|ngôi|o|ve|tai)\s+)nha)(?=$|[\s\p{P}])/iu.test(plain)) {
+                issues.push('Nhận xét không được dùng từ ngữ cảm thán hoặc thân mật trực tiếp (nhé, nha).');
+            }
             if (bannedPatterns.some(pattern => new RegExp(pattern, 'i').test(normalized))) issues.push('Nhận xét dùng cụm đánh giá mơ hồ.');
 
             requiredConcepts.forEach(concept => {
@@ -291,6 +294,9 @@ async function checkServerSession() {
                 throw new Error(data.error || `Không thể kiểm tra phiên: ${resp.status}`);
             }
             state.hasServerSession = resp.ok && data.authenticated === true;
+            if (state.hasServerSession) {
+                state.currentUser = data;
+            }
             return state.hasServerSession;
         }
 

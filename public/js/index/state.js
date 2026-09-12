@@ -58,6 +58,7 @@ export const state = {
     regularReviewSubmitScopeIds: null,
     regularOperationErrors: {},
     regularBatchBusy: false,
+    regularBatchProgress: null,
     regularBulkLevelBusy: false,
     regularRefreshBusy: false,
     regularStudentBusy: new Set(),

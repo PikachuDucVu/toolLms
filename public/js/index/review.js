@@ -180,6 +180,7 @@ function buildRegularReviewRow(row) {
     const warningText = getRegularReviewWarningText(row);
     const selected = state.regularReviewSelectedStudentId === row.studentId;
     const operationLocked = app.isRegularOperationActive();
+    const isGenerating = row.busy;
     const generateLabel = row.isDraft ? 'Tạo lại' : 'Tạo AI';
     const sourceBadge = row.isDraft
         ? '<span class="badge badge-generated">Bản nháp AI</span>'
@@ -188,13 +189,15 @@ function buildRegularReviewRow(row) {
             : '<span class="badge badge-warning">Chưa có nhận xét</span>';
 
     return `
-        <article class="regular-review-row ${selected ? 'is-selected' : ''} ${warningText ? 'has-warning' : ''} ${!row.isPresent ? 'is-absent' : ''}"
+        <article class="regular-review-row ${selected ? 'is-selected' : ''} ${warningText ? 'has-warning' : ''} ${!row.isPresent ? 'is-absent' : ''} ${isGenerating ? 'is-generating' : ''}"
             id="review-row-${domId}" data-student-id="${app.escapeAttr(row.studentId)}" role="listitem">
             <div class="regular-review-student-cell">
                 <strong>${app.escapeHtml(row.studentName)}</strong>
                 <div class="regular-review-row-meta">
                     <span class="badge ${row.attendance.badgeClass}">${row.attendance.text}</span>
-                    ${sourceBadge}
+                    ${isGenerating
+                        ? '<span class="badge badge-warning is-loading"><span class="btn-spinner" style="width:10px;height:10px;border-width:1.5px;" aria-hidden="true"></span> Đang tạo AI</span>'
+                        : sourceBadge}
                 </div>
             </div>
             <div class="regular-review-level-cell">
@@ -216,7 +219,12 @@ function buildRegularReviewRow(row) {
                 <small id="review-assessment-status-${domId}">${app.escapeHtml(row.assessmentStatus.text)}</small>
             </div>
             <div class="regular-review-comment-cell">
-                ${row.isDraft ? `
+                ${isGenerating ? `
+                    <div class="regular-review-comment-generating" role="status" aria-live="polite">
+                        <span class="btn-spinner" style="width:14px;height:14px;border-width:2px;" aria-hidden="true"></span>
+                        <span class="generating-text">AI đang tạo nhận xét cho ${app.escapeHtml(row.studentName)}...</span>
+                    </div>
+                ` : row.isDraft ? `
                     <label class="sr-only" for="${commentId}">Nhận xét của ${app.escapeHtml(row.studentName)}</label>
                     <textarea id="${commentId}" class="regular-review-comment" rows="3"
                         oninput="updateRegularReviewComment('${studentIdJs}', this)"
@@ -231,7 +239,7 @@ function buildRegularReviewRow(row) {
                 `}
                 <div class="regular-review-comment-meta">
                     <span class="regular-review-warning" id="review-warning-${domId}">${warningText ? `Cảnh báo: ${app.escapeHtml(warningText)}` : ''}</span>
-                    <span id="review-character-count-${domId}">${row.characterCount} ký tự</span>
+                    <span id="review-character-count-${domId}">${isGenerating ? '...' : `${row.characterCount} ký tự`}</span>
                 </div>
             </div>
             <div class="regular-review-actions-cell">
@@ -239,11 +247,12 @@ function buildRegularReviewRow(row) {
                     id="review-detail-btn-${domId}" aria-expanded="${selected}" aria-controls="regularReviewDrawer">
                     Chi tiết
                 </button>
-                <button type="button" class="btn btn-xs regular-review-row-generate ${row.isDraft ? 'btn-outline' : 'btn-primary'}"
+                <button type="button" class="btn btn-xs regular-review-row-generate ${row.isDraft ? 'btn-outline' : 'btn-primary'} ${isGenerating ? 'is-loading' : ''}"
                     id="review-generate-btn-${domId}" data-review-generate-student="${app.escapeAttr(row.studentId)}"
                     onclick="generateSingle('${studentIdJs}')"
-                    ${operationLocked || row.assessmentStatus.loading || row.assessmentStatus.error ? 'disabled' : ''}>
-                    ${row.busy ? 'Đang tạo...' : generateLabel}
+                    ${operationLocked || row.assessmentStatus.loading || row.assessmentStatus.error ? 'disabled' : ''}
+                    aria-busy="${isGenerating}">
+                    ${isGenerating ? '<span class="btn-spinner" style="width:10px;height:10px;border-width:1.5px;" aria-hidden="true"></span> ' : ''}${isGenerating ? 'Đang tạo...' : generateLabel}
                 </button>
             </div>
         </article>
@@ -433,7 +442,9 @@ function renderRegularReview(list = document.getElementById('regularReviewModalC
                                 `).join('')}
                             </div>
                         </details>
-                        <button type="button" class="btn btn-sm btn-primary" id="regularReviewGenerateAll" data-regular-review-generate-all onclick="regenerateRegularReviewAll()" ${allPresentIds.length && !assessmentBlocked ? '' : 'disabled'}>Tạo nhận xét tất cả ${allPresentIds.length}</button>
+                        <button type="button" class="btn btn-sm btn-primary ${state.regularBatchBusy ? 'is-loading' : ''}" id="regularReviewGenerateAll" data-regular-review-generate-all onclick="regenerateRegularReviewAll()" ${allPresentIds.length && !assessmentBlocked ? '' : 'disabled'} aria-busy="${state.regularBatchBusy}">
+                            ${state.regularBatchBusy ? '<span class="btn-spinner" style="width:12px;height:12px;border-width:1.5px;" aria-hidden="true"></span> ' : ''}${state.regularBatchBusy ? (state.regularBatchProgress?.total ? `Đang tạo AI (${state.regularBatchProgress.completed}/${state.regularBatchProgress.total})...` : 'Đang tạo AI...') : `Tạo nhận xét tất cả ${allPresentIds.length}`}
+                        </button>
                         <details class="toolbar-menu regular-review-overflow">
                             <summary class="btn btn-sm btn-outline" id="regularReviewMoreActions" aria-label="Mở thêm công cụ review">Thêm</summary>
                             <div class="toolbar-menu-popover">
@@ -443,6 +454,19 @@ function renderRegularReview(list = document.getElementById('regularReviewModalC
                         </details>
                         <button type="button" class="btn btn-sm btn-outline" id="regularReviewCopyAll" onclick="copyAllZalo()" ${allDraftIds.length ? '' : 'disabled'}>Sao chép Zalo</button>
                         <button type="button" class="btn btn-sm btn-success" id="regularReviewSubmitAll" onclick="showConfirmModal()" ${allDraftIds.length && !operationLocked ? '' : 'disabled'}>Gửi tất cả ${allDraftIds.length}</button>
+                    </div>
+                </div>
+
+                <div class="regular-review-progress-banner ${state.regularBatchBusy ? 'show' : ''}" id="regularReviewProgress" role="status" aria-live="polite">
+                    <div class="regular-review-progress-info">
+                        <span class="regular-review-progress-title">
+                            <span class="btn-spinner" style="width:13px;height:13px;border-width:1.5px;" aria-hidden="true"></span>
+                            <strong id="regularReviewProgressText">${state.regularBatchProgress ? `Đang tạo nhận xét AI: ${state.regularBatchProgress.percent}% (${state.regularBatchProgress.completed}/${state.regularBatchProgress.total})` : 'Đang tạo nhận xét AI cho cả lớp...'}</strong>
+                        </span>
+                        <span class="regular-review-progress-eta" id="regularReviewProgressEta">${state.regularBatchProgress?.remaining > 0 ? `~${state.regularBatchProgress.remaining}s còn lại` : ''}</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="regularReviewProgressFill" style="width: ${state.regularBatchProgress?.percent || 0}%"></div>
                     </div>
                 </div>
 
@@ -469,7 +493,9 @@ function renderRegularReview(list = document.getElementById('regularReviewModalC
                         <option value="attendance" ${state.regularReviewSort === 'attendance' ? 'selected' : ''}>Có mặt trước</option>
                     </select></label>
                     <div class="regular-review-filter-actions">
-                        <button type="button" class="btn btn-sm btn-outline" id="regularReviewGenerateFiltered" onclick="regenerateRegularReviewFiltered()" ${filteredPresentIds.length && !assessmentBlocked ? '' : 'disabled'}>Tạo nhận xét ${filteredPresentIds.length} mục đang lọc</button>
+                        <button type="button" class="btn btn-sm btn-outline ${state.regularBatchBusy ? 'is-loading' : ''}" id="regularReviewGenerateFiltered" onclick="regenerateRegularReviewFiltered()" ${filteredPresentIds.length && !assessmentBlocked ? '' : 'disabled'} aria-busy="${state.regularBatchBusy}">
+                            ${state.regularBatchBusy ? '<span class="btn-spinner" style="width:12px;height:12px;border-width:1.5px;" aria-hidden="true"></span> ' : ''}${state.regularBatchBusy ? 'Đang tạo AI...' : `Tạo nhận xét ${filteredPresentIds.length} mục đang lọc`}
+                        </button>
                         <button type="button" class="btn btn-sm btn-outline" id="regularReviewSubmitFiltered" onclick="submitRegularReviewFiltered()" ${filteredDraftIds.length && !app.isRegularOperationActive() ? '' : 'disabled'}>Gửi ${filteredDraftIds.length} mục đang lọc</button>
                     </div>
                 </div>
@@ -754,6 +780,7 @@ Object.assign(app, {
     getRegularReviewAllDraftIds,
     getRegularReviewFilteredDraftIds,
     getRegularReviewFilteredPresentIds,
+    buildRegularReviewRow,
     renderRegularReview,
     openRegularReviewModalShell,
     forceCloseRegularReviewModal,
@@ -782,4 +809,5 @@ export {
     getReviewSignature,
     buildReviewDuplicateCounts,
     filterRegularReviewRows,
+    buildRegularReviewRow,
 };

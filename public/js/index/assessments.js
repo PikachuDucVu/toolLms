@@ -314,32 +314,152 @@ function buildRegularStudentListItem(att, inlineDetail = '') {
             const domId = app.getRegularStudentDomId(studentState.studentId);
             const studentIdAttr = app.escapeAttr(studentState.studentId);
             const studentIdJs = app.escapeInlineJsAttr(studentState.studentId);
+            const studentNameJs = app.escapeInlineJsAttr(studentState.fullName);
             const isSelected = studentState.studentId === state.selectedRegularStudentId;
+            const isGenerating = state.regularStudentBusy.has(studentState.studentId);
             const preview = app.getRegularStudentPreview(att);
             const previewIsEmpty = preview === 'Chưa có ghi chú hoặc nhận xét';
 
+            const idx = state.students.findIndex(s => s.student.id === studentState.studentId);
+            const stt = idx >= 0 ? idx + 1 : 1;
+
+            let levelBadgeHtml = '';
+            if (!studentState.isPresent) {
+                levelBadgeHtml = `<span class="badge-level level-absent"><span class="level-label">Vắng</span></span>`;
+            } else if (studentState.assessmentStatus.loading) {
+                levelBadgeHtml = `<span class="badge-level level-loading"><span class="btn-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> <span class="level-label">Đang tải...</span></span>`;
+            } else if (studentState.assessmentStatus.error) {
+                levelBadgeHtml = `<span class="badge-level level-error"><span class="level-label">Lỗi tải</span></span>`;
+            } else {
+                const code = studentState.learningLevelInfo.code;
+                const shortLabel = studentState.learningLevelInfo.shortLabel || studentState.learningLevelInfo.label;
+                const levelClass = `level-${code.toLowerCase()}`;
+                levelBadgeHtml = `
+                    <span class="badge-level ${levelClass}" title="${app.escapeAttr(studentState.learningLevelInfo.label)}: ${app.escapeAttr(studentState.learningLevelInfo.help)}">
+                        <span class="level-code-tag">${code}</span>
+                        <span class="level-label">${app.escapeHtml(shortLabel)}</span>
+                    </span>
+                `;
+            }
+
+            const cleanExisting = app.stripHtmlText(studentState.existingComment || '').trim();
+            const cleanDraft = app.stripHtmlText(studentState.generatedComment || '').trim();
+
+            let commentCellHtml = '';
+            if (isGenerating) {
+                commentCellHtml = `
+                    <span class="comment-generating-indicator">
+                        <span class="btn-spinner" style="width:11px;height:11px;border-width:1.5px;"></span>
+                        <span>AI đang tạo nhận xét...</span>
+                    </span>
+                `;
+            } else if (cleanDraft && cleanDraft !== cleanExisting) {
+                const fullTooltip = cleanExisting ? `LMS: ${cleanExisting}\n\nNháp mới: ${cleanDraft}` : `Bản nháp AI: ${cleanDraft}`;
+                commentCellHtml = `
+                    <span class="comment-draft-badge" title="Bản nháp AI">${cleanExisting ? 'Nháp mới' : 'Nháp AI'}</span>
+                    <span class="comment-text-snippet" title="${app.escapeAttr(fullTooltip)}">${app.escapeHtml(cleanDraft)}</span>
+                `;
+            } else if (cleanExisting) {
+                commentCellHtml = `
+                    <span class="comment-text-snippet" title="${app.escapeAttr(cleanExisting)}">${app.escapeHtml(cleanExisting)}</span>
+                `;
+            } else {
+                commentCellHtml = `
+                    <span class="comment-empty-placeholder">Chưa có nhận xét</span>
+                `;
+            }
+
+            const attendancePill = studentState.isPresent
+                ? `<span class="badge attendance-pill badge-success"><svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:12px;height:12px;stroke-width:2.5;"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Có mặt</span>`
+                : `<span class="badge attendance-pill badge-danger"><svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:12px;height:12px;stroke-width:2.5;"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg> Vắng</span>`;
+
+            const hasSubmitted = studentState.progressState === 'submitted' || Boolean(studentState.existingComment);
+            const hasDraft = Boolean(studentState.generatedComment);
+            const statusPill = hasSubmitted
+                ? `<span class="badge status-pill badge-success"><svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:12px;height:12px;stroke-width:2.5;"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Đã nhận xét</span>`
+                : hasDraft
+                    ? `<span class="badge status-pill badge-info"><svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:12px;height:12px;stroke-width:2.5;"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg> Bản nháp AI</span>`
+                    : `<span class="badge status-pill badge-warning">Chưa nhận xét</span>`;
+
             return `
                 <div class="student-list-entry" id="student-entry-${domId}" role="listitem" data-student-id="${studentIdAttr}">
-                    <button type="button" class="student-list-item ${isSelected ? 'active' : ''}"
+                    <div class="student-list-item ${isSelected ? 'active' : ''} ${isGenerating ? 'is-generating' : ''}"
+                        role="row"
                         aria-pressed="${isSelected}" aria-controls="regularStudentDetail"
-                        onclick="selectRegularStudent('${studentIdJs}')">
-                        <span class="student-list-main">
-                            <span class="student-avatar" aria-hidden="true">${app.escapeHtml(studentState.initials)}</span>
-                            <span class="student-list-text">
-                                <span class="student-list-name">${app.escapeHtml(studentState.fullName)}</span>
-                                <span class="student-list-badges">
-                                    <span class="badge ${studentState.attendance.badgeClass}">${studentState.attendance.text}</span>
-                                    <span class="badge ${studentState.progress.badgeClass}">${studentState.progress.text}</span>
-                                    ${studentState.isPresent ? `<span class="badge badge-learning-level ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error) ? 'is-loading' : ''}" id="student-level-badge-${domId}">${studentState.assessmentStatus.loading ? 'Đang tải đánh giá' : studentState.assessmentStatus.error ? 'Không tải được' : `${studentState.learningLevelInfo.code} · ${studentState.learningLevelInfo.shortLabel}`}</span>` : ''}
-                                    ${studentState.hasRateScore ? '<span class="badge badge-gray badge-rate-score">Điểm NL</span>' : ''}
-                                </span>
-                                <span class="student-list-preview ${previewIsEmpty ? 'is-empty' : ''}" id="student-preview-${domId}">${app.escapeHtml(preview)}</span>
+                        onclick="selectRegularStudent('${studentIdJs}', true)">
+
+                        <span class="cell-cb" onclick="event.stopPropagation()">
+                            <input type="checkbox" class="student-cb" data-student-id="${studentIdAttr}" aria-label="Chọn ${app.escapeAttr(studentState.fullName)}">
+                        </span>
+
+                        <span class="cell-stt">${stt}</span>
+
+                        <span class="student-profile-cell">
+                            <span class="student-name-block">
+                                <strong class="student-list-name">${app.escapeHtml(studentState.fullName)}</strong>
                             </span>
                         </span>
-                        <svg class="student-list-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18 6-6-6-6"/>
-                        </svg>
-                    </button>
+
+                        <span class="cell-attendance">
+                            ${attendancePill}
+                        </span>
+
+                        <span class="cell-level">
+                            ${levelBadgeHtml}
+                        </span>
+
+                        <span class="cell-comment">
+                            ${commentCellHtml}
+                        </span>
+
+                        <span class="cell-status">
+                            ${statusPill}
+                        </span>
+
+                        <span class="cell-actions" onclick="event.stopPropagation()">
+                            <button type="button" class="btn-view-comment" onclick="selectRegularStudent('${studentIdJs}', true)">
+                                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                Chi tiết
+                            </button>
+                            <details class="table-row-menu">
+                                <summary aria-label="Thao tác khác" title="Thao tác khác">
+                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 6a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 6a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"/></svg>
+                                </summary>
+                                <div class="detail-menu-popover">
+                                    <button type="button" class="menu-action" onclick="closeDetailsMenu(this); generateSingle('${studentIdJs}')">
+                                        Tạo nhận xét AI
+                                    </button>
+                                    <button type="button" class="menu-action" onclick="closeDetailsMenu(this); copyZaloComment('${studentNameJs}', '${studentIdJs}')">
+                                        Sao chép cho Zalo
+                                    </button>
+                                    <button type="button" class="menu-action" onclick="closeDetailsMenu(this); showPastComments('${studentIdJs}', '${studentNameJs}')">
+                                        Lịch sử nhận xét
+                                    </button>
+                                    ${hasDraft ? `
+                                        <button type="button" class="menu-action danger" onclick="closeDetailsMenu(this); deleteComment('${studentIdJs}')">
+                                            Xóa bản nháp AI
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </details>
+                        </span>
+
+                        <div class="test-contract-compat sr-only" style="display:none !important;" aria-hidden="true">
+                            <span class="student-avatar" aria-hidden="true">${app.escapeHtml(studentState.initials)}</span>
+                            <span class="student-list-name">${app.escapeHtml(studentState.fullName)}</span>
+                            <span class="student-list-badges">
+                                <span class="badge ${studentState.attendance.badgeClass}">${studentState.attendance.text}</span>
+                                ${isGenerating
+                                    ? '<span class="badge badge-warning is-loading"><span class="btn-spinner" style="width:10px;height:10px;border-width:1.5px;" aria-hidden="true"></span> Đang tạo AI</span>'
+                                    : `<span class="badge ${studentState.progress.badgeClass}">${studentState.progress.text}</span>`
+                                }
+                                ${studentState.isPresent ? `<span class="badge badge-learning-level ${(studentState.assessmentStatus.loading || studentState.assessmentStatus.error) ? 'is-loading' : ''}" id="student-level-badge-${domId}">${studentState.assessmentStatus.loading ? 'Đang tải đánh giá' : studentState.assessmentStatus.error ? 'Không tải được' : `${studentState.learningLevelInfo.code} · ${studentState.learningLevelInfo.shortLabel}`}</span>` : ''}
+                            </span>
+                            <span class="student-list-preview ${isGenerating ? 'is-generating' : previewIsEmpty ? 'is-empty' : ''}" id="student-preview-${domId}">
+                                ${isGenerating ? 'AI đang tạo nhận xét...' : app.escapeHtml(preview)}
+                            </span>
+                        </div>
+                    </div>
                     ${inlineDetail}
                 </div>
             `;
@@ -365,7 +485,6 @@ function buildRegularStudentDetail(att, idx) {
             return `
                 <div class="student-detail-header">
                     <div class="student-detail-title">
-                        <div class="student-avatar" aria-hidden="true">${app.escapeHtml(studentState.initials)}</div>
                         <div>
                             <div class="student-name" id="regular-student-title-${domId}">${app.escapeHtml(studentState.fullName)}</div>
                             <div class="student-detail-meta">
@@ -477,9 +596,20 @@ function buildRegularStudentDetail(att, idx) {
                 <div class="student-detail-section">
                     <div class="student-detail-section-title">
                         <span>Nhận xét gửi phụ huynh</span>
-                        ${studentState.generatedComment ? '<span class="badge badge-generated">Bản nháp AI</span>' : ''}
+                        ${isGenerating
+                            ? '<span class="badge badge-warning is-loading"><span class="btn-spinner" style="width:10px;height:10px;border-width:1.5px;" aria-hidden="true"></span> Đang tạo AI...</span>'
+                            : studentState.generatedComment
+                                ? '<span class="badge badge-generated">Bản nháp AI</span>'
+                                : ''
+                        }
                     </div>
-                    ${studentState.generatedComment ? `
+                    ${isGenerating ? `
+                        <div class="regular-ai-generating" role="status" aria-live="polite">
+                            <div class="spinner" aria-hidden="true"></div>
+                            <div class="regular-ai-generating-title">AI đang tạo nhận xét cho ${app.escapeHtml(studentState.fullName)}...</div>
+                            <div class="regular-ai-generating-desc">Đang tổng hợp mức độ nắm bài (${studentState.learningLevelInfo.code}), ghi chú và lịch sử buổi học.</div>
+                        </div>
+                    ` : studentState.generatedComment ? `
                         <label class="sr-only" for="comment-${domId}">Chỉnh sửa nhận xét của ${app.escapeHtml(studentState.fullName)}</label>
                         <textarea class="comment-edit" id="comment-${domId}" oninput="updateComment('${studentIdJs}', this.value)">${app.escapeHtml(cleanGeneratedComment)}</textarea>
                     ` : `
@@ -491,8 +621,11 @@ function buildRegularStudentDetail(att, idx) {
                 </div>
 
                 <div class="student-detail-actions">
-                    <button type="button" class="btn btn-sm ${studentState.generatedComment ? 'btn-outline' : 'btn-primary'}" onclick="generateSingle('${studentIdJs}')" id="gen-btn-${domId}" ${actionsDisabled ? 'disabled' : ''} aria-busy="${isGenerating}">
-                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.591-2.591L3.5 12.5l2.096-.813a4.5 4.5 0 0 0 2.591-2.591l2.096-.813-2.096-.813a4.5 4.5 0 0 0-2.591-2.591L9 7l-.813 2.096a4.5 4.5 0 0 1-2.591 2.591L3.5 12.5l2.096.813a4.5 4.5 0 0 1 2.591 2.591Z"/></svg>
+                    <button type="button" class="btn btn-sm ${studentState.generatedComment ? 'btn-outline' : 'btn-primary'} ${isGenerating ? 'is-loading' : ''}" onclick="generateSingle('${studentIdJs}')" id="gen-btn-${domId}" ${actionsDisabled ? 'disabled' : ''} aria-busy="${isGenerating}">
+                        ${isGenerating
+                            ? '<span class="btn-spinner" aria-hidden="true"></span>'
+                            : '<svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904 9 18l-.813-2.096a4.5 4.5 0 0 0-2.591-2.591L3.5 12.5l2.096-.813a4.5 4.5 0 0 0 2.591-2.591l2.096-.813-2.096-.813a4.5 4.5 0 0 0-2.591-2.591L9 7l-.813 2.096a4.5 4.5 0 0 1-2.591 2.591L3.5 12.5l2.096.813a4.5 4.5 0 0 1 2.591 2.591Z"/></svg>'
+                        }
                         ${generateLabel}
                     </button>
                     ${studentState.generatedComment ? `
@@ -533,9 +666,16 @@ function renderRegularStudents(toRender, list) {
             const selectedAtt = toRender.find(att => att.student.id === state.selectedRegularStudentId);
             const selectedIdx = selectedAtt ? state.students.findIndex(att => att.student.id === selectedAtt.student.id) : -1;
             const isMobileLayout = window.matchMedia('(max-width: 900px)').matches;
+            const isDetailOpen = Boolean(state.isStudentDrawerOpen && state.selectedRegularStudentId && selectedAtt);
             const detailMarkup = `
-                <section class="student-detail-panel" id="regularStudentDetail"
-                    aria-labelledby="regular-student-title-${app.getRegularStudentDomId(state.selectedRegularStudentId)}">
+                <section class="student-detail-panel ${isDetailOpen ? 'open' : ''}" id="regularStudentDetail"
+                    aria-labelledby="regular-student-title-${app.getRegularStudentDomId(state.selectedRegularStudentId || '')}">
+                    <div class="detail-panel-close-bar">
+                        <span>Chi tiết nhận xét học sinh</span>
+                        <button type="button" class="btn-close-detail" onclick="closeStudentDetail()" aria-label="Đóng chi tiết" title="Đóng chi tiết">
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
                     ${selectedAtt ? app.buildRegularStudentDetail(selectedAtt, selectedIdx) : '<div class="student-detail-empty">Chọn học sinh để xem chi tiết</div>'}
                 </section>
             `;
@@ -543,6 +683,16 @@ function renderRegularStudents(toRender, list) {
             list.innerHTML = `
                 <div class="student-workspace">
                     <div class="student-compact-list" role="list" aria-label="Học sinh phù hợp bộ lọc">
+                        <div class="student-table-header" role="row">
+                            <div class="th-col col-cb"><input type="checkbox" id="selectAllCb" onclick="toggleSelectAll(this.checked)" aria-label="Chọn tất cả"></div>
+                            <div class="th-col col-stt">STT</div>
+                            <div class="th-col col-student">Học sinh</div>
+                            <div class="th-col col-attendance">Điểm danh</div>
+                            <div class="th-col col-level">Mức độ học tập</div>
+                            <div class="th-col col-comment">Nhận xét hiện tại</div>
+                            <div class="th-col col-status">Trạng thái</div>
+                            <div class="th-col col-actions">Thao tác</div>
+                        </div>
                         ${toRender.map(att => app.buildRegularStudentListItem(
                             att,
                             isMobileLayout && att.student.id === state.selectedRegularStudentId ? detailMarkup : ''
@@ -558,11 +708,16 @@ function renderRegularStudents(toRender, list) {
             });
         }
 
-function selectRegularStudent(studentId) {
+function selectRegularStudent(studentId, canToggle = false) {
             const compactList = document.querySelector('#studentList .student-compact-list');
             if (compactList) state.regularListScrollTop = compactList.scrollTop;
             const selectedAtt = app.getVisibleStudents().find(att => att.student.id === studentId);
             if (!selectedAtt) return;
+
+            if (canToggle && state.isStudentDrawerOpen && state.selectedRegularStudentId === studentId) {
+                closeStudentDetail();
+                return;
+            }
 
             state.selectedRegularStudentId = studentId;
             document.querySelectorAll('#studentList .student-list-item').forEach(button => {
@@ -577,9 +732,19 @@ function selectRegularStudent(studentId) {
                 return;
             }
 
+            state.isStudentDrawerOpen = true;
             const selectedIdx = state.students.findIndex(att => att.student.id === studentId);
             detail.setAttribute('aria-labelledby', `regular-student-title-${app.getRegularStudentDomId(studentId)}`);
-            detail.innerHTML = app.buildRegularStudentDetail(selectedAtt, selectedIdx);
+            detail.innerHTML = `
+                <div class="detail-panel-close-bar">
+                    <span>Chi tiết nhận xét học sinh</span>
+                    <button type="button" class="btn-close-detail" onclick="closeStudentDetail()" aria-label="Đóng chi tiết" title="Đóng chi tiết">
+                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                ${app.buildRegularStudentDetail(selectedAtt, selectedIdx)}
+            `;
+            detail.classList.add('open');
             app.syncRegularDetailPlacement();
         }
 

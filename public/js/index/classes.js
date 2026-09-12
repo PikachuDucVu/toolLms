@@ -85,18 +85,34 @@ function renderClassList(classes) {
             const list = document.getElementById('classList');
             list.innerHTML = '';
 
-            if (classes.length === 0) {
+            // Update chip counts
+            const doneCount = classes.filter(c => app.getClassCommentProgress(c).state === 'done').length;
+            const pendingCount = classes.filter(c => app.getClassCommentProgress(c).state === 'pending').length;
+            const unknownCount = classes.filter(c => app.getClassCommentProgress(c).state === 'unknown').length;
+            const countDoneEl = document.getElementById('countClassDone');
+            const countPendingEl = document.getElementById('countClassPending');
+            const countUnknownEl = document.getElementById('countClassUnknown');
+            if (countDoneEl) countDoneEl.textContent = `(${doneCount})`;
+            if (countPendingEl) countPendingEl.textContent = `(${pendingCount})`;
+            if (countUnknownEl) countUnknownEl.textContent = `(${unknownCount})`;
+
+            let displayClasses = classes;
+            if (state.classStatusFilter && state.classStatusFilter !== 'all') {
+                displayClasses = classes.filter(c => app.getClassCommentProgress(c).state === state.classStatusFilter);
+            }
+
+            if (displayClasses.length === 0) {
                 list.innerHTML = `
                     <div class="empty-state">
                         <img class="empty-state-visual compact" src="/assets/empty-classes.jpg" alt="Minh họa danh sách lớp học" width="640" height="480" loading="lazy" decoding="async">
-                        <div class="empty-state-text">Không có lớp nào</div>
+                        <div class="empty-state-text">Không có lớp nào phù hợp</div>
                     </div>
                 `;
                 return;
             }
 
-            const activeClasses = classes.filter(c => !c.recentlyEnded);
-            const endedClasses = classes.filter(c => c.recentlyEnded);
+            const activeClasses = displayClasses.filter(c => !c.recentlyEnded);
+            const endedClasses = displayClasses.filter(c => c.recentlyEnded);
 
             activeClasses.forEach(cls => list.appendChild(app.createClassListItem(cls)));
 
@@ -134,18 +150,43 @@ function createClassListItem(cls, { ended = false } = {}) {
             const endText = endDate ? ` • Kết thúc: ${endDate}` : '';
             const metaText = app.getClassCommentMeta(progress);
 
+            const percent = progress.present > 0
+                ? Math.round((progress.completed / progress.present) * 100)
+                : (progress.state === 'done' ? 100 : 0);
+
+            const isDone = progress.state === 'done';
+            const isPending = progress.state === 'pending';
+            const isBlue = (cls.name || '').includes('SA66') || (cls.course?.name || '').toLowerCase().includes('scratch');
+            const iconColor = isPending ? 'red' : isBlue ? 'blue' : 'green';
+            const iconSvg = isPending
+                ? `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>`
+                : `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>`;
+
             div.innerHTML = `
-                <div class="class-item-header">
-                    <h3>${app.escapeHtml(cls.name)}${endedLabel}</h3>
-                    <span class="class-status-badge ${progress.state}">${progress.badgeText}</span>
-                </div>
-                <p>${courseName} • ${slotCount} buổi${endText}</p>
-                ${metaText ? `
-                    <div class="class-comment-meta">
-                        <span class="class-meta-dot ${progress.state}" aria-hidden="true"></span>
-                        <span>${metaText}</span>
+                <div class="class-item-top">
+                    <div class="class-avatar-icon ${iconColor}" aria-hidden="true">
+                        ${iconSvg}
                     </div>
-                ` : ''}
+                    <div style="flex: 1; min-width: 0;">
+                        <div class="class-item-title-row">
+                            <h3>${app.escapeHtml(cls.name)}${endedLabel}</h3>
+                            <span class="class-status-badge ${progress.state}">${progress.badgeText}</span>
+                        </div>
+                        <div class="class-course-subtitle">${courseName} • ${slotCount} buổi${endText}</div>
+                        ${metaText ? `
+                            <div class="class-comment-meta">
+                                <span class="class-meta-dot ${progress.state}" aria-hidden="true"></span>
+                                <span>${metaText}</span>
+                            </div>
+                        ` : ''}
+                        <div class="class-progress-row">
+                            <div class="class-progress-bar">
+                                <div class="class-progress-fill ${progress.state}" style="width: ${percent}%;"></div>
+                            </div>
+                            <span class="class-progress-label">${percent}%</span>
+                        </div>
+                    </div>
+                </div>
             `;
             div.onclick = () => app.selectClass(cls, div);
             return div;
@@ -174,6 +215,7 @@ async function selectClass(cls, element) {
                 if (classRequestToken !== state.classRefreshToken || state.selectedClass?.id !== cls.id) return;
                 app.discardRegularWorkState();
                 state.selectedSlot = null;
+                state.slotCarouselOffset = null;
                 state.classData = result?.data?.classesById;
 
                 if (!state.classData) {
@@ -193,6 +235,7 @@ async function selectClass(cls, element) {
                     opt.textContent = `Buổi ${app.getSlotDisplayNumber(slot, idx)} - ${date}`;
                     slotSelect.appendChild(opt);
                 });
+                app.renderSlotCarousel();
 
                 // Reset student list
                 studentList.innerHTML = `
@@ -207,6 +250,9 @@ async function selectClass(cls, element) {
                 // Clear session summary when switching class
                 document.getElementById('sessionSummary').value = '';
                 document.getElementById('submitSummaryBtn').disabled = true;
+
+                // Render slot carousel UI
+                app.renderSlotCarousel();
 
                 // Auto select latest uncommented slot
                 app.autoSelectLatestSlot();
@@ -525,7 +571,7 @@ async function loadSlotStudents() {
             const slotIdx = document.getElementById('slotSelect').value;
             if (!slotIdx || !state.classData) return;
 
-            const nextSlot = state.classData.slots[parseInt(slotIdx)];
+            const nextSlot = state.classData.slots[Number(slotIdx)];
             const slotChanged = state.regularUiSlotId !== nextSlot?._id;
             if (slotChanged && state.regularUiSlotId && !(await app.confirmDiscardRegularWork())) {
                 const previousSlotIndex = state.classData.slots.findIndex(slot => slot._id === state.regularUiSlotId);
@@ -533,6 +579,8 @@ async function loadSlotStudents() {
                 return;
             }
             state.selectedSlot = nextSlot;
+            state.slotCarouselOffset = null;
+            app.renderSlotCarousel();
             state.students = state.selectedSlot.studentAttendance || [];
             state.generatedComments = {};
             state.generatedCommentMeta = {};

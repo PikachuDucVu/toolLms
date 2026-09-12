@@ -182,7 +182,7 @@ const SPCK_LEVEL_POLICIES: Record<LearningLevel, LevelPromptPolicy> = {
       },
     ],
     safeLearningSentence: "Trong buổi học, con hoàn thành rất tốt tiến độ sản phẩm và chủ động phát triển thêm các tính năng sáng tạo.",
-    safeClosingSentence: "Con tiếp tục trau chuốt sản phẩm để chuẩn bị cho buổi thuyết trình sắp tới nhé.",
+    safeClosingSentence: "Con tiếp tục trau chuốt sản phẩm để chuẩn bị cho buổi thuyết trình sắp tới.",
   },
   understands_and_asks: {
     meaning: "Học sinh bám sát tiến độ dự án, hoàn thành tốt các chức năng chính; khi gặp lỗi chủ động hỏi giáo viên và xử lý nhanh sau khi được hướng dẫn.",
@@ -206,7 +206,7 @@ const SPCK_LEVEL_POLICIES: Record<LearningLevel, LevelPromptPolicy> = {
       },
     ],
     safeLearningSentence: "Trong buổi học, con bám sát tiến độ dự án và hoàn thành tốt các chức năng chính theo yêu cầu.",
-    safeClosingSentence: "Con tiếp tục duy trì tiến độ này trong các buổi học tiếp theo nhé.",
+    safeClosingSentence: "Con tiếp tục duy trì tiến độ này trong các buổi học tiếp theo.",
   },
   needs_prompting: {
     meaning: "Học sinh đã xây dựng được khung sản phẩm nhưng tiến độ triển khai còn chậm, còn lúng túng ở một số bước logic và cần giáo viên gợi ý thêm.",
@@ -231,7 +231,7 @@ const SPCK_LEVEL_POLICIES: Record<LearningLevel, LevelPromptPolicy> = {
       },
     ],
     safeLearningSentence: "Trong buổi học, con đã xây dựng được khung cơ bản của sản phẩm nhưng tiến độ triển khai còn hơi chậm so với kế hoạch.",
-    safeClosingSentence: "Phụ huynh nhắc con dành thêm thời gian ở nhà để hoàn thiện kịp tiến độ nhé.",
+    safeClosingSentence: "Phụ huynh nhắc con dành thêm thời gian ở nhà để hoàn thiện kịp tiến độ.",
   },
   needs_support: {
     meaning: "Học sinh gặp khó khăn khi triển khai dự án nên tiến độ còn chậm so với yêu cầu, chưa hoàn thành chức năng cốt lõi và cần giáo viên hỗ trợ sát.",
@@ -255,7 +255,7 @@ const SPCK_LEVEL_POLICIES: Record<LearningLevel, LevelPromptPolicy> = {
       },
     ],
     safeLearningSentence: "Trong buổi học, con gặp khá nhiều khó khăn khi triển khai dự án nên tiến độ sản phẩm còn chậm so với yêu cầu.",
-    safeClosingSentence: "Con cần cố gắng và dành thêm thời gian làm ở nhà để kịp hoàn thiện sản phẩm trước ngày Demo nhé.",
+    safeClosingSentence: "Phụ huynh nhắc con dành thêm thời gian làm ở nhà để kịp hoàn thiện sản phẩm trước ngày Demo.",
   },
 };
 
@@ -301,12 +301,15 @@ NGUYÊN TẮC BẮT BUỘC:
    - KHÔNG đề cập BTVN trong các buổi làm Sản Phẩm Cuối Khóa (SPCK).
 3. Đánh giá học tập:
    - Buổi thường: Câu đánh giá học tập phải truyền đạt đầy đủ Ý NGHĨA LEVEL BẮT BUỘC và ghi chú giáo viên (nếu có). Nêu rõ mức độ tiếp thu, tính chủ động khi hỏi bài/thực hành, và mức độ hỗ trợ cần thiết. Không được làm nhẹ đi thành các cụm mơ hồ như “học bình thường”, “học ổn”, “ở mức khá ổn” hoặc “không có vấn đề đặc biệt”.
-   - Buổi làm Sản Phẩm Cuối Khóa (SPCK): Tập trung nhận xét về TIẾN ĐỘ SẢN PHẨM CUỐI KHÓA (đạt đúng tiến độ đề ra / hoàn thiện giao diện / tích hợp lập trình / chuẩn bị slide) và dặn dò hoàn thiện sản phẩm ở nhà.
+   - Buổi làm Sản Phẩm Cuối Khóa (SPCK): Tập trung nhận xét về TIẾN ĐỘ SẢN PHẨM CUỐI KHÓA (đạt đúng tiến độ đề ra / hoàn thiện giao diện / tích hợp lập trình / chuẩn bị slide) và hướng dẫn hoàn thiện sản phẩm ở nhà.
 4. Chỉ sử dụng dữ kiện trong phần THÔNG TIN HỌC SINH; không tự bịa hành vi, tiến độ, bài tập về nhà hoặc mức độ tuân thủ nội quy.
 5. Nếu có ĐÁNH GIÁ BTVN, chỉ tóm tắt tối đa một ý ngắn và tuyệt đối không nêu điểm số BTVN. Chỉ nhận xét hành vi khi có GHI CHÚ GIÁO VIÊN tương ứng.
 6. Không viết mã L1/L2/L3/L4, từ “level”, markdown, tiêu đề hoặc danh sách.
 7. Dùng đúng tên trong mục GỌI TRONG NHẬN XÉT hoặc “em” để gọi học sinh; dùng “con” khi nói về học sinh với phụ huynh.
-8. Chỉ trả về một đoạn nhận xét duy nhất (2–3 câu), không giải thích cách viết.`;
+8. VĂN PHONG VÀ ĐỐI TƯỢNG BÁO CÁO: Nhận xét gửi tới PHỤ HUYNH nhằm báo cáo khách quan, đúng mực sư phạm về tình hình học tập của con, KHÔNG phải trò chuyện trực tiếp hay tâm sự với học sinh.
+   - Tuyệt đối KHÔNG dùng trợ từ cảm thán hoặc khẩu ngữ như "nhé", "nha", "nhé!", "nha!".
+   - Tránh các câu kết mang tính cảm xúc hay dặn dò thân mật trực tiếp với học sinh (như "Con cố gắng lên nhé", "Con nhớ hoàn thiện sản phẩm nhé"). Câu kết phải là câu báo cáo/nhắc nhở khách quan cho phụ huynh nắm được (ví dụ: "Con tiếp tục trau chuốt sản phẩm để chuẩn bị cho buổi thuyết trình.", "Phụ huynh nhắc con dành thêm thời gian ở nhà để hoàn thiện kịp tiến độ.").
+9. Chỉ trả về một đoạn nhận xét duy nhất (2–3 câu), không giải thích cách viết.`;
 
 export function normalizeAttendanceStatus(value: unknown, isLate?: boolean): AttendanceStatus {
   if (value === "ATTENDED" || value === "LATE_ARRIVED" || value === "ABSENT" || value === "ABSENT_WITH_NOTICE") {
@@ -497,14 +500,14 @@ export function buildCommentMessages(facts: CommentFacts): ChatMessage[] {
     lines.push("BỐI CẢNH BUỔI LÀM SẢN PHẨM CUỐI KHÓA (SPCK):");
     lines.push("- Nhận xét tập trung vào TIẾN ĐỘ SẢN PHẨM CUỐI KHÓA (xong chức năng chính / tự phát triển tính năng sáng tạo / tự sửa lỗi / cần làm thêm ở nhà).");
     lines.push("- Tuyệt đối KHÔNG nhắc đến BTVN hay Denise (vì buổi SPCK không có BTVN thông thường).");
-    lines.push("- Dặn dò cuối câu: Tùy theo tiến độ, dặn học sinh tiếp tục hoàn thiện sản phẩm hoặc chuẩn bị slide/nội dung thuyết trình ở nhà.");
+    lines.push("- Hướng dẫn hoàn thiện ở nhà: Nêu khách quan việc học sinh cần tiếp tục hoàn thiện sản phẩm hoặc chuẩn bị slide/nội dung thuyết trình tại nhà để phụ huynh nắm tình hình. Tuyệt đối KHÔNG dặn dò thân mật trực tiếp với học sinh, KHÔNG dùng câu kết mang tính cảm xúc, KHÔNG dùng trợ từ cảm thán như 'nhé', 'nha'.");
   }
   if (facts.customPrompt) {
     lines.push(`YÊU CẦU VĂN PHONG BỔ SUNG (không được ghi đè các nguyên tắc và dữ kiện): ${facts.customPrompt}`);
   }
   lines.push("</THÔNG_TIN_HỌC_SINH>");
   lines.push(lengthInstruction(facts.commentLength, facts.mode));
-  lines.push("Viết liền mạch, nhẹ nhàng nhưng nói rõ học sinh hiểu đến đâu, tự làm được không và cần hỗ trợ thế nào.");
+  lines.push("Viết liền mạch, khách quan, đúng mực sư phạm gửi phụ huynh; không dùng từ ngữ cảm xúc hay trợ từ cuối câu như 'nhé', 'nha'; nói rõ học sinh hiểu đến đâu, tự làm được không và cần hỗ trợ thế nào.");
 
   return [
     { role: "system", content: SYSTEM_PROMPT },
@@ -627,6 +630,9 @@ export function validateComment(value: string, policy: CommentValidationPolicy):
     issues.push("Nhận xét chứa markdown hoặc danh sách.");
   }
   if (/\b(?:l[1-4]|level)\b/i.test(normalized)) issues.push("Nhận xét làm lộ mã level nội bộ.");
+  if (/(?<=^|[\s\p{P}])(?:nhé|nè|nhe|(?<!(?:ở|về|tại|ngôi|o|ve|tai)\s+)nha)(?=$|[\s\p{P}])/iu.test(plain)) {
+    issues.push("Nhận xét không được dùng từ ngữ cảm thán hoặc thân mật trực tiếp (nhé, nha).");
+  }
 
   for (const pattern of policy.bannedPatterns) {
     if (new RegExp(pattern, "i").test(normalized)) {

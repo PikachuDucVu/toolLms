@@ -292,6 +292,29 @@ describe("comment validator and cleanup", () => {
     expect(result.valid).toBe(true);
   });
 
+  it.each([
+    "Minh Anh đi học đúng giờ. Con tiếp thu bài tốt và cố gắng phát huy nhé.",
+    "Minh Anh đi học đúng giờ. Con tiếp thu bài tốt và nhớ hoàn thiện bài tập nhé!",
+    "Minh Anh đi học đúng giờ. Con chú ý làm bài tập nha.",
+    "Minh Anh đi học đúng giờ. Con chú ý nhe.",
+    "Minh Anh đi học đúng giờ. Con cố gắng nè!",
+  ])("rejects conversational exclamation particles: %s", (comment) => {
+    const facts = factsFor("independent", { studentName: "Nguyễn Minh Anh", studentCallName: "Minh Anh" });
+    const result = validateComment(comment, buildValidationPolicy(facts));
+    expect(result.issues).toContain("Nhận xét không được dùng từ ngữ cảm thán hoặc thân mật trực tiếp (nhé, nha).");
+  });
+
+  it.each([
+    "Minh Anh đi học đúng giờ. Con làm bài tập ở nhà đầy đủ và tự giác hoàn thành sản phẩm.",
+    "Minh Anh đi học đúng giờ. Con hoàn thành phần thực hành tại nhà rất tốt và độc lập.",
+    "Minh Anh đi học đúng giờ. Con tự giác làm bài tập về nhà và nắm vững kiến thức.",
+    "Minh Anh đi học đúng giờ. Thầy chỉ nhắc nhở nhẹ nhàng là con đã tự mình làm được bài.",
+  ])("does not false-positive on legitimate words like nhà or nhẹ: %s", (comment) => {
+    const facts = factsFor("independent", { studentName: "Nguyễn Minh Anh", studentCallName: "Minh Anh" });
+    const result = validateComment(comment, buildValidationPolicy(facts));
+    expect(result.issues).not.toContain("Nhận xét không được dùng từ ngữ cảm thán hoặc thân mật trực tiếp (nhé, nha).");
+  });
+
   it("rejects markdown, internal level codes, and empty content", () => {
     const facts = factsFor();
     const markdown = validateComment("**L3: học ổn**", buildValidationPolicy(facts));
@@ -345,14 +368,17 @@ describe("comment validator and cleanup", () => {
       });
       const messages = buildCommentMessages(facts);
       const userContent = messages[1].content;
+      const systemContent = messages[0].content;
 
       expect(userContent).toContain("BỐI CẢNH BUỔI LÀM SẢN PHẨM CUỐI KHÓA (SPCK)");
       expect(userContent).toContain("MỨC ĐỘ TIẾN ĐỘ SẢN PHẨM: L4 — Vượt tiến độ, tự chủ cao");
       expect(userContent).toContain("TIẾN ĐỘ SẢN PHẨM CUỐI KHÓA");
       expect(userContent).toContain("Tuyệt đối KHÔNG nhắc đến BTVN");
+      expect(userContent).toContain("KHÔNG dùng trợ từ cảm thán như 'nhé', 'nha'");
+      expect(systemContent).toContain("Tuyệt đối KHÔNG dùng trợ từ cảm thán hoặc khẩu ngữ như \"nhé\", \"nha\"");
     });
 
-    it.each(LEVELS)("validates safe SPCK comments for learning level %s", (learningLevel) => {
+    it.each(LEVELS)("validates safe SPCK comments for learning level %s and ensures no nhé/nha", (learningLevel) => {
       const facts = factsFor(learningLevel, {
         sessionNumber: 11,
         studentName: "Trần Minh Đức",
@@ -362,6 +388,7 @@ describe("comment validator and cleanup", () => {
       const validation = validateComment(safeComment, buildValidationPolicy(facts));
 
       expect(safeComment).toMatch(/sản phẩm|dự án/);
+      expect(safeComment).not.toMatch(/(?<=^|[\s\p{P}])(?:nhé|nè|nhe|(?<!(?:ở|về|tại|ngôi|o|ve|tai)\s+)nha)(?=$|[\s\p{P}])/iu);
       expect(validation.valid).toBe(true);
       expect(validation.issues).toEqual([]);
     });

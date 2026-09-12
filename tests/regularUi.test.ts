@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import "../public/js/index/constants.js";
+import "../public/js/index/ui.js";
 import "../public/js/index/assessments.js";
 import "../public/js/index/comments.js";
 import { app } from "../public/js/index/registry.js";
@@ -78,6 +79,82 @@ describe("regular-session quick comment UI contract", () => {
 
     expect(html).toMatch(/id="gen-btn-student_1"[\s\S]*?aria-busy="true"[\s\S]*?Đang tạo\.\.\./);
     expect(html).not.toMatch(/learning-level-option[^\"]*is-loading/);
+  });
+
+  it("renders clear visual loading indicators in detail panel and list item when AI generation is pending", () => {
+    state.regularStudentBusy.add(studentId);
+    app.getRegularStudentUiState = () => uiState();
+    app.getRegularStudentPreview = () => "Ghi chú mẫu";
+
+    const detailHtml = app.buildRegularStudentDetail(attendance, 0);
+    expect(detailHtml).toContain('class="regular-ai-generating"');
+    expect(detailHtml).toContain("AI đang tạo nhận xét cho Nguyễn Minh Anh");
+    expect(detailHtml).toContain('<span class="btn-spinner" aria-hidden="true"></span>');
+    expect(detailHtml).toContain("badge-warning is-loading");
+
+    const listHtml = app.buildRegularStudentListItem(attendance);
+    expect(listHtml).toContain("is-generating");
+    expect(listHtml).toContain("badge-warning is-loading");
+    expect(listHtml).toContain("AI đang tạo nhận xét...");
+  });
+
+  it("displays loading and progress status on autoCommentBtn and batchActionHint when regularBatchBusy is true", () => {
+    state.students = [
+      { _id: "att-1", student: { id: "s-1", fullName: "Học sinh 1" }, status: "ATTENDED", commentByAreas: [] },
+      { _id: "att-2", student: { id: "s-2", fullName: "Học sinh 2" }, status: "ATTENDED", commentByAreas: [] },
+    ];
+    app.getCurrentStudentMode = () => "regular";
+    app.getStudentProgressState = () => "pending";
+    app.isRegularOperationActive = () => true;
+    app.isRegularAssessmentUnavailable = () => false;
+    app.setBatchLevelMenuDisabled = () => undefined;
+    app.syncRegularOperationLock = () => undefined;
+
+    const elements: Record<string, any> = {
+      statPresent: { textContent: "" },
+      statGenerated: { textContent: "" },
+      statSubmitted: { textContent: "" },
+      statGeneratedItem: { style: {} },
+      statGeneratedLabel: { textContent: "" },
+      statSubmittedLabel: { textContent: "" },
+      statsBar: { style: {} },
+      autoCommentBtn: { disabled: false, classList: { add(c: string) { this.classes.add(c); }, remove(c: string) { this.classes.delete(c); }, classes: new Set<string>() }, setAttribute() {}, removeAttribute() {} },
+      autoCommentBtnLabel: { textContent: "" },
+      submitAllBtn: { disabled: false },
+      submitAllBtnLabel: { textContent: "" },
+      copyZaloBtn: { disabled: false },
+      copyZaloBtnLabel: { textContent: "" },
+      reviewAllBtn: { style: {}, disabled: false },
+      reviewAllBtnLabel: { textContent: "" },
+      batchLevelBtn: { setAttribute() {} },
+      batchLevelBtnLabel: { textContent: "" },
+      batchActionHint: { textContent: "" },
+    };
+
+    const originalDocument = globalThis.document;
+    globalThis.document = {
+      getElementById: (id: string) => elements[id] || null,
+    } as unknown as Document;
+
+    try {
+      state.regularBatchBusy = true;
+      state.regularBatchProgress = { completed: 1, total: 2, percent: 50, remaining: 5 };
+      app.updateStats();
+
+      expect(elements.autoCommentBtnLabel.textContent).toBe("Đang tạo AI (1/2)...");
+      expect(elements.autoCommentBtn.classList.classes.has("is-loading")).toBe(true);
+      expect(elements.batchActionHint.textContent).toContain("Đang tạo nhận xét AI: 1/2 (50%)");
+
+      state.regularBatchBusy = false;
+      state.regularBatchProgress = null;
+      app.isRegularOperationActive = () => false;
+      app.updateStats();
+
+      expect(elements.autoCommentBtnLabel.textContent).toBe("Tạo AI cho 2 học sinh");
+      expect(elements.autoCommentBtn.classList.classes.has("is-loading")).toBe(false);
+    } finally {
+      globalThis.document = originalDocument;
+    }
   });
 
   it("changing a level queues autosave without invoking comment generation", () => {

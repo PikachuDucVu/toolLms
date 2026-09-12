@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../types";
 import { getConfig, saveConfig } from "../services/configService";
-import { LmsClient } from "../services/lmsClient";
+import { LmsClient, decodeJwtName } from "../services/lmsClient";
 import {
   buildExpiredSessionCookie,
   buildSessionCookie,
@@ -29,13 +29,19 @@ async function loginHandler(c: any) {
     await destroySession(c.env, c.req.raw);
     const session = await createSession(c.env, {
       email: login.email,
+      displayName: login.displayName,
       firebaseKey,
       lmsToken: login.lmsToken,
       refreshToken: login.refreshToken,
       tokenExpiry: login.tokenExpiry,
     });
     c.header("Set-Cookie", buildSessionCookie(c.req.raw, session.id));
-    return c.json({ success: true, message: "Đăng nhập thành công!", token_expiry: session.tokenExpiry });
+    return c.json({
+      success: true,
+      message: "Đăng nhập thành công!",
+      displayName: session.displayName,
+      token_expiry: session.tokenExpiry,
+    });
   } catch (error) {
     return c.json({ success: false, error: error instanceof Error ? error.message : String(error) }, { status: 400 });
   }
@@ -53,7 +59,8 @@ authRoutes.get("/auth/me", async (c) => {
   const activeSession = await new LmsClient(c.env).ensureSession(session);
   await saveSession(c.env, activeSession);
   c.header("Set-Cookie", buildSessionCookie(c.req.raw, activeSession.id));
-  return c.json({ authenticated: true, email: activeSession.email, token_expiry: activeSession.tokenExpiry });
+  const displayName = activeSession.displayName || decodeJwtName(activeSession.lmsToken) || activeSession.email.split("@")[0];
+  return c.json({ authenticated: true, email: activeSession.email, displayName, token_expiry: activeSession.tokenExpiry });
 });
 
 authRoutes.post("/auth/logout", async (c) => {
