@@ -7,8 +7,13 @@ routes = [
 ]
 
 [assets]
+# Deploy only public/new (React build) and public/assets. Do not put legacy HTML/CSS/JS here.
 directory = "./public"
 binding = "ASSETS"
+html_handling = "none"
+not_found_handling = "none"
+run_worker_first = true
+
 
 [[d1_databases]]
 binding = "DB"

@@ -1,7 +1,17 @@
 import { unzipSync } from "fflate";
 import { FIND_SUBMISSIONS_QUERY, MARK_SUBMISSION_QUERY } from "../constants/lmsQueries";
+import {
+  HomeworkLessonSchema,
+  HomeworkMarkedSubmissionSchema,
+  HomeworkStudentSchema,
+  HomeworkSubmissionSchema,
+  type HomeworkLesson,
+  type HomeworkMarkedSubmission,
+  type HomeworkStudent,
+  type HomeworkSubmission as NormalizedHomeworkSubmission,
+} from "@tool-lms/contracts";
 import type { AppConfig, Env, HomeworkSubmission, LmsGraphqlResponse, SessionRecord } from "../types";
-import { gradeHomeworkWithAi } from "./aiClient";
+import { getModelProvider, gradeHomeworkWithAi, resolveModelId } from "./aiClient";
 import { LmsClient, type LmsCallResult } from "./lmsClient";
 
 const PRESIGNED_URL_API = "https://resources.mindx.edu.vn/api/v1/get-presigned-url";
@@ -207,4 +217,145 @@ export function firstGraphqlError(body: LmsGraphqlResponse): string {
 
 export function submissionAttachments(submission: HomeworkSubmission): string[] {
   return Array.isArray(submission.content?.attachments) ? submission.content.attachments : [];
+}
+
+export interface NormalizedHomeworkData {
+  students: HomeworkStudent[];
+  lessons: HomeworkLesson[];
+  submissions: NormalizedHomeworkSubmission[];
+}
+
+export function normalizeHomeworkData(value: unknown): NormalizedHomeworkData {
+  const root = isRecord(value) ? value : {};
+  const students = Array.isArray(root.students) ? root.students.slice(0, 2_000).filter(isRecord).flatMap(normalizeStudent) : [];
+  const lessons = Array.isArray(root.lessons) ? root.lessons.slice(0, 1_000).filter(isRecord).flatMap(normalizeLesson) : [];
+  const submissions = Array.isArray(root.submissions) ? root.submissions.slice(0, 10_000).filter(isRecord).flatMap(normalizeSubmission) : [];
+  return { students, lessons, submissions };
+}
+
+export function normalizeMarkedSubmission(value: unknown): HomeworkMarkedSubmission | null {
+  if (!isRecord(value)) return null;
+  const id = asString(value.id);
+  const score = finiteNumber(value.score);
+  if (!id || score == null) return null;
+  const parsed = HomeworkMarkedSubmissionSchema.safeParse({
+    id,
+    score: Math.min(100, Math.max(0, score)),
+    status: asString(value.status) || "MARKED",
+    markedAt: nullableString(value.markedAt),
+    markedBy: displayScalar(value.markedBy),
+  });
+  return parsed.success ? parsed.data : null;
+}
+
+export function findHomeworkSubmission(data: NormalizedHomeworkData, submissionId: string): NormalizedHomeworkSubmission | null {
+  return data.submissions.find((submission) => submission.id === submissionId) ?? null;
+}
+
+export function assertAttachmentBelongsToSubmission(
+  data: NormalizedHomeworkData,
+  submissionId: string,
+  fileKey: string,
+): NormalizedHomeworkSubmission | null {
+  const submission = findHomeworkSubmission(data, submissionId);
+  return submission?.content.attachments.includes(fileKey) ? submission : null;
+}
+
+export function resolveHomeworkAiKey(
+  env: Env,
+  config: AppConfig,
+  input: { modelId?: string; customModelId?: string; apiKey?: string },
+): { available: true; modelId: string; provider: string; ephemeralApiKey?: string } | { available: false; modelId: string; provider: string } {
+  const modelId = resolveModelId(input.modelId, input.customModelId, String(config.ai_model || ""));
+  const provider = getModelProvider(input.modelId || modelId);
+  const ephemeralApiKey = input.apiKey?.trim() || undefined;
+  const serverKey = provider === "antigravity"
+    ? env.ANTIGRAVITY_API_KEY
+    : String(config.openrouter_key || "") || env.OPENROUTER_API_KEY;
+  return ephemeralApiKey || serverKey
+    ? { available: true, modelId, provider, ...(ephemeralApiKey ? { ephemeralApiKey } : {}) }
+    : { available: false, modelId, provider };
+}
+
+function normalizeStudent(value: Record<string, unknown>): HomeworkStudent[] {
+  const id = asString(value.id);
+  const studentUid = asString(value.studentUid);
+  if (!id || !studentUid) return [];
+  const parsed = HomeworkStudentSchema.safeParse({ id, studentUid, displayName: asString(value.displayName) });
+  return parsed.success ? [parsed.data] : [];
+}
+
+function normalizeLesson(value: Record<string, unknown>): HomeworkLesson[] {
+  const id = asString(value.id);
+  if (!id) return [];
+  const parsed = HomeworkLessonSchema.safeParse({
+    id,
+    name: asString(value.name),
+    type: asString(value.type),
+    isActive: value.isActive === true,
+    displayOrder: Math.trunc(finiteNumber(value.displayOrder) ?? 0),
+  });
+  return parsed.success ? [parsed.data] : [];
+}
+
+function normalizeSubmission(value: Record<string, unknown>): NormalizedHomeworkSubmission[] {
+  const id = asString(value.id);
+  const classId = asString(value.classId);
+  const lessonId = asString(value.lessonId);
+  const studentUid = asString(value.studentUid);
+  if (!id || !classId || !lessonId || !studentUid) return [];
+  const content = isRecord(value.content) ? value.content : {};
+  const attachments = Array.isArray(content.attachments)
+    ? content.attachments.filter((item): item is string => typeof item === "string" && item.length > 0).slice(0, 50)
+    : [];
+  const score = finiteNumber(value.score);
+  const rawStatus = asString(value.status);
+  const status = rawStatus === "SUBMITTED" || rawStatus === "MARKED" ? rawStatus : "UNKNOWN";
+  const parsed = HomeworkSubmissionSchema.safeParse({
+    id,
+    type: asString(value.type),
+    note: asString(value.note).slice(0, 10_000),
+    score: score == null ? null : Math.min(100, Math.max(0, score)),
+    status,
+    category: nullableString(value.category),
+    classId,
+    lessonId,
+    learningCourseId: nullableString(value.learningCourseId),
+    studentUid,
+    markedAt: nullableString(value.markedAt),
+    markedBy: displayScalar(value.markedBy),
+    submittedAt: nullableString(value.submittedAt),
+    submittedCount: Math.max(0, Math.trunc(finiteNumber(value.submittedCount) ?? 0)),
+    content: { attachments },
+  });
+  return parsed.success ? [parsed.data] : [];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : value == null ? "" : String(value);
+}
+
+function nullableString(value: unknown): string | null {
+  const result = asString(value);
+  return result || null;
+}
+
+function finiteNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const result = Number(value);
+  return Number.isFinite(result) ? result : null;
+}
+
+function displayScalar(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (isRecord(value)) {
+    const candidate = value.displayName || value.fullName || value.email || value.id;
+    return candidate == null ? null : String(candidate);
+  }
+  return null;
 }

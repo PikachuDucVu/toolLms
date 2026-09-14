@@ -1,0 +1,1 @@
+export { AssessmentWorkspace } from '../AssessmentWorkspace';

@@ -46,3 +46,6 @@ downloads/
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated Vite frontend output
+public/new/

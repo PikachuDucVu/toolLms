@@ -37,6 +37,8 @@ export interface AppConfig {
   ai_model?: string;
   custom_model_id?: string;
   thinking_level?: string;
+  comment_length?: string;
+  custom_prompt?: string;
   firebase_key?: string;
   [key: string]: unknown;
 }
@@ -45,7 +47,7 @@ export interface HomeworkSubmission {
   id: string;
   type?: string;
   note?: string;
-  score?: number | string;
+  score?: number | string | null;
   status?: string;
   classId?: string;
   lessonId?: string;
@@ -55,6 +57,7 @@ export interface HomeworkSubmission {
 }
 
 export interface GradingQueueMessage {
+  version?: 1;
   jobId: string;
   itemId: string;
   sessionId: string;

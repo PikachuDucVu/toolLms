@@ -3,16 +3,33 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "frontend",
+    "packages/contracts"
+  ],
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev:worker": "wrangler dev",
+    "dev:frontend": "npm --workspace=frontend run dev",
+    "dev:full": "wrangler dev",
+    "build:frontend": "npm --workspace=frontend run build",
+    "typecheck": "tsc --noEmit && npm --workspace=frontend run typecheck && npm --workspace=packages/contracts run typecheck",
+    "typecheck:backend": "tsc --noEmit",
+    "typecheck:frontend": "npm --workspace=frontend run typecheck",
+    "typecheck:contracts": "npm --workspace=packages/contracts run typecheck",
+    "test:contracts": "npm --workspace=packages/contracts run test",
+    "test:frontend": "npm --workspace=frontend run test",
     "test": "node --import ./tests/register-loader.mjs --test tests/*.test.js",
     "test:vitest": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
+    "deploy": "npm run build:frontend && wrangler deploy",
+    "verify:static": "node scripts/assert-frontend-static.mjs",
+    "verify:bundle": "node scripts/assert-frontend-build.mjs",
+    "verify": "npm run typecheck && npm test && npm run test:vitest && npm run test:contracts && npm run test:frontend && npm run build:frontend && npm run verify:static && npm run verify:bundle",
     "cf-typegen": "wrangler types",
-    "db:migrate:local": "wrangler d1 execute lms_auto_comment --local --file=src/db/schema.sql",
-    "db:migrate:remote": "wrangler d1 execute lms_auto_comment --remote --file=src/db/schema.sql"
+    "db:migrate:local": "wrangler d1 migrations apply lms_auto_comment --local",
+    "db:migrate:remote": "wrangler d1 migrations apply lms_auto_comment --remote",
+    "db:migrate:verify": "node scripts/verify-d1-migrations.mjs"
   },
   "dependencies": {
     "@anthropic-ai/claude-code": "^2.1.220",

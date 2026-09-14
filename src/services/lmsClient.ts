@@ -208,12 +208,14 @@ export class LmsClient {
     operationName: string,
     query: string,
     variables: Record<string, unknown> = {},
+    options: { retryAuthentication?: boolean } = {},
   ): Promise<LmsCallResult<T>> {
     let activeSession = await this.ensureSession(session);
     let response = await this.fetchGraphql(operationName, query, variables, activeSession.lmsToken);
     let text = await response.text();
 
     if (shouldRetryLmsResponse(response.status, text)) {
+      if (options.retryAuthentication === false) throw new LmsAuthenticationError();
       activeSession = await this.refreshSession(activeSession);
       response = await this.fetchGraphql(operationName, query, variables, activeSession.lmsToken);
       text = await response.text();

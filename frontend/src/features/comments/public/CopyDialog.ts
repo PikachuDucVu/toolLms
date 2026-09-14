@@ -1,0 +1,1 @@
+export { CopyDialog } from '../CopyDialog';

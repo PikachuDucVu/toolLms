@@ -60,8 +60,11 @@ CREATE TABLE IF NOT EXISTS grading_jobs (
   failed_items INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  cancelled_at TEXT
+  cancelled_at TEXT,
+  owner_email TEXT
 );
+
+CREATE INDEX IF NOT EXISTS idx_grading_jobs_owner_created ON grading_jobs(owner_email, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS grading_job_items (
   id TEXT PRIMARY KEY,

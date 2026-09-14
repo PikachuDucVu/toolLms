@@ -10,7 +10,16 @@ export const GET_CLASSES_QUERY = `query GetClasses($pageIndex: Int!, $itemsPerPa
       status
       course { id name shortName }
       classSites { _id name }
-      slots { _id index date summary }
+      slots {
+        _id
+        index
+        date
+        summary
+        studentAttendance {
+          status
+          commentByAreas { type }
+        }
+      }
       startDate
       endDate
     }
@@ -139,6 +148,120 @@ export const MARK_SUBMISSION_QUERY = `mutation MarkStudentSubmission($payload: M
   }
 }`;
 
+
+export const FIND_ALL_STUDENT_WORKS_QUERY = `query findAllStudentWorks($studentId: String, $classSessionId: String, $classId: String, $classIds: [String]) {
+  findAllStudentWorks(payload: {studentId_equals: $studentId, classSessionId_equals: $classSessionId, classId_equals: $classId, classId_in: $classIds}) {
+    data {
+      id
+      status
+      studentId
+      classSessionId
+      classId
+      version
+      displayOrder
+      latestData {
+        title
+        thumbnail
+        videoUrls
+        imageUrl
+        attachmentUrls
+        comment
+        rejectReason
+        relatedUrls {
+          name
+          url
+        }
+      }
+      createdBy {
+        displayName
+      }
+      createdAt
+      lastModifiedBy {
+        displayName
+      }
+      lastModifiedAt
+    }
+  }
+}`;
+
+export const CREATE_STUDENT_WORK_MUTATION = `mutation CreateStudentWork($payload: CreateStudentWorkCommand!) {
+  studentWorks {
+    create(payload: $payload) {
+      id
+      status
+      studentId
+      classSessionId
+      classId
+      version
+      displayOrder
+      latestData {
+        title
+        thumbnail
+        videoUrls
+        imageUrl
+        attachmentUrls
+        comment
+        rejectReason
+        relatedUrls {
+          name
+          url
+        }
+      }
+      createdBy {
+        displayName
+      }
+      createdAt
+      lastModifiedBy {
+        displayName
+      }
+      lastModifiedAt
+    }
+  }
+}`;
+
+export const UPDATE_STUDENT_WORK_MUTATION = `mutation UpdateStudentWork($payload: UpdateStudentWorkCommand!) {
+  studentWorks {
+    update(payload: $payload) {
+      id
+      status
+      studentId
+      classSessionId
+      classId
+      version
+      displayOrder
+      latestData {
+        title
+        thumbnail
+        videoUrls
+        imageUrl
+        attachmentUrls
+        comment
+        rejectReason
+        relatedUrls {
+          name
+          url
+        }
+      }
+      createdBy {
+        displayName
+      }
+      createdAt
+      lastModifiedBy {
+        displayName
+      }
+      lastModifiedAt
+    }
+  }
+}`;
+
+export const DELETE_STUDENT_WORK_MUTATION = `mutation DeleteStudentWork($payload: DeleteStudentWorkCommand!) {
+  studentWorks {
+    del(payload: $payload) {
+      id
+    }
+  }
+}`;
+
 export const ALLOWED_LMS_OPERATIONS = new Set([
   "GetClasses",
   "GetClassById",
@@ -147,4 +270,7 @@ export const ALLOWED_LMS_OPERATIONS = new Set([
   "MarkStudentSubmission",
   "FindAllWithClass",
   "findAllStudentWorks",
+  "CreateStudentWork",
+  "UpdateStudentWork",
+  "DeleteStudentWork",
 ]);

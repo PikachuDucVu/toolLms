@@ -25,7 +25,7 @@ import {
   type HomeworkStatusInput,
 } from "./commentPrompt";
 
-interface ChatResult {
+export interface ChatResult {
   content?: string;
   error?: string;
   status?: number;
@@ -86,7 +86,7 @@ function applyThinkingToBody(body: Record<string, unknown>, model: string, think
   body.reasoning = { effort: thinkingLevel };
 }
 
-async function callChatCompletion(
+export async function callChatCompletion(
   env: Env,
   provider: string,
   model: string,
