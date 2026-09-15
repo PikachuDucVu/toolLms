@@ -4,6 +4,7 @@ import { appQueryClient } from '../../app/providers';
 import { transitionAuthContext } from '../../lib/operationContext';
 import { activateAssessmentContext, resetAssessmentController } from '../assessments/autosaveController';
 import { useAssessmentStore } from '../assessments/assessmentStore';
+import { classDetailQuery, commentsClassesQuery } from '../classes/queries';
 import { useClassWorkspaceStore } from '../classes/store';
 import { useCommentStore } from './commentStore';
 import { activateCommentContext, generateBatchComments, generateSingleComment, resetCommentController, saveSessionSummary, submitBatchComments, submitSingleComment } from './generationController';
@@ -146,7 +147,7 @@ describe('regular comment generation controller', () => {
     expect(useCommentStore.getState().drafts['student-1']).toBeUndefined();
   });
 
-  it('persists with concurrency three, then runs sequential AI groups of three and retains per-student failures', async () => {
+  it('persists with concurrency three, then fires every AI request at once and retains per-student failures', async () => {
     let assessmentActive = 0; let maxAssessmentActive = 0; let aiActive = 0; let maxAiActive = 0; const aiStarts: string[] = [];
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = pathOf(input); const body = bodyOf(init);
@@ -159,6 +160,7 @@ describe('regular comment generation controller', () => {
       }
       if (path === '/api/v2/comments/generate') {
         const id = String(body.studentId); aiStarts.push(id); aiActive += 1; maxAiActive = Math.max(maxAiActive, aiActive);
+        expect(useCommentStore.getState().batch?.currentStudentId).toBeNull();
         await delay(10); aiActive -= 1;
         if (id === 'student-2') return json({ success: false, error: { code: 'UPSTREAM_ERROR', message: 'AI tạm lỗi', requestId: 'failed-ai' } }, 502);
         return json(envelope({ comment: `${id} generated`, meta: { source: id === 'student-3' ? 'safe_template' : 'ai', transport: 'server', validationIssues: [] } }));
@@ -167,8 +169,8 @@ describe('regular comment generation controller', () => {
     }));
     const result = await generateBatchComments(scope(null), slot.studentAttendance.map((student) => student.studentId));
     expect(maxAssessmentActive).toBe(3);
-    expect(maxAiActive).toBe(3);
-    expect(aiStarts.slice(0, 3)).toEqual(['student-1', 'student-2', 'student-3']);
+    expect(maxAiActive).toBe(7);
+    expect(aiStarts).toEqual(['student-1', 'student-2', 'student-3', 'student-4', 'student-5', 'student-6', 'student-7']);
     expect(result).toMatchObject({ total: 7, safeTemplateCount: 1 });
     expect(result.successfulIds).toHaveLength(6);
     expect(result.failures).toEqual([{ studentId: 'student-2', message: 'AI tạm lỗi' }]);
@@ -272,6 +274,46 @@ describe('regular comment submission controller', () => {
     await expect(submitSingleComment(scope('student-1'), 'student-1')).rejects.toThrow('Không lưu được đánh giá');
     expect(calls).toEqual(['/api/v2/slots/slot-1/assessments/student-1']);
     expect(useCommentStore.getState().drafts['student-1']?.content).toBe('Draft');
+  });
+
+  it('updates Danh sách lớp immediately even when LMS still returns Buổi 10: còn 8/8 chưa nhận xét', async () => {
+    const classDetail = makeDetail(8);
+    const classSlot = classDetail.slots[0];
+    const studentIds = classSlot.studentAttendance.map((student) => student.studentId);
+    appQueryClient().setQueryData(classDetailQuery('class-1').queryKey, envelope({ class: classDetail }));
+    appQueryClient().setQueryData(commentsClassesQuery().queryKey, envelope({
+      classes: [{
+        id: classDetail.id,
+        name: 'HDT-JSI41',
+        status: classDetail.status,
+        startDate: classDetail.startDate,
+        endDate: classDetail.endDate,
+        recentlyEnded: classDetail.recentlyEnded,
+        course: { id: 'course-1', name: 'Web Developer Intensive', shortName: 'WDI' },
+        sites: classDetail.sites,
+        slotCount: 14,
+        commentProgress: classDetail.commentProgress,
+      }],
+    }));
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = pathOf(input); const body = bodyOf(init);
+      if (path.includes('/assessments/')) {
+        const id = path.split('/').at(-1)!;
+        return json(envelope({ assessment: assessment(id, body.learningLevel as string, body.note as string) }));
+      }
+      if (path === '/api/v2/slots/slot-1/comments/submit') {
+        return json(envelope({ slotId: 'slot-1', studentId: body.studentId, attendanceId: body.attendanceId, submitted: true, summaryIncluded: body.summary !== undefined, logged: true }));
+      }
+      if (path === '/api/v2/classes/class-1') return json(envelope({ class: classDetail }));
+      throw new Error(`Unhandled ${path}`);
+    }));
+    for (const id of studentIds) useCommentStore.getState().setDraft(id, { content: `${id} draft`, kind: 'generated', generationMeta: null });
+
+    const result = await submitBatchComments({ detail: classDetail, slot: classSlot, sessionNumber: 10, selectedStudentId: null }, studentIds);
+    expect(result.successfulIds).toEqual(studentIds);
+    expect(appQueryClient().getQueryData<{ data: { classes: Array<{ commentProgress: { state: string; missing: number | null; completed: number | null } }> } }>(commentsClassesQuery().queryKey)?.data.classes[0].commentProgress).toMatchObject({
+      state: 'done', badgeText: 'Đã nhận xét', present: 8, completed: 8, missing: 0,
+    });
   });
 
   it('submits sequentially, keeps summary attached until the first success, and removes only successful drafts', async () => {

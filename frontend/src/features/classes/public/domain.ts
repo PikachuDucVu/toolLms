@@ -1,5 +1,10 @@
 export { classDetailQuery } from '../queries';
 export {
+  applyOptimisticClassSubmissions,
+  reconcileClassSubmissionsAfterRefetch,
+  syncClassProgressFromDetail,
+} from '../classCache';
+export {
   attendancePresentation,
   existingContentComment,
   hasModeSubmission,

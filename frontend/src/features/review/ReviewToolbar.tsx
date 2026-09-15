@@ -45,7 +45,12 @@ export function ReviewToolbar({
   const draftCount = allRows.filter((row) => row.isPresent && row.isDraft).length;
   const presentIds = allRows.filter((row) => row.isPresent).map((row) => row.studentId);
   const studentNames = Object.fromEntries(slot.studentAttendance.map((s) => [s.studentId, s.displayName]));
-  const currentStudentName = batch?.currentStudentId ? studentNames[batch.currentStudentId] || batch.currentStudentId : null;
+  const currentStudentName =
+    batch?.kind === 'generate'
+      ? null
+      : batch?.currentStudentId
+        ? studentNames[batch.currentStudentId] || batch.currentStudentId
+        : null;
 
   const setBulkLevel = async (value: string) => {
     if (!value) return;

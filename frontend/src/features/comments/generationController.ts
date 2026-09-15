@@ -13,8 +13,7 @@ import { readAiApiKey } from '../../lib/persistence';
 import { normalizedAssessmentDraft } from '../assessments/public/selectors';
 import { captureAssessmentContext, isCurrentAssessmentContext, saveFullAssessment, waitForAssessmentSaves } from '../assessments/public/controller';
 import { useAssessmentStore } from '../assessments/public/store';
-import { classDetailQuery } from '../classes/public/domain';
-import { useClassWorkspaceStore } from '../classes/public/domain';
+import { classDetailQuery, useClassWorkspaceStore, applyOptimisticClassSubmissions, reconcileClassSubmissionsAfterRefetch } from '../classes/public/domain';
 import { configQuery } from '../configuration/public/api';
 import { generateComment, getCommentHomework, saveSummary, submitComment } from './api';
 import { useCommentStore, type CommentBatchState, type CommentContext, type CommentDraft, type CommentGenerationConfig } from './commentStore';
@@ -129,7 +128,6 @@ export async function generateBatchComments(scope: RegularCommentScope, requeste
     const persisted = new Set<string>();
     await runWithConcurrency(scopeIds, 3, async (studentId) => {
       try {
-        if (isCurrentCommentContext(context)) useCommentStore.getState().updateBatch({ currentStudentId: studentId });
         await waitForAssessmentSaves(studentId);
         assertScope(context, scope);
         await saveFullAssessment(studentId);
@@ -146,26 +144,22 @@ export async function generateBatchComments(scope: RegularCommentScope, requeste
     assertScope(context, scope);
     const snapshots = scopeIds.filter((studentId) => persisted.has(studentId)).map((studentId) => snapshotStudent(scope, requireStudent(scope, studentId), homework[studentId] || null));
     useCommentStore.getState().updateBatch({ phase: 'generating', total: scopeIds.length, completed: failures.length });
-    for (let index = 0; index < snapshots.length; index += 3) {
-      assertScope(context, scope);
-      const group = snapshots.slice(index, index + 3);
-      await Promise.all(group.map(async (snapshot) => {
-        try {
-          if (isCurrentCommentContext(context)) useCommentStore.getState().updateBatch({ currentStudentId: snapshot.studentId });
-          const response = await generateComment(buildGenerationRequest(context, snapshot, config, summary), controller.signal);
-          if (!isCurrentCommentContext(context)) return;
-          useCommentStore.getState().setDraft(snapshot.studentId, { content: cleanComment(response.data.comment), kind: 'generated', generationMeta: response.data.meta });
-          successfulIds.push(snapshot.studentId);
-          if (response.data.meta.source === 'safe_template') safeTemplateCount += 1;
-          useCommentStore.getState().updateBatch({ successful: successfulIds.length, safeTemplateCount });
-        } catch (error) {
-          if (isAbort(error)) throw error;
-          if (isCurrentCommentContext(context)) recordFailure(snapshot.studentId, errorText(error), failures);
-        } finally {
-          if (isCurrentCommentContext(context)) incrementBatch();
-        }
-      }));
-    }
+    assertScope(context, scope);
+    await Promise.all(snapshots.map(async (snapshot) => {
+      try {
+        const response = await generateComment(buildGenerationRequest(context, snapshot, config, summary), controller.signal);
+        if (!isCurrentCommentContext(context)) return;
+        useCommentStore.getState().setDraft(snapshot.studentId, { content: cleanComment(response.data.comment), kind: 'generated', generationMeta: response.data.meta });
+        successfulIds.push(snapshot.studentId);
+        if (response.data.meta.source === 'safe_template') safeTemplateCount += 1;
+        useCommentStore.getState().updateBatch({ successful: successfulIds.length, safeTemplateCount });
+      } catch (error) {
+        if (isAbort(error)) throw error;
+        if (isCurrentCommentContext(context)) recordFailure(snapshot.studentId, errorText(error), failures);
+      } finally {
+        if (isCurrentCommentContext(context)) incrementBatch();
+      }
+    }));
     assertScope(context, scope);
     return { total: scopeIds.length, successfulIds, failures, safeTemplateCount };
   } finally {
@@ -236,7 +230,8 @@ export async function submitSingleComment(scope: RegularCommentScope, studentId:
     if (!isCurrentSingle(context, scope, studentId)) return { total: 1, successfulIds: [], failures: [], safeTemplateCount: 0, refreshed: false };
     useCommentStore.getState().removeDraft(studentId);
     useCommentStore.getState().markSummarySynced(summary);
-    const refreshed = await refetchCurrentClass(context);
+    applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: [studentId] });
+    const refreshed = await refetchCurrentClass(context, [studentId]);
     return { total: 1, successfulIds: [studentId], failures: [], safeTemplateCount: 0, refreshed };
   } catch (error) {
     if (isCurrentSingle(context, scope, studentId) && !isAbort(error)) useCommentStore.getState().setError(studentId, errorText(error));
@@ -319,7 +314,8 @@ export async function submitBatchComments(scope: RegularCommentScope, requestedI
       }
     }
     assertScope(context, scope);
-    const refreshed = successfulIds.length ? await refetchCurrentClass(context) : false;
+    if (successfulIds.length) applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds });
+    const refreshed = successfulIds.length ? await refetchCurrentClass(context, successfulIds) : false;
     return { total: scopeIds.length, successfulIds, failures, safeTemplateCount: 0, refreshed };
   } finally {
     releaseCommentController(controller);
@@ -476,12 +472,20 @@ function createCommentController(): AbortController {
 }
 function releaseCommentController(controller: AbortController) { contextControllers.delete(controller); releaseOperationController(controller); }
 function abortCommentOperations() { for (const controller of contextControllers) controller.abort(); contextControllers.clear(); }
-async function refetchCurrentClass(context: ContextSnapshot): Promise<boolean> {
+async function refetchCurrentClass(context: ContextSnapshot, successfulIds: string[] = []): Promise<boolean> {
   if (!isCurrentCommentContext(context)) return false;
   try {
     await appQueryClient().refetchQueries({ queryKey: classDetailQuery(context.classId).queryKey, exact: true });
+    if (isCurrentCommentContext(context)) {
+      reconcileClassSubmissionsAfterRefetch({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds });
+    }
     return isCurrentCommentContext(context);
-  } catch { return false; }
+  } catch {
+    if (isCurrentCommentContext(context) && successfulIds.length) {
+      applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds });
+    }
+    return false;
+  }
 }
 
 export function resetCommentController(): void {

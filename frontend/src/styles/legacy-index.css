@@ -4023,6 +4023,10 @@ body.regular-review-active {
     padding: 0 24px 20px;
 }
 
+.comments-student-area {
+    margin-top: 16px;
+}
+
 .student-compact-list {
     border: 1px solid var(--border-color);
     border-radius: 14px;

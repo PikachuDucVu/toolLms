@@ -144,11 +144,103 @@ export function classCommentProgress(item: ClassSummary): ClassCommentProgress {
   return item.commentProgress || { state: 'unknown', badgeText: 'Chưa có dữ liệu', slotNumber: null, present: null, completed: null, missing: null };
 }
 
+export function computeClassCommentProgress(slots: Slot[], now = Date.now()): ClassCommentProgress {
+  const latestIndex = findLatestCommentableSlotIndex(slots, now);
+  if (latestIndex < 0) {
+    return { state: 'unknown', badgeText: 'Chưa có dữ liệu', slotNumber: null, present: null, completed: null, missing: null };
+  }
+
+  let pendingIndex = -1;
+  let pendingProgress: ReturnType<typeof slotCommentProgress> | null = null;
+  for (let index = latestIndex; index >= 0; index -= 1) {
+    const progress = slotCommentProgress(slots[index], index);
+    if (progress.present > 0 && progress.missing > 0) {
+      pendingIndex = index;
+      pendingProgress = progress;
+    }
+  }
+
+  if (pendingIndex >= 0 && pendingProgress) {
+    return {
+      state: 'pending',
+      badgeText: 'Chưa nhận xét',
+      slotNumber: getSlotDisplayNumber(slots[pendingIndex], pendingIndex),
+      present: pendingProgress.present,
+      completed: pendingProgress.completed,
+      missing: pendingProgress.missing,
+    };
+  }
+
+  const latestProgress = slotCommentProgress(slots[latestIndex], latestIndex);
+  return {
+    state: 'done',
+    badgeText: 'Đã nhận xét',
+    slotNumber: getSlotDisplayNumber(slots[latestIndex], latestIndex),
+    present: latestProgress.present,
+    completed: latestProgress.completed,
+    missing: latestProgress.missing,
+  };
+}
+
+function placeholderCommentArea(type: string): StudentAttendance['commentByAreas'][number] {
+  return {
+    grade: null,
+    content: type === 'CONTENT' ? 'Đã gửi' : '',
+    commentAreaId: null,
+    type,
+    checkpoint: null,
+    courseProcessDemoId: null,
+    courseProcessFinalEvaluationTitle: null,
+    courseProcessFinalEvaluationId: null,
+    demoQuestions: [],
+  };
+}
+
+export function applySubmittedComments(
+  detail: ClassDetail,
+  slotId: string,
+  studentIds: string[],
+  mode: SessionMode,
+): ClassDetail {
+  const submitted = new Set(studentIds);
+  if (!submitted.size) return { ...detail, commentProgress: computeClassCommentProgress(detail.slots) };
+  const areaType = mode === 'demo' ? 'DEMO' : mode === 'checkpoint' ? 'CHECKPOINT' : 'CONTENT';
+  const slots = detail.slots.map((item) => {
+    if (item.id !== slotId) return item;
+    return {
+      ...item,
+      studentAttendance: item.studentAttendance.map((student) => {
+        if (!submitted.has(student.studentId) || hasModeSubmission(student, mode)) return student;
+        return { ...student, commentByAreas: [...student.commentByAreas, placeholderCommentArea(areaType)] };
+      }),
+    };
+  });
+  return {
+    ...detail,
+    slots,
+    slotCount: slots.length,
+    commentProgress: computeClassCommentProgress(slots),
+  };
+}
+
+export function preferRicherCommentProgress(primary: ClassCommentProgress, secondary?: ClassCommentProgress): ClassCommentProgress {
+  if (!secondary) return primary;
+  const rank = (progress: ClassCommentProgress) => progress.state === 'done' ? 2 : progress.state === 'pending' ? 1 : 0;
+  if (rank(secondary) > rank(primary)) return secondary;
+  if (rank(primary) > rank(secondary)) return primary;
+  if (primary.state === 'pending' && secondary.state === 'pending') {
+    return (secondary.completed || 0) > (primary.completed || 0) ? secondary : primary;
+  }
+  return primary;
+}
+
 export function classesWithDetailProgress(classes: ClassSummary[], detail?: ClassDetail): ClassSummary[] {
   if (!detail) return classes;
+  const computed = computeClassCommentProgress(detail.slots);
+  const fromDetail = computed.state === 'unknown' ? detail.commentProgress : computed;
   return classes.map((item) => (
     item.id === detail.id
-      ? { ...item, commentProgress: detail.commentProgress, slotCount: detail.slots.length || item.slotCount }
+      ? { ...item, commentProgress: preferRicherCommentProgress(fromDetail, item.commentProgress), slotCount: detail.slots.length || item.slotCount }
       : item
   ));
 }

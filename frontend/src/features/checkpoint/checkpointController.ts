@@ -12,8 +12,7 @@ import type {
 import { appQueryClient } from '../../app/providers';
 import { ApiError } from '../../lib/apiError';
 import { currentAuthEpoch, createOperationController, isCurrentAuthEpoch, registerWorkflowReset, releaseOperationController } from '../../lib/operationContext';
-import { classDetailQuery } from '../classes/public/domain';
-import { isPresent } from '../classes/public/domain';
+import { classDetailQuery, isPresent, applyOptimisticClassSubmissions, reconcileClassSubmissionsAfterRefetch } from '../classes/public/domain';
 import { generateCheckpointComment, getCheckpointStatus, submitCheckpoint } from './api';
 import {
   checkpointCommentPlainText,
@@ -210,7 +209,6 @@ export async function generateCheckpointBatch(scope: CheckpointScope, frozen: Fr
   try {
     await runWithConcurrency(frozen.students, 3, async (student) => {
       assertScope(context, scope);
-      if (isCurrentScope(context, scope)) updateBatchProgress({ currentStudentId: student.studentId });
       try {
         const comment = await requestGeneratedComment(context, student, frozen.options, controller.signal);
         assertScope(context, scope);
@@ -268,7 +266,8 @@ export async function submitCheckpointScoreOnlySingle(scope: CheckpointScope, st
     }, controller.signal);
     assertScope(context, scope);
     useCheckpointStore.getState().applySubmitSuccess(studentId, response.data, draft, false);
-    const refreshed = await refetchCurrentClass(context);
+    applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: [studentId], mode: 'checkpoint' });
+    const refreshed = await refetchCurrentClass(context, [studentId]);
     return { result: response.data, reloadRequested: true, refreshed };
   } catch (error) {
     if (isCurrentScope(context, scope) && !isAbort(error)) useCheckpointStore.getState().setRowError(studentId, 'submission', errorText(error));
@@ -304,7 +303,8 @@ export async function submitCheckpointFullSingle(scope: CheckpointScope, student
     }, controller.signal);
     assertScope(context, scope);
     useCheckpointStore.getState().applySubmitSuccess(studentId, response.data, draft, true);
-    const refreshed = await refetchCurrentClass(context);
+    applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: [studentId], mode: 'checkpoint' });
+    const refreshed = await refetchCurrentClass(context, [studentId]);
     return { result: response.data, reloadRequested: true, refreshed };
   } catch (error) {
     if (isCurrentScope(context, scope) && !isAbort(error)) useCheckpointStore.getState().setRowError(studentId, 'submission', errorText(error));
@@ -386,7 +386,6 @@ export async function submitCheckpointFullBatch(scope: CheckpointScope, frozen: 
   try {
     await runWithConcurrency(generationTargets, 3, async (student) => {
       assertScope(context, scope);
-      if (isCurrentScope(context, scope)) updateBatchProgress({ currentStudentId: student.studentId });
       try {
         const comment = await requestGeneratedComment(context, student, frozen.options, controller.signal);
         assertScope(context, scope);
@@ -451,7 +450,8 @@ export async function submitCheckpointFullBatch(scope: CheckpointScope, frozen: 
     }
     assertScope(context, scope);
     updateBatchProgress({ phase: 'reloading' });
-    const refreshed = await refetchCurrentClass(context);
+    if (successfulIds.length) applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds, mode: 'checkpoint' });
+    const refreshed = await refetchCurrentClass(context, successfulIds);
     const rowErrors = rowErrorsFromFailures(failures);
     return {
       total: frozen.students.length,
@@ -514,7 +514,8 @@ async function submitFrozenBatch(
     }
     assertScope(context, scope);
     updateBatchProgress({ phase: 'reloading' });
-    const refreshed = await refetchCurrentClass(context);
+    if (successfulIds.length) applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds, mode: 'checkpoint' });
+    const refreshed = await refetchCurrentClass(context, successfulIds);
     return {
       total: students.length,
       attempted,
@@ -678,12 +679,20 @@ function normalizeCheckpointStatusError(error: unknown): CheckpointStatusError {
 }
 function isAbort(error: unknown): boolean { return error instanceof DOMException && error.name === 'AbortError'; }
 function errorText(error: unknown): string { return error instanceof Error ? error.message : String(error || 'Lỗi không xác định'); }
-async function refetchCurrentClass(context: ContextSnapshot): Promise<boolean> {
+async function refetchCurrentClass(context: ContextSnapshot, successfulIds: string[] = []): Promise<boolean> {
   if (!isCurrentCheckpointContext(context)) return false;
   try {
     await appQueryClient().refetchQueries({ queryKey: classDetailQuery(context.classId).queryKey, exact: true });
+    if (isCurrentCheckpointContext(context)) {
+      reconcileClassSubmissionsAfterRefetch({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds, mode: 'checkpoint' });
+    }
     return isCurrentCheckpointContext(context);
-  } catch { return false; }
+  } catch {
+    if (isCurrentCheckpointContext(context) && successfulIds.length) {
+      applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds, mode: 'checkpoint' });
+    }
+    return false;
+  }
 }
 
 export function resetCheckpointController(): void {

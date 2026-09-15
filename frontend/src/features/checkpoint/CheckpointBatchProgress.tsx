@@ -9,7 +9,12 @@ export function CheckpointBatchProgress({
   studentNames?: Record<string, string>;
 }) {
   const percent = batch.total ? Math.round((batch.completed / batch.total) * 100) : 0;
-  const currentName = batch.currentStudentId ? studentNames[batch.currentStudentId] || batch.currentStudentId : null;
+  const currentName =
+    batch.phase === 'generating'
+      ? null
+      : batch.currentStudentId
+        ? studentNames[batch.currentStudentId] || batch.currentStudentId
+        : null;
 
   return (
     <BatchProgressBar

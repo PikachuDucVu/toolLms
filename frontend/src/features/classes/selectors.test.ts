@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ClassDetail, ClassSummary, Slot, StudentAttendance } from '@tool-lms/contracts';
-import { autoSelectedSlotIndex, classCommentMeta, classesWithDetailProgress, currentSessionNumber, detailForSelectedClass, getSlotDisplayNumber, orderClassSummaries, selectedSlot, sessionMode, slotCommentProgress, studentStats, visibleStudents } from './selectors';
+import { applySubmittedComments, autoSelectedSlotIndex, classCommentMeta, classesWithDetailProgress, computeClassCommentProgress, currentSessionNumber, detailForSelectedClass, getSlotDisplayNumber, orderClassSummaries, preferRicherCommentProgress, selectedSlot, sessionMode, slotCommentProgress, studentStats, visibleStudents } from './selectors';
 
 const area = (type: string, content = '') => ({ grade: null, content, commentAreaId: null, type, checkpoint: null, courseProcessDemoId: null, courseProcessFinalEvaluationTitle: null, courseProcessFinalEvaluationId: null, demoQuestions: [] });
 const student = (id: string, name: string, status: string, areas: ReturnType<typeof area>[] = []): StudentAttendance => ({ id: `attendance-${id}`, studentId: id, displayName: name, status, commentByAreas: areas });
@@ -76,5 +76,44 @@ describe('class workspace selectors', () => {
       ['class-a', 'pending', 2],
       ['class-b', 'unknown', 1],
     ]);
+  });
+
+  it('keeps a richer list-cache done badge when the selected class detail is still stale', () => {
+    const pending = { state: 'pending' as const, badgeText: 'Chưa nhận xét' as const, slotNumber: 10, present: 8, completed: 0, missing: 8 };
+    const done = { state: 'done' as const, badgeText: 'Đã nhận xét' as const, slotNumber: 10, present: 8, completed: 8, missing: 0 };
+    const classes = [
+      { id: 'class-a', name: 'HDT-JSI41', status: 'RUNNING', startDate: null, endDate: null, recentlyEnded: false, course: null, sites: [], slotCount: 14, commentProgress: done },
+    ] as ClassSummary[];
+    const staleStudents = Array.from({ length: 8 }, (_, index) => student(`s${index + 1}`, `HS ${index + 1}`, 'ATTENDED'));
+    const detail = { id: 'class-a', commentProgress: pending, slots: [slot('slot-10', 9, staleStudents)] } as ClassDetail;
+    expect(preferRicherCommentProgress(pending, done)).toMatchObject(done);
+    expect(classesWithDetailProgress(classes, detail)[0].commentProgress).toMatchObject(done);
+  });
+
+  it('recomputes selected class progress from live slots even if detail.commentProgress is stale', () => {
+    const pending = { state: 'pending' as const, badgeText: 'Chưa nhận xét' as const, slotNumber: 1, present: 2, completed: 0, missing: 2 };
+    const classes = [
+      { id: 'class-a', name: 'Lớp A', status: 'RUNNING', startDate: null, endDate: null, recentlyEnded: false, course: null, sites: [], slotCount: 1, commentProgress: pending },
+    ] as ClassSummary[];
+    const an = student('an', 'An', 'ATTENDED', [area('CONTENT', 'Đã gửi')]);
+    const binh = student('binh', 'Bình', 'ATTENDED', [area('CONTENT', 'Đã gửi')]);
+    const detail = { id: 'class-a', commentProgress: pending, slots: [slot('slot-1', 0, [an, binh])] } as ClassDetail;
+    expect(classesWithDetailProgress(classes, detail)[0].commentProgress).toMatchObject({
+      state: 'done', badgeText: 'Đã nhận xét', slotNumber: 1, present: 2, completed: 2, missing: 0,
+    });
+  });
+
+  it('marks submitted students and flips class progress to done', () => {
+    const an = student('an', 'An', 'ATTENDED');
+    const binh = student('binh', 'Bình', 'ATTENDED');
+    const detail = {
+      id: 'class-a',
+      commentProgress: { state: 'pending', badgeText: 'Chưa nhận xét', slotNumber: 1, present: 2, completed: 0, missing: 2 },
+      slots: [slot('slot-1', 0, [an, binh])],
+    } as ClassDetail;
+    expect(computeClassCommentProgress(detail.slots)).toMatchObject({ state: 'pending', missing: 2, completed: 0 });
+    const next = applySubmittedComments(detail, 'slot-1', ['an', 'binh'], 'regular');
+    expect(next.commentProgress).toMatchObject({ state: 'done', badgeText: 'Đã nhận xét', present: 2, completed: 2, missing: 0 });
+    expect(next.slots[0].studentAttendance.every((item) => item.commentByAreas.some((area) => area.type === 'CONTENT'))).toBe(true);
   });
 });

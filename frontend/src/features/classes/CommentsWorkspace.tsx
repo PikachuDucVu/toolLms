@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Clock, RefreshCw, UserCheck, Users } from 'lucide-react';
+import { RefreshCw, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo } from 'react';
-import bottomBannerUrl from '../../assets/design/bottom_banner.png';
 import emptyStudentsUrl from '../../assets/empty-students.jpg';
 import { useAuth } from '../../app/providers';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -17,6 +16,7 @@ import { hasUnsavedCheckpointWork, isCheckpointDraftDirty, isCheckpointOperation
 import { writeStudentNote } from '../../lib/persistence';
 import { ClassList } from './ClassList';
 import { getClassDetail } from './api';
+import { syncClassProgressFromDetail } from './classCache';
 import { classDetailQuery, commentsClassesQuery } from './queries';
 import {
   autoSelectedSlotIndex,
@@ -290,6 +290,7 @@ export function CommentsWorkspace() {
       const nextIndex = oldSlotId ? fresh.slots.findIndex((item) => item.id === oldSlotId) : Number(slotIndex);
       const nextValue = nextIndex >= 0 && Number.isInteger(nextIndex) ? String(nextIndex) : '';
       queryClient.setQueryData(classDetailQuery(capturedClassId).queryKey, result);
+      syncClassProgressFromDetail(fresh);
       if (discardDirty) {
         useAssessmentStore.getState().discardUnsaved();
         useCommentStore.getState().discardUnsaved();
@@ -421,51 +422,6 @@ export function CommentsWorkspace() {
                 />
               </div>
 
-              <div className="kpi-grid" id="statsBar" aria-label="Tổng quan tiến độ">
-                <div className="kpi-card kpi-total">
-                  <div className="kpi-icon-box blue">
-                    <Users size={18} />
-                  </div>
-                  <div className="kpi-content">
-                    <div className="kpi-value" id="statTotal">0</div>
-                    <div className="kpi-label">Tổng số học sinh</div>
-                  </div>
-                </div>
-
-                <div className="kpi-card kpi-done">
-                  <div className="kpi-icon-box green">
-                    <Check size={18} />
-                  </div>
-                  <div className="kpi-content">
-                    <div className="kpi-value" id="statSubmitted">0</div>
-                    <div className="kpi-label" id="statSubmittedLabel">Đã nhận xét</div>
-                  </div>
-                  <div className="kpi-badge green" id="statSubmittedBadge">0%</div>
-                </div>
-
-                <div className="kpi-card kpi-pending">
-                  <div className="kpi-icon-box yellow">
-                    <Clock size={18} />
-                  </div>
-                  <div className="kpi-content">
-                    <div className="kpi-value" id="statMissing">0</div>
-                    <div className="kpi-label">Chưa nhận xét</div>
-                  </div>
-                  <div className="kpi-badge yellow" id="statMissingBadge">0%</div>
-                </div>
-
-                <div className="kpi-card kpi-present">
-                  <div className="kpi-icon-box cyan">
-                    <UserCheck size={18} />
-                  </div>
-                  <div className="kpi-content">
-                    <div className="kpi-value" id="statPresent">0</div>
-                    <div className="kpi-label">Có mặt hôm nay</div>
-                  </div>
-                  <div className="kpi-badge cyan" id="statPresentBadge">0%</div>
-                </div>
-              </div>
-
               <div className="card-body student-card-body">
                 <div className="empty-state">
                   <img
@@ -520,15 +476,6 @@ export function CommentsWorkspace() {
               />
             </div>
           )}
-
-          <div className="bottom-quote-banner">
-            <img
-              src={bottomBannerUrl}
-              alt="Những lời nhận xét tích cực hôm nay sẽ tạo nên động lực lớn cho ngày mai! Vì một thế hệ học sinh tự tin tỏa sáng"
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
           </div>
         </div>
       </div>

@@ -242,7 +242,12 @@ function BatchProgress({
       : batch.phase === 'generating'
         ? 'Đang tạo nhận xét AI'
         : 'Đang gửi LMS';
-  const currentName = batch.currentStudentId ? studentNames[batch.currentStudentId] || batch.currentStudentId : null;
+  const currentName =
+    batch.kind === 'generate'
+      ? null
+      : batch.currentStudentId
+        ? studentNames[batch.currentStudentId] || batch.currentStudentId
+        : null;
 
   return (
     <BatchProgressBar

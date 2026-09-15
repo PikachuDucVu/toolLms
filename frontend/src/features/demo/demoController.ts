@@ -1,8 +1,7 @@
 import type { ClassDetail, DemoCustomScore, DemoResolvedSchema, Slot, StudentAttendance } from '@tool-lms/contracts';
 import { appQueryClient } from '../../app/providers';
 import { currentAuthEpoch, createOperationController, isCurrentAuthEpoch, registerWorkflowReset, releaseOperationController } from '../../lib/operationContext';
-import { classDetailQuery } from '../classes/public/domain';
-import { isPresent } from '../classes/public/domain';
+import { classDetailQuery, isPresent, applyOptimisticClassSubmissions, reconcileClassSubmissionsAfterRefetch } from '../classes/public/domain';
 import { previewDemoScores, submitDemoScores } from './api';
 import { isDemoOperationActive, useDemoStore, type DemoContext, type DemoDraft, type DemoScores } from './demoStore';
 
@@ -120,7 +119,8 @@ export async function submitSingleDemo(scope: DemoScope, studentId: string): Pro
     }, controller.signal);
     assertScope(context, scope);
     useDemoStore.getState().applySubmitSuccess(studentId, response.data, draft, summary, summaryVersion);
-    await refetchCurrentClass(context);
+    applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: [studentId], mode: 'demo' });
+    await refetchCurrentClass(context, [studentId]);
     return true;
   } catch (error) {
     if (isCurrentDemoContext(context) && !isAbort(error)) useDemoStore.getState().setError(studentId, errorText(error));
@@ -269,7 +269,8 @@ export async function submitDemoBatch(scope: DemoScope, frozen: FrozenDemoBatch)
     }
     assertScope(context, scope);
     useDemoStore.getState().updateBatch({ phase: 'reloading', currentStudentId: null });
-    refreshed = await refetchCurrentClass(context);
+    if (successfulIds.length) applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds, mode: 'demo' });
+    refreshed = await refetchCurrentClass(context, successfulIds);
     return { total: frozen.students.length, attempted, successfulIds, failures, refreshed };
   } finally {
     releaseDemoController(controller);
@@ -328,9 +329,20 @@ function abortDemoOperations() { for (const controller of contextControllers) co
 function isAbort(error: unknown): boolean { return error instanceof DOMException && error.name === 'AbortError'; }
 function errorText(error: unknown): string { return error instanceof Error ? error.message : String(error || 'Lỗi không xác định'); }
 function formatScore(value: number): string { return String(Math.round(value * 100) / 100); }
-async function refetchCurrentClass(context: DemoContext): Promise<boolean> {
+async function refetchCurrentClass(context: DemoContext, successfulIds: string[] = []): Promise<boolean> {
   if (!isCurrentDemoContext(context)) return false;
-  try { await appQueryClient().refetchQueries({ queryKey: classDetailQuery(context.classId).queryKey, exact: true }); return isCurrentDemoContext(context); } catch { return false; }
+  try {
+    await appQueryClient().refetchQueries({ queryKey: classDetailQuery(context.classId).queryKey, exact: true });
+    if (isCurrentDemoContext(context)) {
+      reconcileClassSubmissionsAfterRefetch({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds, mode: 'demo' });
+    }
+    return isCurrentDemoContext(context);
+  } catch {
+    if (isCurrentDemoContext(context) && successfulIds.length) {
+      applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds, mode: 'demo' });
+    }
+    return false;
+  }
 }
 
 export function resetDemoController(): void { epoch += 1; activeContext = null; abortDemoOperations(); }
