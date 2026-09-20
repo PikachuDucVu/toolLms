@@ -1,5 +1,6 @@
 import type {
   CheckpointBranch,
+  CheckpointGradeResult,
   CheckpointNumber,
   CheckpointScoreInput,
   CheckpointStatusResult,
@@ -13,7 +14,7 @@ import { appQueryClient } from '../../app/providers';
 import { ApiError } from '../../lib/apiError';
 import { currentAuthEpoch, createOperationController, isCurrentAuthEpoch, registerWorkflowReset, releaseOperationController } from '../../lib/operationContext';
 import { classDetailQuery, isPresent, applyOptimisticClassSubmissions, reconcileClassSubmissionsAfterRefetch } from '../classes/public/domain';
-import { generateCheckpointComment, getCheckpointStatus, submitCheckpoint } from './api';
+import { generateCheckpointComment, getCheckpointStatus, gradeCheckpointExam, submitCheckpoint } from './api';
 import {
   checkpointCommentPlainText,
   cloneCheckpointDraft,
@@ -29,7 +30,15 @@ import {
 
 export type CheckpointScope = { detail: ClassDetail; slot: Slot; checkpoint: CheckpointNumber };
 export type CheckpointGenerationOptions = { modelId?: string; customModelId?: string; thinkingLevel?: string; apiKey?: string };
-export type CheckpointFailure = { studentId: string; phase: 'generation' | 'submission'; message: string };
+export type CheckpointFailure = { studentId: string; phase: 'generation' | 'submission' | 'grading'; message: string };
+export type CheckpointGradeOutcome = {
+  total: number;
+  attempted: number;
+  successful: number;
+  successfulIds: string[];
+  failures: CheckpointFailure[];
+  progress: { completed: number; total: number };
+};
 export type CheckpointGenerationOutcome = {
   total: number;
   attempted: number;
@@ -55,6 +64,12 @@ export type CheckpointSingleOutcome = { result: CheckpointSubmitResult; reloadRe
 
 type ContextSnapshot = CheckpointContext & { authEpoch: number };
 type FrozenStudentBase = { studentId: string; attendanceId: string; studentName: string; draft: CheckpointStudentDraft };
+type FrozenGradeStudent = FrozenStudentBase & { branch?: CheckpointBranch; expectedTheoryVersion: number; expectedPracticeVersion: number; expectedDescriptionVersion: number };
+export type FrozenCheckpointGradeBatch = {
+  context: ContextSnapshot;
+  options: CheckpointGenerationOptions;
+  students: FrozenGradeStudent[];
+};
 type FrozenGenerationStudent = FrozenStudentBase & { teacherDescription: string; expectedDescriptionVersion: number; expectedCommentVersion: number };
 export type FrozenCheckpointGenerationBatch = {
   context: ContextSnapshot;
@@ -160,6 +175,120 @@ export function checkpointStudentStatusView(studentId: string): CheckpointStuden
   if (student.original) return { state: 'original_only', student, selectedBranch: 'original' };
   if (student.makeup) return { state: 'makeup_only', student, selectedBranch: 'makeup' };
   return { state: 'missing_student', availability };
+}
+
+export function studentHasGradableSubmission(studentId: string): boolean {
+  const view = checkpointStudentStatusView(studentId);
+  return view.state === 'original_only' || view.state === 'makeup_only' || view.state === 'both';
+}
+
+export async function gradeCheckpointStudent(scope: CheckpointScope, studentId: string, options: CheckpointGenerationOptions = {}): Promise<CheckpointGradeResult> {
+  const context = requireScope(scope);
+  assertNoActiveOperation();
+  const student = requirePresentStudent(scope, studentId);
+  if (!studentHasGradableSubmission(studentId)) throw new Error('Học sinh chưa nộp bài kiểm tra trên kiemtra.');
+  const draft = requireDraft(studentId);
+  const view = checkpointStudentStatusView(studentId);
+  const branch = 'selectedBranch' in view ? view.selectedBranch : undefined;
+  useCheckpointStore.getState().setRowError(studentId, 'grading', null);
+  useCheckpointStore.getState().setGradeBusy(studentId, true);
+  const controller = createCheckpointController();
+  try {
+    const response = await gradeCheckpointExam({
+      classId: context.classId,
+      slotId: context.slotId,
+      studentId,
+      checkpoint: context.checkpoint,
+      ...(branch ? { branch } : {}),
+      ...freezeGenerationOptions(options),
+    }, controller.signal);
+    assertScope(context, scope);
+    useCheckpointStore.getState().applyGradeResult(studentId, response.data, {
+      theoryVersion: draft.theoryVersion,
+      practiceVersion: draft.practiceVersion,
+      descriptionVersion: draft.descriptionVersion,
+    });
+    return response.data;
+  } catch (error) {
+    if (isCurrentScope(context, scope) && !isAbort(error)) useCheckpointStore.getState().setRowError(studentId, 'grading', errorText(error));
+    throw error;
+  } finally {
+    releaseCheckpointController(controller);
+    if (isCurrentCheckpointContext(context)) useCheckpointStore.getState().setGradeBusy(studentId, false);
+  }
+}
+
+export function captureCheckpointGradeBatch(scope: CheckpointScope, options: CheckpointGenerationOptions = {}): FrozenCheckpointGradeBatch {
+  const context = requireScope(scope);
+  assertNoActiveOperation();
+  if (useCheckpointStore.getState().status !== 'success') throw new Error('Đang tải trạng thái nộp bài Checkpoint.');
+  const students = presentStudents(scope).filter((student) => studentHasGradableSubmission(student.studentId));
+  if (!students.length) throw new Error('Không có học sinh có mặt đã nộp bài Checkpoint');
+  return {
+    context: { ...context },
+    options: freezeGenerationOptions(options),
+    students: students.map((student) => {
+      const draft = requireDraft(student.studentId);
+      const view = checkpointStudentStatusView(student.studentId);
+      return {
+        studentId: student.studentId,
+        attendanceId: student.id,
+        studentName: student.displayName,
+        draft: cloneCheckpointDraft(draft),
+        ...('selectedBranch' in view ? { branch: view.selectedBranch } : {}),
+        expectedTheoryVersion: draft.theoryVersion,
+        expectedPracticeVersion: draft.practiceVersion,
+        expectedDescriptionVersion: draft.descriptionVersion,
+      };
+    }),
+  };
+}
+
+export async function gradeCheckpointBatch(scope: CheckpointScope, frozen: FrozenCheckpointGradeBatch): Promise<CheckpointGradeOutcome> {
+  const context = requireFrozenScope(scope, frozen.context);
+  assertNoActiveOperation();
+  const scopeIds = frozen.students.map((student) => student.studentId);
+  startBatch('grade', 'grading', scopeIds, frozen.students.length, 0, frozen.students.length);
+  const controller = createCheckpointController();
+  const successfulIds: string[] = [];
+  const failures: CheckpointFailure[] = [];
+  let attempted = 0;
+  try {
+    await runWithConcurrency(frozen.students, 2, async (student) => {
+      assertScope(context, scope);
+      useCheckpointStore.getState().updateBatch({ currentStudentId: student.studentId });
+      try {
+        const response = await gradeCheckpointExam({
+          classId: context.classId,
+          slotId: context.slotId,
+          studentId: student.studentId,
+          checkpoint: context.checkpoint,
+          ...(student.branch ? { branch: student.branch } : {}),
+          ...frozen.options,
+        }, controller.signal);
+        assertScope(context, scope);
+        useCheckpointStore.getState().applyGradeResult(student.studentId, response.data, {
+          theoryVersion: student.expectedTheoryVersion,
+          practiceVersion: student.expectedPracticeVersion,
+          descriptionVersion: student.expectedDescriptionVersion,
+        });
+        successfulIds.push(student.studentId);
+      } catch (error) {
+        if (isAbort(error)) throw error;
+        if (isCurrentScope(context, scope)) recordFailure(student.studentId, 'grading', errorText(error), failures);
+      } finally {
+        if (isCurrentScope(context, scope)) {
+          attempted += 1;
+          updateBatchProgress({ completed: attempted, gradingAttempted: attempted, gradingSuccessful: successfulIds.length, successful: successfulIds.length });
+        }
+      }
+    });
+    assertScope(context, scope);
+    return { total: frozen.students.length, attempted, successful: successfulIds.length, successfulIds, failures, progress: { completed: attempted, total: frozen.students.length } };
+  } finally {
+    releaseCheckpointController(controller);
+    if (isCurrentCheckpointContext(context)) useCheckpointStore.getState().finishBatch();
+  }
 }
 
 export async function generateCheckpointStudent(scope: CheckpointScope, studentId: string, options: CheckpointGenerationOptions = {}): Promise<boolean> {
@@ -613,11 +742,12 @@ function assertNoActiveOperation(): void { if (isCheckpointOperationActive()) th
 function sameContext(left: CheckpointContext | null, right: CheckpointContext): boolean {
   return left?.classId === right.classId && left.slotId === right.slotId && left.checkpoint === right.checkpoint && left.epoch === right.epoch;
 }
-function startBatch(kind: CheckpointBatchState['kind'], phase: CheckpointBatchState['phase'], scopeIds: string[], total: number, generationTotal: number): void {
-  useCheckpointStore.getState().startBatch({ kind, phase, scopeIds: [...scopeIds], total, completed: 0, successful: 0, generationTotal, generationAttempted: 0, generationSuccessful: 0, submissionAttempted: 0, submissionSuccessful: 0, rowErrors: {}, currentStudentId: null });
+function startBatch(kind: CheckpointBatchState['kind'], phase: CheckpointBatchState['phase'], scopeIds: string[], total: number, generationTotal: number, gradingTotal = 0): void {
+  useCheckpointStore.getState().startBatch({ kind, phase, scopeIds: [...scopeIds], total, completed: 0, successful: 0, generationTotal, generationAttempted: 0, generationSuccessful: 0, gradingTotal, gradingAttempted: 0, gradingSuccessful: 0, submissionAttempted: 0, submissionSuccessful: 0, rowErrors: {}, currentStudentId: null });
   for (const studentId of scopeIds) {
     useCheckpointStore.getState().setRowError(studentId, 'generation', null);
     useCheckpointStore.getState().setRowError(studentId, 'submission', null);
+    useCheckpointStore.getState().setRowError(studentId, 'grading', null);
   }
 }
 function updateBatchProgress(update: Parameters<ReturnType<typeof useCheckpointStore.getState>['updateBatch']>[0]): void { useCheckpointStore.getState().updateBatch(update); }
@@ -631,7 +761,7 @@ function rowErrorsFromFailures(failures: CheckpointFailure[]): Record<string, Ch
   for (const failure of failures) rows[failure.studentId] = { ...(rows[failure.studentId] || {}), [failure.phase]: failure.message };
   return rows;
 }
-async function runWithConcurrency<T>(items: T[], limit: 3, worker: (item: T) => Promise<void>): Promise<void> {
+async function runWithConcurrency<T>(items: T[], limit: number, worker: (item: T) => Promise<void>): Promise<void> {
   let cursor = 0;
   const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
     while (cursor < items.length) {

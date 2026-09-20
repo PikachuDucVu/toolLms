@@ -68,7 +68,7 @@ export function CommentsWorkspace() {
   const checkpointSynced = useCheckpointStore((state) => state.synced);
   const checkpointOperationActive = useCheckpointStore(
     (state) =>
-      state.generationBusy.size > 0 || state.submitBusy.size > 0 || Boolean(state.batch),
+      state.generationBusy.size > 0 || state.submitBusy.size > 0 || state.gradeBusy.size > 0 || Boolean(state.batch),
   );
   const classRefreshBusy = useAssessmentStore((state) => state.classRefreshBusy);
 

@@ -85,6 +85,31 @@ describe('Checkpoint student and batch UI', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
+  it('grades a submitted checkpoint exam into theory/practice fields and skips scratch', async () => {
+    const user = userEvent.setup();
+    const context = useCheckpointStore.getState().context!;
+    useCheckpointStore.getState().applyStatus(context, status('original'));
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith('/checkpoints/grade')) {
+        const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        expect(body).toMatchObject({ classId: 'class-1', studentId: 'student-1', checkpoint: 1, branch: 'original' });
+        return json(ok({
+          studentId: 'student-1', examId: 'exam-original', branch: 'original', skippedScratch: true,
+          theoryScore: 4.5, practiceScore: null, teacherNotes: 'LT: 9/10 câu đúng (4.5/5). Đã bỏ qua phần Scratch.',
+          mc: { total: 10, correct: 9, items: [] }, essay: { notes: '', items: [] },
+        }));
+      }
+      throw new Error(`Unexpected ${path}`);
+    }));
+    render(<ToastProvider><ConfirmProvider><CheckpointStudentCard scope={scope} student={slot.studentAttendance[0]} generationOptions={{ modelId: 'gpt-fixture' }} /></ConfirmProvider></ToastProvider>);
+    await user.click(screen.getByRole('button', { name: 'AI chấm bài' }));
+    await waitFor(() => expect(screen.getByLabelText('Kết quả AI chấm của Nguyễn An')).toHaveTextContent('9/10 đúng'));
+    expect(screen.getByLabelText('Điểm lý thuyết Checkpoint của Nguyễn An')).toHaveValue(4.5);
+    expect(screen.getByLabelText(`Mô tả của giáo viên cho AI của Nguyễn An`)).toHaveValue('Mô tả An');
+    expect(screen.getByLabelText('Kết quả AI chấm của Nguyễn An')).toHaveTextContent('Đã bỏ qua phần Scratch');
+  });
+
   it('prevalidates score batches before confirm and cancellation performs no generation/submission I/O', async () => {
     const user = userEvent.setup(); const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
     useCheckpointStore.getState().setTheoryInput('student-1', '4.25');

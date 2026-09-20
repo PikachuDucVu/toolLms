@@ -34,7 +34,10 @@ export function CheckpointBatchProgress({
       extraMeta={
         <div className="checkpoint-progress-meta">
           {batch.generationTotal > 0 && (
-            <span>AI: {batch.generationSuccessful}/{batch.generationAttempted} thành công</span>
+            <span>AI nhận xét: {batch.generationSuccessful}/{batch.generationAttempted} thành công</span>
+          )}
+          {batch.gradingTotal > 0 && (
+            <span>AI chấm: {batch.gradingSuccessful}/{batch.gradingAttempted} thành công</span>
           )}
           {batch.submissionAttempted > 0 && (
             <span>Submit: {batch.submissionSuccessful}/{batch.submissionAttempted} thành công</span>
@@ -49,9 +52,8 @@ export function CheckpointBatchProgress({
 }
 
 function phaseLabel(phase: CheckpointBatchState['phase']): string {
-  return phase === 'generating'
-    ? 'Đang tạo nhận xét AI (tối đa 3 đồng thời)'
-    : phase === 'submitting'
-      ? 'Đang submit Checkpoint tuần tự'
-      : 'Đang tải lại dữ liệu lớp';
+  if (phase === 'generating') return 'Đang tạo nhận xét AI (tối đa 3 đồng thời)';
+  if (phase === 'grading') return 'Đang AI chấm bài kiểm tra (tối đa 2 đồng thời)';
+  if (phase === 'submitting') return 'Đang submit Checkpoint tuần tự';
+  return 'Đang tải lại dữ liệu lớp';
 }

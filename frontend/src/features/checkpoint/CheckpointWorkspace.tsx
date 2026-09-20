@@ -22,7 +22,7 @@ export function CheckpointWorkspace({ detail, slot, sessionNumber, students, sea
   const context = useCheckpointStore((state) => state.context);
   const summaryDraft = useCheckpointStore((state) => state.summaryDraft);
   const summarySynced = useCheckpointStore((state) => state.summarySynced);
-  const operationActive = useCheckpointStore((state) => state.generationBusy.size > 0 || state.submitBusy.size > 0 || Boolean(state.batch));
+  const operationActive = useCheckpointStore((state) => state.generationBusy.size > 0 || state.submitBusy.size > 0 || state.gradeBusy.size > 0 || Boolean(state.batch));
   const config = useQuery(configQuery());
   const generationConfig = useCommentStore((state) => state.generationConfig);
   const model = generationModel(generationConfig, config.data?.data);
@@ -63,7 +63,7 @@ export function CheckpointWorkspace({ detail, slot, sessionNumber, students, sea
         <div>
           <h3>Buổi {sessionNumber} — Checkpoint {checkpoint}</h3>
           <p>
-            Nhập điểm lý thuyết và thực hành, hoặc để trống để hệ thống tự random 4–5 điểm. AI sẽ dựa trên ghi chú để tạo nhận xét tổng hợp.
+            AI chấm bài từ đề + bài nộp trên kiemtra (trắc nghiệm và tự luận, bỏ qua Scratch). Hoặc nhập điểm thủ công; để trống sẽ random 4–5. AI nhận xét dựa trên ghi chú.
           </p>
         </div>
       </div>

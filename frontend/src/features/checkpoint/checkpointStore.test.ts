@@ -135,6 +135,38 @@ describe('checkpoint store', () => {
     expect(isCheckpointOperationActive()).toBe(true);
     useCheckpointStore.getState().setGenerationBusy('student-1', false);
     expect(isCheckpointOperationActive()).toBe(false);
+    useCheckpointStore.getState().setGradeBusy('student-1', true);
+    expect(isCheckpointOperationActive()).toBe(true);
+    useCheckpointStore.getState().setGradeBusy('student-1', false);
+    expect(isCheckpointOperationActive()).toBe(false);
+  });
+
+  it('applies AI grade scores only when captured versions still match and fills empty teacher notes', () => {
+    const context = activateCheckpointContext('class-1', slot.id, 1);
+    hydrateCheckpointContext(context, slot);
+    const initial = useCheckpointStore.getState().drafts['student-1'];
+    useCheckpointStore.getState().setTheoryInput('student-1', '1');
+    expect(useCheckpointStore.getState().applyGradeResult('student-1', gradeResult(4.5, null), {
+      theoryVersion: initial.theoryVersion,
+      practiceVersion: initial.practiceVersion,
+      descriptionVersion: initial.descriptionVersion,
+    })).toBe(false);
+    expect(useCheckpointStore.getState().drafts['student-1'].theoryInput).toBe('1');
+    expect(useCheckpointStore.getState().gradeResults['student-1'].theoryScore).toBe(4.5);
+
+    const current = useCheckpointStore.getState().drafts['student-1'];
+    useCheckpointStore.getState().setTeacherDescription('student-1', '');
+    const emptyDescription = useCheckpointStore.getState().drafts['student-1'];
+    expect(useCheckpointStore.getState().applyGradeResult('student-1', gradeResult(5, 4.5, 'LT: 10/10.'), {
+      theoryVersion: current.theoryVersion,
+      practiceVersion: current.practiceVersion,
+      descriptionVersion: emptyDescription.descriptionVersion,
+    })).toBe(true);
+    expect(useCheckpointStore.getState().drafts['student-1']).toMatchObject({
+      theoryInput: '5',
+      practiceInput: '4.5',
+      teacherDescription: 'LT: 10/10.',
+    });
   });
 });
 
@@ -143,6 +175,14 @@ function checkpointArea(theory: number, practice: number) {
 }
 function result(studentId: string, attendanceId: string, theoryScore = 4, practiceScore = 4.5) {
   return { slotId: slot.id, studentId, attendanceId, submitted: true as const, mode: 'full' as const, summaryIncluded: true, logged: true, theoryScore, practiceScore, totalScore: 4.3, rank: 'B' as const, questions: Array.from({ length: 10 }, (_, index) => ({ number: index + 1, correct: index < 8, score: index < 8 ? 0.5 as const : 0 as const })) };
+}
+function gradeResult(theoryScore: number | null, practiceScore: number | null, teacherNotes = '') {
+  return {
+    studentId: 'student-1', examId: 'exam-1', branch: 'original' as const, skippedScratch: true as const,
+    theoryScore, practiceScore, teacherNotes,
+    mc: { total: 10, correct: 9, items: [] },
+    essay: { notes: '', items: [] },
+  };
 }
 function status(defaultBranch: 'original' | 'makeup'): CheckpointStatusResult {
   const branch = (value: 'original' | 'makeup') => ({ branch: value, submittedAt: value === 'original' ? '2026-01-01T00:00:00Z' : '2026-01-02T00:00:00Z', practiceType: 'SCRATCH', links: [] });

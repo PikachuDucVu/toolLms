@@ -10,6 +10,8 @@ export interface Env {
   OPENROUTER_API_KEY?: string;
   LMS_EMAIL?: string;
   LMS_PASSWORD?: string;
+  KIEMTRA_BASE_URL?: string;
+  KIEMTRA_API_SECRET?: string;
 }
 
 export interface SessionRecord {

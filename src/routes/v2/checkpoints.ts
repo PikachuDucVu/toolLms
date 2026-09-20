@@ -4,10 +4,22 @@ import {
   CheckpointSubmitRequestSchema,
   EntityIdSchema,
   GenerateCheckpointCommentRequestSchema,
+  GradeCheckpointRequestSchema,
 } from "@tool-lms/contracts";
 import type { Env } from "../../types";
 import type { RequestContextVariables } from "../../middleware/requestContext";
 import { generateCheckpointCommentWithAi } from "../../services/aiClient";
+import {
+  CheckpointGradeMalformedError,
+  CheckpointGradeNotFoundError,
+  CheckpointGradeTimeoutError,
+  CheckpointGradeUpstreamError,
+} from "../../services/checkpointGradeClient";
+import {
+  CheckpointGradeApiKeyRequiredError,
+  CheckpointGradeUnavailableError,
+  gradeCheckpointStudent,
+} from "../../services/checkpointGradingService";
 import {
   CheckpointStatusMalformedError,
   CheckpointStatusTimeoutError,
@@ -49,6 +61,20 @@ v2CheckpointClassRoutes.get("/:classId/checkpoints/:checkpoint/status", async (c
     await saveSession(c.env, context.session);
     const status = await fetchCheckpointStatus(classId, checkpoint.data);
     return v2Success(c, status);
+  } catch (error) {
+    return checkpointError(c, error);
+  }
+});
+
+v2CheckpointRoutes.post("/grade", async (c) => {
+  const session = await requireV2Session(c);
+  if (session instanceof Response) return session;
+  const body = await parseV2Json(c, GradeCheckpointRequestSchema);
+  if (body instanceof Response) return body;
+  try {
+    const result = await gradeCheckpointStudent(c.env, new LmsClient(c.env), session, body);
+    await saveSession(c.env, result.session);
+    return v2Success(c, result.result);
   } catch (error) {
     return checkpointError(c, error);
   }
@@ -116,9 +142,17 @@ function pathId(c: V2Context, name: string): string | Response {
 }
 
 function checkpointError(c: V2Context, error: unknown): Response {
-  if (error instanceof CommentContextNotFoundError) return v2Error(c, "NOT_FOUND", error.message, 404);
+  if (error instanceof CommentContextNotFoundError || error instanceof CheckpointGradeNotFoundError) return v2Error(c, "NOT_FOUND", error.message, 404);
   if (error instanceof CommentContextInvalidError) return v2Error(c, "VALIDATION_ERROR", error.message, 422);
-  if (error instanceof CommentUpstreamError || error instanceof CheckpointStatusUpstreamError || error instanceof CheckpointStatusMalformedError) return v2Error(c, "UPSTREAM_ERROR", error.message, 502);
-  if (error instanceof CheckpointStatusTimeoutError) return v2Error(c, "UPSTREAM_ERROR", error.message, 504);
+  if (error instanceof CheckpointGradeApiKeyRequiredError) return v2Error(c, "API_KEY_REQUIRED", error.message, 422);
+  if (error instanceof CheckpointGradeUnavailableError) return v2Error(c, "VALIDATION_ERROR", error.message, 422);
+  if (
+    error instanceof CommentUpstreamError
+    || error instanceof CheckpointStatusUpstreamError
+    || error instanceof CheckpointStatusMalformedError
+    || error instanceof CheckpointGradeUpstreamError
+    || error instanceof CheckpointGradeMalformedError
+  ) return v2Error(c, "UPSTREAM_ERROR", error.message, 502);
+  if (error instanceof CheckpointStatusTimeoutError || error instanceof CheckpointGradeTimeoutError) return v2Error(c, "UPSTREAM_ERROR", error.message, 504);
   throw error;
 }

@@ -125,12 +125,14 @@ describe("regular comment AI orchestration", () => {
   });
 
   it("returns a 522 direct-fallback envelope built from the exact same policy", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(aiResponse("error code: 522", 522));
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(aiResponse("error code: 522", 522))
+      .mockResolvedValueOnce(aiResponse("error code: 522", 522));
     const facts = buildCommentFacts(baseInput);
 
     const result = await generateCommentWithAi(env, config, baseInput);
 
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
     expect(result.error).toContain("522");
     expect(result.directFallback).toEqual({
       messages: buildCommentMessages(facts),

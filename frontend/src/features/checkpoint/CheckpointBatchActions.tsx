@@ -1,12 +1,14 @@
-import { CheckCircle, Sparkles } from 'lucide-react';
+import { CheckCircle, ClipboardCheck, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../components/ui/Toast';
 import {
   captureCheckpointFullBatch,
   captureCheckpointGenerationBatch,
+  captureCheckpointGradeBatch,
   captureCheckpointScoreOnlyBatch,
   generateCheckpointBatch,
+  gradeCheckpointBatch,
   submitCheckpointFullBatch,
   submitCheckpointScoreOnlyBatch,
   type CheckpointGenerationOptions,
@@ -24,6 +26,18 @@ export function CheckpointBatchActions({ scope, generationOptions, presentCount,
   const [result, setResult] = useState<CheckpointBatchResultView | null>(null);
   const blocked = disabled || Boolean(batch) || presentCount === 0;
 
+  const runGrade = async () => {
+    try {
+      assertGenerationOptions(generationOptions);
+      const frozen = captureCheckpointGradeBatch(scope, generationOptions);
+      const accepted = await confirm({ title: 'AI chấm bài Checkpoint cả lớp', description: `AI sẽ đọc đề + bài nộp (trắc nghiệm và tự luận, bỏ qua Scratch) của ${frozen.students.length} học sinh có mặt đã nộp bài, rồi điền điểm lý thuyết/thực hành. Tiếp tục?`, confirmLabel: 'AI chấm' });
+      if (!accepted) return;
+      const outcome = await gradeCheckpointBatch(scope, frozen);
+      const next: CheckpointBatchResultView = { kind: 'grade', attempted: outcome.attempted, successful: outcome.successful, generationAttempted: 0, generationSuccessful: 0, failures: outcome.failures };
+      setResult(next);
+      toast.show(outcome.failures.length ? `Đã chấm AI ${outcome.successful}/${outcome.attempted}; ${outcome.failures.length} lỗi.` : `Đã chấm AI ${outcome.successful}/${outcome.attempted} học sinh.`, outcome.failures.length ? 'error' : 'success');
+    } catch (cause) { if (!isAbort(cause)) toast.show(errorText(cause), 'error'); }
+  };
   const runGenerate = async () => {
     try {
       assertGenerationOptions(generationOptions);
@@ -63,6 +77,16 @@ export function CheckpointBatchActions({ scope, generationOptions, presentCount,
   return (
     <section className="checkpoint-batch-wrapper" aria-label="Thao tác Checkpoint cả lớp">
       <div className="action-bar checkpoint-action-bar" id="checkpointActionBar">
+        <button
+          type="button"
+          className="btn btn-outline"
+          disabled={blocked}
+          onClick={() => void runGrade()}
+          id="gradeCheckpointAllBtn"
+        >
+          <ClipboardCheck size={16} />
+          AI chấm tất cả đã nộp
+        </button>
         <button
           type="button"
           className="btn btn-outline"

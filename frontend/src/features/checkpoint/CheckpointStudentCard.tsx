@@ -1,10 +1,12 @@
 import type { CheckpointSubmitResult, StudentAttendance } from '@tool-lms/contracts';
-import { MessageSquareText, Send, Sparkles, Trash2 } from 'lucide-react';
+import { ClipboardCheck, MessageSquareText, Send, Sparkles, Trash2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useToast } from '../../components/ui/Toast';
 import { attendancePresentation, existingContentComment, hasModeSubmission, isPresent, stripHtml, studentInitials } from '../classes/public/domain';
 import {
   generateCheckpointStudent,
+  gradeCheckpointStudent,
+  studentHasGradableSubmission,
   submitCheckpointFullSingle,
   submitCheckpointScoreOnlySingle,
   type CheckpointGenerationOptions,
@@ -19,10 +21,16 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
   const toast = useToast();
   const draft = useCheckpointStore((state) => state.drafts[student.studentId]);
   const result = useCheckpointStore((state) => state.results[student.studentId]);
+  const gradeResult = useCheckpointStore((state) => state.gradeResults[student.studentId]);
   const rowError = useCheckpointStore((state) => state.rowErrors[student.studentId]);
   const generationBusy = useCheckpointStore((state) => state.generationBusy.has(student.studentId));
   const submitBusy = useCheckpointStore((state) => state.submitBusy.has(student.studentId));
-  const operationActive = useCheckpointStore((state) => state.generationBusy.size > 0 || state.submitBusy.size > 0 || Boolean(state.batch));
+  const gradeBusy = useCheckpointStore((state) => state.gradeBusy.has(student.studentId));
+  const operationActive = useCheckpointStore((state) => state.generationBusy.size > 0 || state.submitBusy.size > 0 || state.gradeBusy.size > 0 || Boolean(state.batch));
+  useCheckpointStore((state) => state.status);
+  useCheckpointStore((state) => state.statusResult);
+  useCheckpointStore((state) => state.selectedBranches[student.studentId]);
+  const canGrade = studentHasGradableSubmission(student.studentId);
   const summaryDraft = useCheckpointStore((state) => state.summaryDraft);
   const storedExpanded = useCheckpointStore((state) => state.expanded[student.studentId]);
   const dirty = useCheckpointStore((state) => isCheckpointDraftDirty(state, student.studentId));
@@ -56,7 +64,17 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
   const averageText = hasBoth ? ((curTheory + curPractice) / 2).toFixed(1) : '?';
   const rank = hasBoth ? getCheckpointRank(curTheory, curPractice) : '';
 
-  const fail = (cause: unknown, phase: 'generation' | 'submission') => {
+  const grade = async () => {
+    try {
+      const outcome = await gradeCheckpointStudent(scope, student.studentId, generationOptions);
+      const parts = [
+        outcome.theoryScore != null ? `LT ${formatScore(outcome.theoryScore)}` : null,
+        outcome.practiceScore != null ? `TH ${formatScore(outcome.practiceScore)}` : null,
+      ].filter(Boolean);
+      toast.show(`Đã AI chấm ${student.displayName}${parts.length ? `: ${parts.join(' • ')}` : ''}`);
+    } catch (cause) { fail(cause, 'grading'); }
+  };
+  const fail = (cause: unknown, phase: 'generation' | 'submission' | 'grading') => {
     if (isAbort(cause)) return;
     const message = errorText(cause);
     useCheckpointStore.getState().setRowError(student.studentId, phase, message);
@@ -285,9 +303,21 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
                     </div>
                   </div>
                   <DerivedScore theory={draft.theoryInput} practice={draft.practiceInput} />
-                  <p className="checkpoint-inline-hint">Để trống = tự động random 4–5 điểm</p>
+                  <p className="checkpoint-inline-hint">Để trống = tự động random 4–5 điểm. AI chấm dựa trên đề + bài nộp (bỏ qua Scratch).</p>
                 </div>
               </section>
+
+              {gradeResult && (
+                <section className="checkpoint-grade-result" aria-label={`Kết quả AI chấm của ${student.displayName}`}>
+                  <strong>Kết quả AI chấm bài</strong>
+                  <div className="checkpoint-grade-result-scores">
+                    <span>Lý thuyết <b>{gradeResult.theoryScore == null ? '—' : formatScore(gradeResult.theoryScore)}</b>{gradeResult.mc.total > 0 ? ` (${gradeResult.mc.correct}/${gradeResult.mc.total} đúng)` : ''}</span>
+                    <span>Thực hành <b>{gradeResult.practiceScore == null ? '—' : formatScore(gradeResult.practiceScore)}</b></span>
+                    {gradeResult.skippedScratch && <span className="badge badge-gray">Bỏ qua Scratch</span>}
+                  </div>
+                  {gradeResult.teacherNotes.trim() && <p>{gradeResult.teacherNotes}</p>}
+                </section>
+              )}
 
               {existingContent.trim() && (
                 <details className="cp-existing-details">
@@ -368,14 +398,25 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
                 </section>
               )}
 
-              {(rowError?.generation || rowError?.submission) && (
+              {(rowError?.generation || rowError?.submission || rowError?.grading) && (
                 <div className="checkpoint-row-errors" aria-live="assertive">
+                  {rowError.grading && <p role="alert"><strong>Lỗi AI chấm:</strong> {rowError.grading}</p>}
                   {rowError.generation && <p role="alert"><strong>Lỗi tạo AI:</strong> {rowError.generation}</p>}
                   {rowError.submission && <p role="alert"><strong>Lỗi submit:</strong> {rowError.submission}</p>}
                 </div>
               )}
 
               <div className="student-actions checkpoint-actions">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  disabled={locked || operationActive || !canGrade}
+                  title={canGrade ? 'Chấm trắc nghiệm và tự luận từ bài nộp kiemtra' : 'Học sinh chưa nộp bài trên kiemtra'}
+                  onClick={() => void grade()}
+                >
+                  <ClipboardCheck size={16} />
+                  {gradeBusy ? 'Đang chấm…' : 'AI chấm bài'}
+                </button>
                 <button
                   type="button"
                   className="btn btn-sm btn-primary"

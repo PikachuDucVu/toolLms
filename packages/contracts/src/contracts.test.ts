@@ -22,6 +22,8 @@ import {
   SubmitCommentRequestSchema,
   SubmitCommentResponseSchema,
   CheckpointSubmitRequestSchema,
+  GradeCheckpointRequestSchema,
+  CheckpointGradeResultSchema,
   DemoRandomPreviewResponseSchema,
   DemoSubmitRequestSchema,
   StudentWorkSchema,
@@ -286,5 +288,22 @@ describe('shared network contracts', () => {
       studentId: 'student-1',
       title: 'Project 1',
     }).title).toBe('Project 1');
+  });
+
+  it('accepts checkpoint AI grade requests and results without scratch payloads', () => {
+    expect(GradeCheckpointRequestSchema.parse({
+      classId: 'class-1', slotId: 'slot-5', studentId: 'student-1', checkpoint: 1, branch: 'original',
+    }).checkpoint).toBe(1);
+    expect(GradeCheckpointRequestSchema.safeParse({
+      classId: 'class-1', slotId: 'slot-5', studentId: 'student-1', checkpoint: 3,
+    }).success).toBe(false);
+    const result = CheckpointGradeResultSchema.parse({
+      studentId: 'student-1', examId: 'exam-1', branch: 'original', skippedScratch: true,
+      theoryScore: 4.5, practiceScore: 4, teacherNotes: 'LT: 9/10.',
+      mc: { total: 10, correct: 9, items: [{ number: 1, studentAnswer: 'A', correctAnswer: 'A', correct: true }] },
+      essay: { notes: 'Tốt', items: [{ number: 1, score: 4, note: 'Đủ ý' }] },
+    });
+    expect(result.skippedScratch).toBe(true);
+    expect(result).not.toHaveProperty('scratchProject');
   });
 });

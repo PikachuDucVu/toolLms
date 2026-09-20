@@ -1,6 +1,7 @@
 import {
   AI_MODELS,
   ANTIGRAVITY_API_URL,
+  ANTIGRAVITY_CHAT_URL_HTTPS,
   CUSTOM_MODEL_OPTION_ID,
   DEFAULT_AI_MODEL,
   DEFAULT_THINKING_LEVEL,
@@ -9,7 +10,16 @@ import {
   type ThinkingLevel,
 } from "../constants/aiModels";
 import type { LearningLevel } from "../constants/learningLevels";
+import {
+  CheckpointExamKeySchema,
+  CheckpointScoreSchema,
+  type CheckpointEssayRubricItem,
+  type CheckpointExamKey,
+} from "@tool-lms/contracts";
 import type { AppConfig, Env } from "../types";
+import { extractJsonObject } from "./aiJson";
+import { roundCheckpointScore } from "./checkpointGrading";
+import { bytesToDataUrl } from "./remoteFileContent";
 import {
   buildCommentFacts,
   buildCommentMessages,
@@ -86,6 +96,11 @@ function applyThinkingToBody(body: Record<string, unknown>, model: string, think
   body.reasoning = { effort: thinkingLevel };
 }
 
+function isRetryableAiFailure(status?: number, error?: string): boolean {
+  if (status === 522 || status === 524) return true;
+  return /(?:error code:\s*)?(?:522|524)\b|too many redirects|network|fetch failed/i.test(error || "");
+}
+
 export async function callChatCompletion(
   env: Env,
   provider: string,
@@ -95,7 +110,9 @@ export async function callChatCompletion(
   openrouterKey?: string,
   thinkingLevel: ThinkingLevel = DEFAULT_THINKING_LEVEL,
 ): Promise<ChatResult> {
-  const url = provider === "antigravity" ? ANTIGRAVITY_API_URL : "https://openrouter.ai/api/v1/chat/completions";
+  const urls = provider === "antigravity"
+    ? [ANTIGRAVITY_API_URL, ANTIGRAVITY_CHAT_URL_HTTPS]
+    : ["https://openrouter.ai/api/v1/chat/completions"];
   const key = provider === "antigravity" ? apiKey || env.ANTIGRAVITY_API_KEY : apiKey || openrouterKey || env.OPENROUTER_API_KEY;
   if (!key) return { error: provider === "antigravity" ? "Vui lòng nhập API Key" : "Please set OpenRouter API key" };
 
@@ -107,32 +124,46 @@ export async function callChatCompletion(
   };
   applyThinkingToBody(body, model, thinkingLevel);
   if (provider !== "antigravity") body.provider = { data_collection: "allow" };
+  const payload = JSON.stringify(body);
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${key}`,
+    ...(provider !== "antigravity"
+      ? { "HTTP-Referer": "https://mindx.edu.vn", "X-Title": "LMS Auto Comment" }
+      : {}),
+  };
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-        ...(provider !== "antigravity"
-          ? { "HTTP-Referer": "https://mindx.edu.vn", "X-Title": "LMS Auto Comment" }
-          : {}),
-      },
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "AI request failed" };
+  let lastError = "AI request failed";
+  let lastStatus: number | undefined;
+  for (const [index, url] of urls.entries()) {
+    let response: Response | undefined;
+    try {
+      response = await fetch(url, { method: "POST", headers, body: payload });
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : "AI request failed";
+      if (index < urls.length - 1 && isRetryableAiFailure(undefined, lastError)) continue;
+      return { error: lastError };
+    }
+    if (!response) {
+      lastError = "AI request failed";
+      if (index < urls.length - 1) continue;
+      return { error: lastError };
+    }
+    const text = await response.text();
+    if (!response.ok) {
+      lastError = text.slice(0, 200) || String(response.status);
+      lastStatus = response.status;
+      if (index < urls.length - 1 && isRetryableAiFailure(response.status, lastError)) continue;
+      return { error: lastError, status: response.status };
+    }
+    try {
+      const data = JSON.parse(text) as { choices?: Array<{ message?: { content?: string } }> };
+      return { content: data.choices?.[0]?.message?.content };
+    } catch {
+      return { error: text.slice(0, 200) || "Invalid AI response" };
+    }
   }
-  const text = await response.text();
-  if (!response.ok) return { error: text.slice(0, 200) || String(response.status), status: response.status };
-
-  try {
-    const data = JSON.parse(text) as { choices?: Array<{ message?: { content?: string } }> };
-    return { content: data.choices?.[0]?.message?.content };
-  } catch {
-    return { error: text.slice(0, 200) || "Invalid AI response" };
-  }
+  return { error: lastError, ...(lastStatus ? { status: lastStatus } : {}) };
 }
 
 export async function generateCommentWithAi(
@@ -328,5 +359,135 @@ Chỉ trả về JSON, không thêm gì khác.${codeSection}${otherSection}`;
     return { success: true, score: Math.min(100, Math.max(0, Number(parsed.score ?? 100))), note: parsed.note || "" };
   } catch {
     return { success: false, error: "AI không trả về JSON hợp lệ", raw };
+  }
+}
+
+function pdfFilePart(bytes: Uint8Array, filename = "de-bai.pdf") {
+  return {
+    type: "file",
+    file: {
+      filename,
+      file_data: bytesToDataUrl(bytes, "application/pdf"),
+    },
+  };
+}
+
+export async function extractCheckpointExamKeyWithAi(
+  env: Env,
+  config: AppConfig,
+  input: {
+    pdfBytes: Uint8Array;
+    mcQuestionCount: number;
+    essayQuestionCount: number;
+    modelId?: string;
+    customModelId?: string;
+    thinkingLevel?: string;
+    apiKey?: string;
+  },
+): Promise<{ success: true; key: CheckpointExamKey } | { success: false; error: string }> {
+  const model = resolveModelId(input.modelId, input.customModelId, String(config.ai_model || DEFAULT_AI_MODEL));
+  const thinkingLevel = resolveThinkingLevel(model, input.thinkingLevel, String(config.thinking_level || ""));
+  const provider = getModelProvider(input.modelId || model);
+  const prompt = `Bạn là giáo viên lập trình tại MindX Technology School. Đây là file PDF đề bài kiểm tra Checkpoint.
+
+Hãy đọc đề và trích xuất:
+1. Đáp án trắc nghiệm: đề có ${input.mcQuestionCount} câu trắc nghiệm. Với mỗi câu, cho đáp án đúng (A/B/C/D hoặc giá trị tương ứng) và giải thích ngắn.
+2. Câu tự luận: đề có ${input.essayQuestionCount} câu tự luận. Với mỗi câu, nêu yêu cầu đề bài và tiêu chí chấm (bài đạt điểm tối đa cần có gì).
+
+BỎ QUA hoàn toàn phần Scratch nếu có trong đề.
+
+Trả về JSON đúng dạng:
+{"mc":[{"number":1,"correct":"A","explanation":"..."}],"essay":[{"number":1,"prompt":"...","rubric":"..."}]}
+Chỉ trả về JSON, không markdown, không giải thích thêm.`;
+
+  const content = [{ type: "text", text: prompt }, pdfFilePart(input.pdfBytes)];
+  const result = await callChatCompletion(env, provider, model, content, input.apiKey, String(config.openrouter_key || ""), thinkingLevel);
+  if (result.error) return { success: false, error: `AI lỗi: ${result.error}` };
+  try {
+    const parsed = CheckpointExamKeySchema.safeParse(extractJsonObject(result.content || ""));
+    if (!parsed.success) return { success: false, error: "AI không trả về đáp án đề hợp lệ" };
+    return { success: true, key: parsed.data };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "AI không trả về JSON hợp lệ" };
+  }
+}
+
+export async function gradeCheckpointEssayWithAi(
+  env: Env,
+  config: AppConfig,
+  input: {
+    studentName: string;
+    pdfBytes?: Uint8Array;
+    rubric: CheckpointEssayRubricItem[];
+    essayAnswers: Record<string, string>;
+    textFiles: Array<{ name: string; content: string }>;
+    imageUrls: string[];
+    otherFiles: string[];
+    modelId?: string;
+    customModelId?: string;
+    thinkingLevel?: string;
+    apiKey?: string;
+  },
+): Promise<{ success: true; practiceScore: number; notes: string; items: Array<{ number: number; score: number; note: string }> } | { success: false; error: string }> {
+  const model = resolveModelId(input.modelId, input.customModelId, String(config.ai_model || DEFAULT_AI_MODEL));
+  const thinkingLevel = resolveThinkingLevel(model, input.thinkingLevel, String(config.thinking_level || ""));
+  const provider = getModelProvider(input.modelId || model);
+
+  const rubricText = input.rubric.length
+    ? input.rubric.map((item) => `Câu ${item.number}: ${item.prompt || "(không có đề rút)"}\nTiêu chí: ${item.rubric || "Chấm theo mức hoàn thành yêu cầu đề"}`).join("\n\n")
+    : "Không trích được rubrics; hãy tự đọc đề PDF.";
+  const answerText = Object.keys(input.essayAnswers).length
+    ? Object.entries(input.essayAnswers).map(([number, text]) => `===== Câu ${number} =====\n${text}`).join("\n\n")
+    : "(Học sinh không nhập văn bản tự luận)";
+  const codeSection = input.textFiles.length
+    ? `\n\nNỘI DUNG FILE TỰ LUẬN:\n${input.textFiles.map((file) => `===== ${file.name} =====\n${file.content}`).join("\n\n")}`
+    : "";
+  const otherSection = input.otherFiles.length
+    ? `\n\nCÁC TỆP KHÔNG ĐỌC ĐƯỢC NỘI DUNG (chỉ có tên): ${input.otherFiles.join(", ")}`
+    : "";
+
+  const prompt = `Bạn là giáo viên chấm phần TỰ LUẬN bài kiểm tra Checkpoint tại MindX Technology School.
+Thang điểm 0 đến 5, bước 0.5. BỎ QUA hoàn toàn Scratch.
+
+Học sinh: ${input.studentName}
+
+ĐỀ / TIÊU CHÍ TỰ LUẬN:
+${rubricText}
+
+BÀI LÀM VĂN BẢN:
+${answerText}${codeSection}${otherSection}
+
+Chấm dựa trên mức hoàn thành yêu cầu đề, chất lượng lập trình/logic, và mức rõ ràng của bài làm.
+Nếu học sinh không có bài tự luận, cho 0.
+
+Trả về JSON:
+{"practiceScore": <0-5 bước 0.5>, "notes": "<2-4 câu tiếng Việt>", "byQuestion": [{"number": 1, "score": 4.0, "note": "..."}]}
+Chỉ trả về JSON.`;
+
+  const content: unknown[] = [{ type: "text", text: prompt }];
+  if (input.pdfBytes?.byteLength) content.push(pdfFilePart(input.pdfBytes));
+  for (const url of input.imageUrls) content.push({ type: "image_url", image_url: { url } });
+
+  const result = await callChatCompletion(env, provider, model, content, input.apiKey, String(config.openrouter_key || ""), thinkingLevel);
+  if (result.error) return { success: false, error: `AI lỗi: ${result.error}` };
+  try {
+    const raw = extractJsonObject(result.content || "") as Record<string, unknown>;
+    const practiceParsed = CheckpointScoreSchema.safeParse(roundCheckpointScore(Number(raw.practiceScore)));
+    const notes = typeof raw.notes === "string" ? raw.notes.slice(0, 5_000) : "";
+    const items = Array.isArray(raw.byQuestion)
+      ? raw.byQuestion.flatMap((item) => {
+          if (!item || typeof item !== "object") return [];
+          const row = item as Record<string, unknown>;
+          const number = Number(row.number);
+          const score = CheckpointScoreSchema.safeParse(roundCheckpointScore(Number(row.score)));
+          if (!Number.isInteger(number) || number < 1 || !score.success) return [];
+          return [{ number, score: score.data, note: typeof row.note === "string" ? row.note.slice(0, 2_000) : "" }];
+        })
+      : [];
+    if (!practiceParsed.success && !items.length) return { success: false, error: "AI không trả về điểm tự luận hợp lệ" };
+    const practiceScore = practiceParsed.success ? practiceParsed.data : roundCheckpointScore(items.reduce((sum, item) => sum + item.score, 0) / items.length);
+    return { success: true, practiceScore, notes, items };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "AI không trả về JSON hợp lệ" };
   }
 }

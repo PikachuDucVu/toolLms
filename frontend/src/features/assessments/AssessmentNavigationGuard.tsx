@@ -13,7 +13,7 @@ export function AssessmentNavigationGuard() {
   const toast = useToast();
   useCommentStore((state) => state.studentBusy.size + (state.batch ? 1 : 0) + (state.summaryBusy ? 1 : 0) + Object.keys(state.drafts).length + Number(state.summaryDraft.trim() !== state.summarySynced.trim()));
   useDemoStore((state) => state.randomBusy.size + state.submitBusy.size + (state.batch ? 1 : 0) + Object.values(state.drafts).reduce((sum, draft) => sum + draft.version, 0) + Number(state.summaryDraft.trim() !== state.summarySynced.trim()));
-  useCheckpointStore((state) => state.generationBusy.size + state.submitBusy.size + (state.batch ? 1 : 0) + Object.values(state.drafts).reduce((sum, draft) => sum + draft.theoryVersion + draft.practiceVersion + draft.descriptionVersion + draft.commentVersion, 0) + state.summaryVersion);
+  useCheckpointStore((state) => state.generationBusy.size + state.submitBusy.size + state.gradeBusy.size + (state.batch ? 1 : 0) + Object.values(state.drafts).reduce((sum, draft) => sum + draft.theoryVersion + draft.practiceVersion + draft.descriptionVersion + draft.commentVersion, 0) + state.summaryVersion);
   const prompting = useRef(false);
   const activeAttempt = useRef(false);
   const blocker = useBlocker(({ currentLocation, nextLocation }) => {

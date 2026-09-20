@@ -1820,10 +1820,28 @@ html[data-theme="dark"] body::before {
 .checkpoint-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px dashed var(--feature-checkpoint-border);
+}
+
+.checkpoint-grade-result {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--feature-checkpoint-border);
+  border-radius: 12px;
+  background: var(--surface-card);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.checkpoint-grade-result-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 6px 0;
 }
 
 /* Badges */

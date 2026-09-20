@@ -1,18 +1,30 @@
 import {
+  CheckpointGradeResponseSchema,
   CheckpointStatusResponseSchema,
   CheckpointSubmitRequestSchema,
   CheckpointSubmitResponseSchema,
   GenerateCheckpointCommentRequestSchema,
   GenerateCheckpointCommentResponseSchema,
+  GradeCheckpointRequestSchema,
   type CheckpointNumber,
   type CheckpointSubmitRequest,
   type GenerateCheckpointCommentRequest,
+  type GradeCheckpointRequest,
 } from '@tool-lms/contracts';
 import { apiRequest } from '../../lib/apiClient';
 
 export function getCheckpointStatus(classId: string, checkpoint: CheckpointNumber, signal?: AbortSignal) {
   return apiRequest(`/api/v2/classes/${encodeURIComponent(classId)}/checkpoints/${checkpoint}/status`, {
     schema: CheckpointStatusResponseSchema,
+    signal,
+  });
+}
+
+export function gradeCheckpointExam(request: GradeCheckpointRequest, signal?: AbortSignal) {
+  return apiRequest('/api/v2/checkpoints/grade', {
+    method: 'POST',
+    body: GradeCheckpointRequestSchema.parse(request),
+    schema: CheckpointGradeResponseSchema,
     signal,
   });
 }

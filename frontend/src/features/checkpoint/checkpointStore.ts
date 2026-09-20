@@ -1,5 +1,6 @@
 import type {
   CheckpointBranch,
+  CheckpointGradeResult,
   CheckpointNumber,
   CheckpointStatusResult,
   CheckpointSubmitResult,
@@ -26,10 +27,10 @@ export type CheckpointStudentDraft = {
 export type CheckpointStudentBaseline = Omit<CheckpointStudentDraft, 'theoryVersion' | 'practiceVersion' | 'descriptionVersion' | 'commentVersion'>;
 export type CheckpointStatusErrorKind = 'timeout' | 'malformed' | 'upstream';
 export type CheckpointStatusError = { kind: CheckpointStatusErrorKind; message: string };
-export type CheckpointRowError = { generation?: string; submission?: string };
-export type CheckpointBatchPhase = 'generating' | 'submitting' | 'reloading';
+export type CheckpointRowError = { generation?: string; submission?: string; grading?: string };
+export type CheckpointBatchPhase = 'generating' | 'grading' | 'submitting' | 'reloading';
 export type CheckpointBatchState = {
-  kind: 'generate' | 'score_only' | 'full';
+  kind: 'generate' | 'grade' | 'score_only' | 'full';
   phase: CheckpointBatchPhase;
   scopeIds: string[];
   total: number;
@@ -38,6 +39,9 @@ export type CheckpointBatchState = {
   generationTotal: number;
   generationAttempted: number;
   generationSuccessful: number;
+  gradingTotal: number;
+  gradingAttempted: number;
+  gradingSuccessful: number;
   submissionAttempted: number;
   submissionSuccessful: number;
   rowErrors: Record<string, CheckpointRowError>;
@@ -49,6 +53,7 @@ interface CheckpointState {
   drafts: Record<string, CheckpointStudentDraft>;
   synced: Record<string, CheckpointStudentBaseline>;
   results: Record<string, CheckpointSubmitResult>;
+  gradeResults: Record<string, CheckpointGradeResult>;
   expanded: Record<string, boolean>;
   selectedBranches: Record<string, CheckpointBranch>;
   status: 'idle' | 'loading' | 'success' | 'error';
@@ -56,6 +61,7 @@ interface CheckpointState {
   statusError: CheckpointStatusError | null;
   generationBusy: Set<string>;
   submitBusy: Set<string>;
+  gradeBusy: Set<string>;
   rowErrors: Record<string, CheckpointRowError>;
   batch: CheckpointBatchState | null;
   summaryDraft: string;
@@ -70,6 +76,7 @@ interface CheckpointState {
   setCurrentComment: (studentId: string, value: string) => void;
   clearCommentDraft: (studentId: string) => void;
   applyGeneratedComment: (studentId: string, comment: string, expectedDescriptionVersion: number, expectedCommentVersion: number) => boolean;
+  applyGradeResult: (studentId: string, result: CheckpointGradeResult, expected: { theoryVersion: number; practiceVersion: number; descriptionVersion: number }) => boolean;
   setExpanded: (studentId: string, expanded: boolean) => void;
   setSelectedBranch: (studentId: string, branch: CheckpointBranch) => void;
   setSummaryDraft: (summary: string) => void;
@@ -78,6 +85,7 @@ interface CheckpointState {
   setStatusError: (context: CheckpointContext, error: CheckpointStatusError) => void;
   setGenerationBusy: (studentId: string, busy: boolean) => void;
   setSubmitBusy: (studentId: string, busy: boolean) => void;
+  setGradeBusy: (studentId: string, busy: boolean) => void;
   setRowError: (studentId: string, phase: keyof CheckpointRowError, message: string | null) => void;
   applySubmitSuccess: (studentId: string, result: CheckpointSubmitResult, submitted: CheckpointStudentDraft, clearComments: boolean) => void;
   startBatch: (batch: CheckpointBatchState) => void;
@@ -93,6 +101,7 @@ const freshState = () => ({
   drafts: {} as Record<string, CheckpointStudentDraft>,
   synced: {} as Record<string, CheckpointStudentBaseline>,
   results: {} as Record<string, CheckpointSubmitResult>,
+  gradeResults: {} as Record<string, CheckpointGradeResult>,
   expanded: {} as Record<string, boolean>,
   selectedBranches: {} as Record<string, CheckpointBranch>,
   status: 'idle' as const,
@@ -100,6 +109,7 @@ const freshState = () => ({
   statusError: null as CheckpointStatusError | null,
   generationBusy: new Set<string>(),
   submitBusy: new Set<string>(),
+  gradeBusy: new Set<string>(),
   rowErrors: {} as Record<string, CheckpointRowError>,
   batch: null as CheckpointBatchState | null,
   summaryDraft: '',
@@ -170,6 +180,37 @@ export const useCheckpointStore = create<CheckpointState>((set) => ({
     return { ...draft, currentComment: value, manualComment: value, provenance: value.trim() ? 'manual' : 'none', commentVersion: draft.commentVersion + 1 };
   })),
   clearCommentDraft: (studentId) => set((state) => updateDraft(state, studentId, (draft) => ({ ...draft, ...blankComment, commentVersion: draft.commentVersion + 1 }))),
+  applyGradeResult: (studentId, result, expected) => {
+    let applied = false;
+    set((state) => {
+      const draft = state.drafts[studentId];
+      const rowErrors = updateRowError(state.rowErrors, studentId, 'grading', null);
+      const gradeResults = { ...state.gradeResults, [studentId]: result };
+      if (!draft) return { gradeResults, rowErrors };
+      const next = { ...draft };
+      if (draft.theoryVersion === expected.theoryVersion && result.theoryScore != null) {
+        next.theoryInput = scoreString(result.theoryScore);
+        next.theoryVersion += 1;
+        applied = true;
+      }
+      if (draft.practiceVersion === expected.practiceVersion && result.practiceScore != null) {
+        next.practiceInput = scoreString(result.practiceScore);
+        next.practiceVersion += 1;
+        applied = true;
+      }
+      if (draft.descriptionVersion === expected.descriptionVersion && !draft.teacherDescription.trim() && result.teacherNotes.trim()) {
+        next.teacherDescription = result.teacherNotes;
+        next.descriptionVersion += 1;
+        applied = true;
+      }
+      return {
+        drafts: applied ? { ...state.drafts, [studentId]: next } : state.drafts,
+        gradeResults,
+        rowErrors,
+      };
+    });
+    return applied;
+  },
   applyGeneratedComment: (studentId, comment, expectedDescriptionVersion, expectedCommentVersion) => {
     let applied = false;
     set((state) => updateDraft(state, studentId, (draft) => {
@@ -197,6 +238,7 @@ export const useCheckpointStore = create<CheckpointState>((set) => ({
   setStatusError: (context, statusError) => set((state) => sameContext(state.context, context) ? { status: 'error', statusResult: null, statusError } : state),
   setGenerationBusy: (studentId, busy) => set((state) => ({ generationBusy: updateSet(state.generationBusy, studentId, busy) })),
   setSubmitBusy: (studentId, busy) => set((state) => ({ submitBusy: updateSet(state.submitBusy, studentId, busy) })),
+  setGradeBusy: (studentId, busy) => set((state) => ({ gradeBusy: updateSet(state.gradeBusy, studentId, busy) })),
   setRowError: (studentId, phase, message) => set((state) => ({ rowErrors: updateRowError(state.rowErrors, studentId, phase, message) })),
   applySubmitSuccess: (studentId, result, submitted, clearComments) => set((state) => {
     const live = state.drafts[studentId];
@@ -263,7 +305,7 @@ export function hasUnsavedCheckpointWork(): boolean {
 }
 export function isCheckpointOperationActive(): boolean {
   const state = useCheckpointStore.getState();
-  return state.generationBusy.size > 0 || state.submitBusy.size > 0 || Boolean(state.batch);
+  return state.generationBusy.size > 0 || state.submitBusy.size > 0 || state.gradeBusy.size > 0 || Boolean(state.batch);
 }
 export function effectiveCheckpointComment(draft: CheckpointStudentDraft): string {
   if (draft.generatedComment.trim()) return draft.currentComment === checkpointCommentPlainText(draft.generatedComment) ? draft.generatedComment : draft.currentComment;
@@ -302,7 +344,7 @@ function updateSet(source: Set<string>, value: string, add: boolean): Set<string
 function updateRowError(source: Record<string, CheckpointRowError>, studentId: string, phase: keyof CheckpointRowError, message: string | null): Record<string, CheckpointRowError> {
   const row = { ...(source[studentId] || {}) };
   if (message) row[phase] = message; else delete row[phase];
-  if (!row.generation && !row.submission) return withoutKey(source, studentId);
+  if (!row.generation && !row.submission && !row.grading) return withoutKey(source, studentId);
   return { ...source, [studentId]: row };
 }
 function withoutKey<T>(source: Record<string, T>, key: string): Record<string, T> { if (!(key in source)) return source; const next = { ...source }; delete next[key]; return next; }

@@ -133,3 +133,132 @@ export const CheckpointStatusResultSchema = z.object({
 export type CheckpointStatusResult = z.infer<typeof CheckpointStatusResultSchema>;
 export const CheckpointStatusResponseSchema = successEnvelope(CheckpointStatusResultSchema);
 export type CheckpointStatusResponse = z.infer<typeof CheckpointStatusResponseSchema>;
+
+export const CheckpointEssayQuestionModeSchema = z.enum(['TEXT', 'FILES', 'TEXT_AND_FILES']);
+export type CheckpointEssayQuestionMode = z.infer<typeof CheckpointEssayQuestionModeSchema>;
+
+export const CheckpointEssayQuestionConfigSchema = z.object({
+  question: z.number().int().min(1).max(50),
+  mode: CheckpointEssayQuestionModeSchema,
+  maxFiles: z.number().int().min(1).max(20),
+});
+export type CheckpointEssayQuestionConfig = z.infer<typeof CheckpointEssayQuestionConfigSchema>;
+
+export const CheckpointGradeEssayFileSchema = z.object({
+  question: z.string().min(1).max(20),
+  key: z.string().min(1).max(2_000),
+  url: z.string().min(1).max(5_000),
+  fileName: z.string().min(1).max(500),
+  contentType: z.string().max(200),
+  size: z.number().finite().nonnegative(),
+});
+export type CheckpointGradeEssayFile = z.infer<typeof CheckpointGradeEssayFileSchema>;
+
+export const CheckpointGradeExamMetaSchema = z.object({
+  id: EntityIdSchema,
+  className: z.string().max(500),
+  checkpoint: z.number().int().min(1).max(4),
+  status: z.string().max(100),
+  practiceType: z.string().max(100),
+  mcQuestionCount: z.number().int().min(0).max(50),
+  essayQuestionCount: z.number().int().min(0).max(50),
+  essayQuestionConfigs: z.array(CheckpointEssayQuestionConfigSchema).max(50),
+  pdfPath: z.string().min(1).max(2_000),
+});
+export type CheckpointGradeExamMeta = z.infer<typeof CheckpointGradeExamMetaSchema>;
+
+export const CheckpointGradeSubmissionSchema = z.object({
+  studentId: EntityIdSchema,
+  studentName: z.string().max(500),
+  examId: EntityIdSchema,
+  submittedAt: z.string().min(1).max(200),
+  mcAnswers: z.record(z.string(), z.string().max(200)).default({}),
+  essayAnswers: z.record(z.string(), z.string().max(50_000)).default({}),
+  essayFiles: z.array(CheckpointGradeEssayFileSchema).max(100),
+});
+export type CheckpointGradeSubmission = z.infer<typeof CheckpointGradeSubmissionSchema>;
+
+export const CheckpointGradeBranchPayloadSchema = z.object({
+  newestExamId: EntityIdSchema,
+  exams: z.record(z.string(), CheckpointGradeExamMetaSchema),
+  submissions: z.record(z.string(), CheckpointGradeSubmissionSchema),
+});
+export type CheckpointGradeBranchPayload = z.infer<typeof CheckpointGradeBranchPayloadSchema>;
+
+export const CheckpointGradePayloadSchema = z.object({
+  classId: EntityIdSchema,
+  checkpoint: CheckpointNumberSchema,
+  original: CheckpointGradeBranchPayloadSchema.nullable(),
+  makeup: CheckpointGradeBranchPayloadSchema.nullable(),
+});
+export type CheckpointGradePayload = z.infer<typeof CheckpointGradePayloadSchema>;
+
+export const CheckpointMcKeyItemSchema = z.object({
+  number: z.number().int().min(1).max(50),
+  correct: z.string().min(1).max(20),
+  explanation: z.string().max(2_000).optional().default(''),
+});
+export type CheckpointMcKeyItem = z.infer<typeof CheckpointMcKeyItemSchema>;
+
+export const CheckpointEssayRubricItemSchema = z.object({
+  number: z.number().int().min(1).max(50),
+  prompt: z.string().max(5_000).default(''),
+  rubric: z.string().max(5_000).default(''),
+});
+export type CheckpointEssayRubricItem = z.infer<typeof CheckpointEssayRubricItemSchema>;
+
+export const CheckpointExamKeySchema = z.object({
+  mc: z.array(CheckpointMcKeyItemSchema).max(50),
+  essay: z.array(CheckpointEssayRubricItemSchema).max(50),
+});
+export type CheckpointExamKey = z.infer<typeof CheckpointExamKeySchema>;
+
+export const CheckpointMcGradeItemSchema = z.object({
+  number: z.number().int().min(1).max(50),
+  studentAnswer: z.string().max(50).default(''),
+  correctAnswer: z.string().max(50).default(''),
+  correct: z.boolean(),
+});
+export type CheckpointMcGradeItem = z.infer<typeof CheckpointMcGradeItemSchema>;
+
+export const CheckpointEssayGradeItemSchema = z.object({
+  number: z.number().int().min(1).max(50),
+  score: CheckpointScoreSchema,
+  note: z.string().max(2_000).default(''),
+});
+export type CheckpointEssayGradeItem = z.infer<typeof CheckpointEssayGradeItemSchema>;
+
+export const CheckpointGradeResultSchema = z.object({
+  studentId: EntityIdSchema,
+  examId: EntityIdSchema,
+  branch: CheckpointBranchSchema,
+  skippedScratch: z.literal(true),
+  theoryScore: CheckpointScoreSchema.nullable(),
+  practiceScore: CheckpointScoreSchema.nullable(),
+  mc: z.object({
+    total: z.number().int().min(0).max(50),
+    correct: z.number().int().min(0).max(50),
+    items: z.array(CheckpointMcGradeItemSchema).max(50),
+  }),
+  essay: z.object({
+    notes: z.string().max(5_000).default(''),
+    items: z.array(CheckpointEssayGradeItemSchema).max(50),
+  }),
+  teacherNotes: z.string().max(5_000).default(''),
+});
+export type CheckpointGradeResult = z.infer<typeof CheckpointGradeResultSchema>;
+export const CheckpointGradeResponseSchema = successEnvelope(CheckpointGradeResultSchema);
+export type CheckpointGradeResponse = z.infer<typeof CheckpointGradeResponseSchema>;
+
+export const GradeCheckpointRequestSchema = z.object({
+  classId: EntityIdSchema,
+  slotId: EntityIdSchema,
+  studentId: EntityIdSchema,
+  checkpoint: CheckpointNumberSchema,
+  branch: CheckpointBranchSchema.optional(),
+  modelId: z.string().trim().min(1).max(500).optional(),
+  customModelId: z.string().trim().max(500).optional(),
+  thinkingLevel: z.string().max(100).optional(),
+  apiKey: z.string().max(2_000).optional(),
+});
+export type GradeCheckpointRequest = z.infer<typeof GradeCheckpointRequestSchema>;

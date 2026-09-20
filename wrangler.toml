@@ -41,3 +41,8 @@ queue = "lms-grading-queue"
 max_batch_size = 5
 max_batch_timeout = 30
 max_retries = 3
+
+[vars]
+KIEMTRA_BASE_URL = "https://kiemtra.ducvu.io.vn"
+# Secret KIEMTRA_API_SECRET: wrangler secret put KIEMTRA_API_SECRET
+# Same value as kiemtra TOOLLMS_SECRET.

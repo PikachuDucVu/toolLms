@@ -14,6 +14,8 @@ export const ANTIGRAVITY_API_URL = `${ANTIGRAVITY_BASE_URL}/chat/completions`;
 export const ANTIGRAVITY_MODELS_URL = `${ANTIGRAVITY_BASE_URL}/models`;
 /** Public HTTPS fallback for listing models (443). Chat still prefers :8317 from the Worker. */
 export const ANTIGRAVITY_MODELS_URL_HTTPS = "https://ai.ducvu.io.vn/v1/models";
+/** Chat fallback when Cloudflare cannot reach :8317 (often 522). */
+export const ANTIGRAVITY_CHAT_URL_HTTPS = "https://ai.ducvu.io.vn/v1/chat/completions";
 
 /** Fallback list when /v1/models is unreachable */
 export const AI_MODELS = [
