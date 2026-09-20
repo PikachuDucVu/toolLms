@@ -103,6 +103,12 @@ describe('class workspace selectors', () => {
     });
   });
 
+  it('treats LMS legacy comment field as submitted even without commentByAreas', () => {
+    const an = { ...student('an', 'An', 'ATTENDED'), comment: 'Dũng có thái độ học tập tích cực' };
+    expect(slotCommentProgress(slot('one', 0, [an]), 0)).toMatchObject({ present: 1, completed: 1, missing: 0 });
+    expect(computeClassCommentProgress([slot('one', 0, [an])])).toMatchObject({ state: 'done', completed: 1, missing: 0 });
+  });
+
   it('marks submitted students and flips class progress to done', () => {
     const an = student('an', 'An', 'ATTENDED');
     const binh = student('binh', 'Bình', 'ATTENDED');

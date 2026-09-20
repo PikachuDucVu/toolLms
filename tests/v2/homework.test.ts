@@ -121,6 +121,7 @@ describe('Phase 4 v2 classes/homework routes', () => {
     const v2 = await request('/api/v2/classes');
     const sentQuery = JSON.parse(String(fetchMock.mock.calls[0][1]?.body || '{}')).query as string;
     expect(sentQuery).toContain('studentAttendance');
+    expect(sentQuery).toMatch(/status\s+comment\s+commentStatus/);
     expect(sentQuery).toMatch(/commentByAreas\s*\{\s*type\s*\}/);
     const legacyBody = await legacy.json() as any;
     expect(legacyBody.classes[0]).toMatchObject({ upstreamOnly: true, classSites: [{ _id: 'site-1' }] });

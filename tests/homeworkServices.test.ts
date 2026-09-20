@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { GET_CLASSES_QUERY } from '../src/constants/lmsQueries';
+import { GET_CLASSES_QUERY, GET_CLASS_DETAIL_QUERY } from '../src/constants/lmsQueries';
 import { orderClasses, normalizeClassCommentProgress, normalizeClassList } from '../src/services/classService';
 import {
   createGradingJob,
@@ -63,7 +63,11 @@ describe('class service', () => {
 
   it('asks LMS for lightweight attendance so class-list badges are not always unknown', () => {
     expect(GET_CLASSES_QUERY).toContain('studentAttendance');
+    expect(GET_CLASSES_QUERY).toMatch(/status\s+comment\s+commentStatus/);
     expect(GET_CLASSES_QUERY).toMatch(/commentByAreas\s*\{\s*type\s*\}/);
+    expect(GET_CLASS_DETAIL_QUERY).toMatch(/status\s+startDate\s+endDate/);
+    expect(GET_CLASS_DETAIL_QUERY).toMatch(/status\s+comment\s+commentStatus/);
+    expect(GET_CLASS_DETAIL_QUERY).toMatch(/commentByAreas\s*\{/);
   });
 
   it('computes class-list comment progress from type-only attendance payloads', () => {
@@ -81,6 +85,25 @@ describe('class service', () => {
       { _id: 'slot-1', index: 0, date: '2026-09-01', studentAttendance: [{ status: 'ATTENDED', commentByAreas: [{ type: 'CONTENT' }] }] },
     ], now)).toMatchObject({
       state: 'done', badgeText: 'Đã nhận xét', slotNumber: 1, present: 1, completed: 1, missing: 0,
+    });
+  });
+
+  it('treats LMS legacy comment text and AUTO_APPROVED status as completed even without commentByAreas', () => {
+    const now = Date.parse('2026-09-14T00:00:00.000Z');
+    expect(normalizeClassCommentProgress([
+      { _id: 'slot-1', index: 0, date: '2026-08-16', studentAttendance: [{ status: 'ATTENDED', comment: 'Dũng có thái độ học tập tích cực', commentByAreas: [] }] },
+    ], now)).toMatchObject({
+      state: 'done', badgeText: 'Đã nhận xét', slotNumber: 1, present: 1, completed: 1, missing: 0,
+    });
+    expect(normalizeClassCommentProgress([
+      { _id: 'slot-1', index: 0, date: '2026-08-16', studentAttendance: [{ status: 'ATTENDED', commentStatus: { status: 'AUTO_APPROVED' }, commentByAreas: [] }] },
+    ], now)).toMatchObject({
+      state: 'done', badgeText: 'Đã nhận xét', slotNumber: 1, present: 1, completed: 1, missing: 0,
+    });
+    expect(normalizeClassCommentProgress([
+      { _id: 'slot-1', index: 0, date: '2026-08-16', studentAttendance: [{ status: 'ATTENDED', comment: '', commentStatus: { status: 'Pending' }, commentByAreas: [] }] },
+    ], now)).toMatchObject({
+      state: 'pending', badgeText: 'Chưa nhận xét', slotNumber: 1, present: 1, completed: 0, missing: 1,
     });
   });
 });

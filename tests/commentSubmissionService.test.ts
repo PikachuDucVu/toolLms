@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  asLmsCommentHtml,
   buildDefaultCommentPayload,
   buildSummaryPayload,
   isNewFormatStartDate,
@@ -56,6 +57,31 @@ describe("regular LMS golden payloads", () => {
       newFormat: true,
       summary: "Nội dung buổi học",
     })).toEqual(regularCommentPayloadFixtures.cutoffNewFormatAbsentWithSummary);
+  });
+
+  it("wraps plain LMS-web comments in <p> like the CSA32 HAR payload", () => {
+    expect(asLmsCommentHtml(".")).toBe("<p>.</p>");
+    expect(asLmsCommentHtml("<p>Đã có HTML</p>")).toBe("<p>Đã có HTML</p>");
+    const payload = buildDefaultCommentPayload({
+      ...base,
+      comment: ".",
+      attendanceId: "attendance-present",
+      studentId: "student-present",
+      newFormat: true,
+    });
+    expect(payload.studentComment).toEqual({
+      studentAttendanceId: "attendance-present",
+      studentId: "student-present",
+      content: "- Đánh giá chung: <p>.</p>",
+      byAreas: [{ content: "<p>.</p>", commentAreaId: "67b54307f79c7bc326e017ff", type: "CONTENT" }],
+    });
+    expect((payload.studentComment as { byAreas: unknown[] }).byAreas).toHaveLength(1);
+    expect((buildDefaultCommentPayload({
+      ...base,
+      attendanceId: "attendance-present",
+      studentId: "student-present",
+      newFormat: false,
+    }).studentComment as { byAreas: unknown[] }).byAreas).toHaveLength(8);
   });
 
   it("builds the exact summary-only payload with empty rank and no student comment", () => {

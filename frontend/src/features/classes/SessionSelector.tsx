@@ -8,7 +8,7 @@ import { useCommentStore } from "../comments/public/store";
 import { useDemoStore } from "../demo/public/store";
 import { saveSlotSummary } from "./api";
 import { classDetailQuery } from "./queries";
-import { getSlotDisplayNumber, sessionMode, stripHtml } from "./selectors";
+import { getSlotDisplayNumber, hasLegacyComment, sessionMode, stripHtml } from "./selectors";
 
 export function getSlotStatus(slot: Slot | undefined, slotIdx: number) {
   if (!slot) return { state: "empty", color: "gray", label: "Chưa có dữ liệu" };
@@ -22,13 +22,14 @@ export function getSlotStatus(slot: Slot | undefined, slotIdx: number) {
   }
 
   const completed = present.filter((att) =>
-    att.commentByAreas &&
-    att.commentByAreas.some(
-      (a) =>
-        (a.type === "CONTENT" && Boolean(stripHtml(a.content || "").trim())) ||
-        a.type === "CHECKPOINT" ||
-        a.type === "DEMO",
-    ),
+    hasLegacyComment(att) ||
+    (att.commentByAreas &&
+      att.commentByAreas.some(
+        (a) =>
+          (a.type === "CONTENT" && Boolean(stripHtml(a.content || "").trim())) ||
+          a.type === "CHECKPOINT" ||
+          a.type === "DEMO",
+      )),
   ).length;
   const missing = Math.max(present.length - completed, 0);
 

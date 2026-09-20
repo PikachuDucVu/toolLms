@@ -5,7 +5,7 @@ import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { BatchProgressBar } from '../../components/ui/ProgressBar';
 import { useToast } from '../../components/ui/Toast';
 import { useAssessmentStore } from '../assessments/public/store';
-import { isPresent } from '../classes/public/domain';
+import { existingContentComment, isPresent, stripHtml } from '../classes/public/domain';
 import { useReviewStore } from '../review/public/store';
 import { CopyDialog } from './CopyDialog';
 import { classZaloText, copyWithFallback, downloadCsv, regularCommentsCsv } from './copyExport';
@@ -281,5 +281,5 @@ function BatchProgress({
 }
 
 function existing(student: StudentAttendance): boolean {
-  return student.commentByAreas.some((area) => area.type === 'CONTENT' && area.content.trim());
+  return Boolean(stripHtml(existingContentComment(student)));
 }

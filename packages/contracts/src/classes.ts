@@ -141,6 +141,7 @@ export const StudentAttendanceSchema = z.object({
   studentId: EntityIdSchema,
   displayName: z.string().max(500),
   status: z.string().max(100),
+  comment: z.string().max(30_000).optional(),
   commentByAreas: z.array(CommentByAreaSchema).max(2_000),
 });
 export type StudentAttendance = z.infer<typeof StudentAttendanceSchema>;

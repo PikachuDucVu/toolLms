@@ -28,6 +28,14 @@ describe('comment workflow store and selectors', () => {
     expect(getStudentCallName('Trần Minh An', roster)).toBe('Minh An');
     expect(getStudentCallName('Lê Chi', roster)).toBe('Chi');
     expect(pastCommentSlots(detail, detail.slots[1], 'student-1')).toEqual([{ index: 1, commentByAreas: [{ type: 'CONTENT', content: '<p>Buổi trước</p>' }] }]);
+    const legacyDetail = {
+      ...detail,
+      slots: [
+        { ...detail.slots[0], studentAttendance: [{ id: 'legacy-attendance', studentId: 'student-1', displayName: 'Nguyễn Văn An', status: 'ATTENDED' as const, comment: 'Dũng có thái độ học tập tích cực', commentByAreas: [] }] },
+        detail.slots[1],
+      ],
+    };
+    expect(pastCommentSlots(legacyDetail, legacyDetail.slots[1], 'student-1')).toEqual([{ index: 1, commentByAreas: [{ type: 'CONTENT', content: 'Dũng có thái độ học tập tích cực' }] }]);
   });
 
   it('derives previous-homework facts only for legacy-supported regular sessions', () => {

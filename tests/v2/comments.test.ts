@@ -233,6 +233,7 @@ describe("v2 regular comments routes", () => {
     const result = SubmitCommentResponseSchema.parse(await response.json());
     expect(result.data).toMatchObject({ studentId, attendanceId, submitted: true, summaryIncluded: true, logged: true });
     const payload = calls[1].variables.payload;
+    expect(calls[0].query).toContain("startDate");
     expect(payload.studentComment.studentId).toBe(studentId);
     expect(payload.studentComment.studentAttendanceId).toBe(attendanceId);
     expect(payload.studentComment.byAreas).toHaveLength(8);

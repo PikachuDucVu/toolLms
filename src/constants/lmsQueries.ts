@@ -17,6 +17,8 @@ export const GET_CLASSES_QUERY = `query GetClasses($pageIndex: Int!, $itemsPerPa
         summary
         studentAttendance {
           status
+          comment
+          commentStatus { status }
           commentByAreas { type }
         }
       }
@@ -31,6 +33,9 @@ export const GET_CLASS_DETAIL_QUERY = `query GetClassById($id: ID!) {
   classesById(id: $id) {
     id
     name
+    status
+    startDate
+    endDate
     courseProcessId
     course { id name shortName }
     courseProcess {
@@ -68,6 +73,8 @@ export const GET_CLASS_DETAIL_QUERY = `query GetClassById($id: ID!) {
         _id
         student { id fullName }
         status
+        comment
+        commentStatus { feedback status version }
         commentByAreas {
           grade
           content

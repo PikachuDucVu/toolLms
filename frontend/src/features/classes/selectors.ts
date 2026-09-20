@@ -61,11 +61,20 @@ export function sessionMode(slot: Slot | null, slotIndex: string): SessionMode {
   return number === 14 ? 'demo' : number === 5 || number === 9 ? 'checkpoint' : 'regular';
 }
 
+export function hasVisibleCommentText(value: string | null | undefined): boolean {
+  return stripHtml(value || '').length > 0;
+}
+
+export function hasLegacyComment(attendance: StudentAttendance): boolean {
+  return hasVisibleCommentText(attendance.comment);
+}
+
 export function hasAreaType(attendance: StudentAttendance, type: string, requireContent = false): boolean {
-  return attendance.commentByAreas.some((area) => area.type === type && (!requireContent || area.content.trim().length > 0));
+  return attendance.commentByAreas.some((area) => area.type === type && (!requireContent || hasVisibleCommentText(area.content)));
 }
 
 export function hasModeSubmission(attendance: StudentAttendance, mode: SessionMode): boolean {
+  if (hasLegacyComment(attendance)) return true;
   if (mode === 'demo') return hasAreaType(attendance, 'DEMO') || hasAreaType(attendance, 'CONTENT', true);
   if (mode === 'checkpoint') return hasAreaType(attendance, 'CHECKPOINT') || hasAreaType(attendance, 'CONTENT', true);
   return hasAreaType(attendance, 'CONTENT', true);
@@ -131,7 +140,8 @@ export function autoSelectedSlotIndex(slots: Slot[], now = Date.now()): string {
 }
 
 export function existingContentComment(attendance: StudentAttendance): string {
-  return attendance.commentByAreas.find((area) => area.type === 'CONTENT')?.content || '';
+  const fromArea = attendance.commentByAreas.find((area) => area.type === 'CONTENT' && hasVisibleCommentText(area.content))?.content || '';
+  return fromArea || attendance.comment || '';
 }
 
 export function classCommentMeta(progress: ClassCommentProgress): string {

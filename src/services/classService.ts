@@ -165,10 +165,17 @@ function rawSlotCommentProgress(slot: Record<string, unknown>, slotIndex: number
 }
 
 function rawAttendanceCompleted(attendance: Record<string, unknown>, slot: Record<string, unknown>, slotIndex: number): boolean {
+  if (rawHasLegacyComment(attendance)) return true;
   const sessionNumber = rawSlotDisplayNumber(slot, slotIndex);
   if (sessionNumber === 14) return rawHasAreaType(attendance, "DEMO") || rawHasAreaType(attendance, "CONTENT", true);
   if (sessionNumber === 5 || sessionNumber === 9) return rawHasAreaType(attendance, "CHECKPOINT") || rawHasAreaType(attendance, "CONTENT", true);
   return rawHasAreaType(attendance, "CONTENT", true);
+}
+
+function rawHasLegacyComment(attendance: Record<string, unknown>): boolean {
+  if (hasVisibleText(attendance.comment)) return true;
+  const status = isRecord(attendance.commentStatus) ? stringValue(attendance.commentStatus.status).trim().toUpperCase() : "";
+  return Boolean(status) && status !== "PENDING";
 }
 
 function rawHasAreaType(attendance: Record<string, unknown>, type: string, requireContent = false): boolean {
@@ -176,7 +183,7 @@ function rawHasAreaType(attendance: Record<string, unknown>, type: string, requi
   return areas.some((area) => {
     if (stringValue(area.type) !== type) return false;
     if (!requireContent || !("content" in area)) return true;
-    return stringValue(area.content).trim().length > 0;
+    return hasVisibleText(area.content);
   });
 }
 
@@ -274,15 +281,35 @@ function normalizeAttendance(value: Record<string, unknown>) {
   const student = isRecord(value.student) ? value.student : null;
   const studentId = student ? stringValue(student.id) : "";
   if (!id || !studentId) return null;
+  const comment = stringValue(value.comment);
   return {
     id,
     studentId,
     displayName: stringValue(student?.fullName),
     status: stringValue(value.status),
-    commentByAreas: Array.isArray(value.commentByAreas)
-      ? value.commentByAreas.filter(isRecord).map(normalizeCommentArea)
-      : [],
+    ...(comment ? { comment } : {}),
+    commentByAreas: mergeLegacyContentArea(
+      Array.isArray(value.commentByAreas)
+        ? value.commentByAreas.filter(isRecord).map(normalizeCommentArea)
+        : [],
+      comment,
+    ),
   };
+}
+
+function mergeLegacyContentArea(
+  commentByAreas: ReturnType<typeof normalizeCommentArea>[],
+  rawComment: string,
+) {
+  if (!hasVisibleText(rawComment)) return commentByAreas;
+  const contentIndex = commentByAreas.findIndex((area) => area.type === "CONTENT");
+  if (contentIndex >= 0) {
+    if (hasVisibleText(commentByAreas[contentIndex].content)) return commentByAreas;
+    const next = commentByAreas.slice();
+    next[contentIndex] = { ...commentByAreas[contentIndex], content: rawComment };
+    return next;
+  }
+  return [...commentByAreas, normalizeCommentArea({ type: "CONTENT", content: rawComment })];
 }
 
 function normalizeCommentArea(value: Record<string, unknown>) {
@@ -317,6 +344,10 @@ function normalizeCommentArea(value: Record<string, unknown>) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasVisibleText(value: unknown): boolean {
+  return stringValue(value).replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim().length > 0;
 }
 
 function stringValue(value: unknown): string {

@@ -57,10 +57,15 @@ export function pastCommentSlots(detail: ClassDetail, currentSlot: Slot, student
     .sort((left, right) => Number(left.index) - Number(right.index))
     .flatMap((slot) => {
       const attendance = slot.studentAttendance.find((item) => item.studentId === studentId);
-      if (!attendance?.commentByAreas.length) return [];
+      if (!attendance) return [];
+      const commentByAreas = attendance.commentByAreas.map((area) => ({ type: area.type, ...(area.content ? { content: area.content } : {}) }));
+      if (!commentByAreas.length && attendance.comment) {
+        commentByAreas.push({ type: 'CONTENT', content: attendance.comment });
+      }
+      if (!commentByAreas.length) return [];
       return [{
         index: Number(slot.index) + 1,
-        commentByAreas: attendance.commentByAreas.map((area) => ({ type: area.type, ...(area.content ? { content: area.content } : {}) })),
+        commentByAreas,
       }];
     });
 }

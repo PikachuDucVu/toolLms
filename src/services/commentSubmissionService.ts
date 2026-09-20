@@ -60,6 +60,12 @@ export function isNewFormatStartDate(startDate: string | null): boolean {
   return Number.isFinite(timestamp) && timestamp >= Date.parse(NEW_CLASS_CUTOFF_DATE);
 }
 
+export function asLmsCommentHtml(value: string): string {
+  const trimmed = value.trim();
+  if (/<[a-z][\s\S]*>/i.test(trimmed)) return trimmed;
+  return `<p>${trimmed.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</p>`;
+}
+
 export async function loadRegularSlotContext(
   client: Pick<LmsClient, "callApi">,
   session: SessionRecord,
@@ -122,12 +128,13 @@ export function assertRegularCommentSession(context: RegularSlotContext): void {
 }
 
 export function buildDefaultCommentPayload(input: DefaultPayloadInput): Record<string, unknown> {
-  const contentArea = { content: input.comment, commentAreaId: CONTENT_AREA_ID, type: "CONTENT" };
+  const commentHtml = asLmsCommentHtml(input.comment);
+  const contentArea = { content: commentHtml, commentAreaId: CONTENT_AREA_ID, type: "CONTENT" };
   const byAreas = input.newFormat ? [contentArea] : [...DEFAULT_RATE_AREAS, contentArea];
   const contentParts = input.newFormat
     ? []
     : DEFAULT_RATE_AREAS.map((area, index) => `- [COD]  ${AREA_NAMES[index]}: ${area.content}`);
-  contentParts.push(`- Đánh giá chung: ${input.comment}`);
+  contentParts.push(`- Đánh giá chung: ${commentHtml}`);
 
   return {
     slotId: input.slotId,

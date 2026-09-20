@@ -63,6 +63,29 @@ describe('Phase 5 class detail DTO', () => {
     expect(detail).not.toHaveProperty('upstreamSecret');
   });
 
+  it('maps LMS legacy comment text into CONTENT so both old and new comment formats count as submitted', () => {
+    const detail = normalizeClassDetail({
+      ...rawDetail,
+      slots: [{ _id: 'slot-1', index: 0, date: '2026-08-16', summary: '<p>Homework 1</p>', studentAttendance: [{
+        _id: 'attendance-legacy', student: { id: 'student-legacy', fullName: 'Mai Việt Dũng' }, status: 'ATTENDED',
+        comment: 'Dũng có thái độ học tập tích cực và bước đầu làm quen với dữ liệu khá tốt',
+        commentStatus: { status: 'AUTO_APPROVED' },
+        commentByAreas: [],
+      }, {
+        _id: 'attendance-new', student: { id: 'student-new', fullName: 'Thạch Đình Quân' }, status: 'ATTENDED',
+        comment: '- Đánh giá chung: Quân đi học đúng giờ',
+        commentByAreas: [{ grade: 0, content: 'Quân đi học đúng giờ', commentAreaId: 'content-1', type: 'CONTENT' }],
+      }] }],
+    }, Date.parse('2026-09-20'));
+    expect(detail?.commentProgress).toMatchObject({ state: 'done', badgeText: 'Đã nhận xét', present: 2, completed: 2, missing: 0 });
+    expect(detail?.slots[0].studentAttendance[0]).toMatchObject({
+      comment: 'Dũng có thái độ học tập tích cực và bước đầu làm quen với dữ liệu khá tốt',
+      commentByAreas: [expect.objectContaining({ type: 'CONTENT', content: 'Dũng có thái độ học tập tích cực và bước đầu làm quen với dữ liệu khá tốt' })],
+    });
+    expect(detail?.slots[0].studentAttendance[1].commentByAreas.filter((area) => area.type === 'CONTENT')).toHaveLength(1);
+    expect(detail?.slots[0].studentAttendance[1].commentByAreas[0].content).toBe('Quân đi học đúng giờ');
+  });
+
   it('serves the validated v2 DTO while preserving the legacy raw class route', async () => {
     mockLms({ data: { classesById: rawDetail } });
     const v2 = await request('/api/v2/classes/class-1');
