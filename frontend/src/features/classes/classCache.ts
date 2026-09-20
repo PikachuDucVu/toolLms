@@ -32,11 +32,12 @@ export function applyOptimisticClassSubmissions(input: {
   slotId: string;
   studentIds: string[];
   mode?: SessionMode;
+  comments?: Record<string, string>;
 }): ClassDetail | null {
   const mode = input.mode ?? 'regular';
   const current = appQueryClient().getQueryData<ClassDetailResponse>(classDetailQuery(input.classId).queryKey)?.data.class;
   if (!current || current.id !== input.classId) return null;
-  return syncClassProgressFromDetail(applySubmittedComments(current, input.slotId, input.studentIds, mode));
+  return syncClassProgressFromDetail(applySubmittedComments(current, input.slotId, input.studentIds, mode, input.comments));
 }
 
 export function reconcileClassSubmissionsAfterRefetch(input: {
@@ -44,10 +45,14 @@ export function reconcileClassSubmissionsAfterRefetch(input: {
   slotId: string;
   studentIds: string[];
   mode?: SessionMode;
+  comments?: Record<string, string>;
 }): ClassDetail | null {
   const mode = input.mode ?? 'regular';
   const detail = appQueryClient().getQueryData<ClassDetailResponse>(classDetailQuery(input.classId).queryKey)?.data.class;
   if (!detail || detail.id !== input.classId) return applyOptimisticClassSubmissions(input);
+  if (input.comments && Object.keys(input.comments).length) {
+    return syncClassProgressFromDetail(applySubmittedComments(detail, input.slotId, input.studentIds, mode, input.comments));
+  }
   const slot = detail.slots.find((item) => item.id === input.slotId);
   const missing = input.studentIds.filter((studentId) => {
     const student = slot?.studentAttendance.find((item) => item.studentId === studentId);

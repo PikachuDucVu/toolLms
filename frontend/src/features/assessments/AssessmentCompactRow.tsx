@@ -56,20 +56,17 @@ export const AssessmentCompactRow = memo(function AssessmentCompactRow({
   const draft = draftReference || assessmentDraft(assessmentState, student.studentId);
   const attendance = attendancePresentation(student.status);
   const existingComment = stripHtml(existingContentComment(student));
+  const draftComment = stripHtml(commentDraft?.content || '');
   const level = levelCatalog(sessionNumber)[draft.learningLevel];
   const preview = commentError
     ? `Lỗi: ${commentError}`
-    : commentDraft?.content
-      ? commentDraft.content
-      : existingComment
-        ? existingComment
-        : status.kind === 'loading'
-          ? 'Đang tải đánh giá...'
-          : status.kind === 'load-error'
-            ? 'Không tải được đánh giá'
-            : isPresent(student)
-              ? level.label
-              : 'Vắng mặt';
+    : draftComment || existingComment || (
+      status.kind === 'loading'
+        ? 'Đang tải đánh giá...'
+        : status.kind === 'load-error'
+          ? 'Không tải được đánh giá'
+          : 'Chưa nhận xét'
+    );
 
   const select = useCallback(() => onSelect(student.studentId), [onSelect, student.studentId]);
 

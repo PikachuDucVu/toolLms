@@ -192,10 +192,10 @@ export function computeClassCommentProgress(slots: Slot[], now = Date.now()): Cl
   };
 }
 
-function placeholderCommentArea(type: string): StudentAttendance['commentByAreas'][number] {
+function placeholderCommentArea(type: string, content = ''): StudentAttendance['commentByAreas'][number] {
   return {
     grade: null,
-    content: type === 'CONTENT' ? 'Đã gửi' : '',
+    content: type === 'CONTENT' ? (content.trim() || 'Đã gửi') : content,
     commentAreaId: null,
     type,
     checkpoint: null,
@@ -206,22 +206,44 @@ function placeholderCommentArea(type: string): StudentAttendance['commentByAreas
   };
 }
 
+function withSubmittedComment(
+  student: StudentAttendance,
+  mode: SessionMode,
+  comment?: string,
+): StudentAttendance {
+  const areaType = mode === 'demo' ? 'DEMO' : mode === 'checkpoint' ? 'CHECKPOINT' : 'CONTENT';
+  if (mode !== 'regular') {
+    if (hasModeSubmission(student, mode)) return student;
+    return { ...student, commentByAreas: [...student.commentByAreas, placeholderCommentArea(areaType)] };
+  }
+  const text = (comment && comment.trim()) || existingContentComment(student) || 'Đã gửi';
+  return {
+    ...student,
+    comment: text,
+    commentByAreas: [
+      ...student.commentByAreas.filter((area) => area.type !== 'CONTENT'),
+      placeholderCommentArea('CONTENT', text),
+    ],
+  };
+}
+
 export function applySubmittedComments(
   detail: ClassDetail,
   slotId: string,
   studentIds: string[],
   mode: SessionMode,
+  comments: Record<string, string> = {},
 ): ClassDetail {
   const submitted = new Set(studentIds);
   if (!submitted.size) return { ...detail, commentProgress: computeClassCommentProgress(detail.slots) };
-  const areaType = mode === 'demo' ? 'DEMO' : mode === 'checkpoint' ? 'CHECKPOINT' : 'CONTENT';
   const slots = detail.slots.map((item) => {
     if (item.id !== slotId) return item;
     return {
       ...item,
       studentAttendance: item.studentAttendance.map((student) => {
-        if (!submitted.has(student.studentId) || hasModeSubmission(student, mode)) return student;
-        return { ...student, commentByAreas: [...student.commentByAreas, placeholderCommentArea(areaType)] };
+        if (!submitted.has(student.studentId)) return student;
+        if (mode !== 'regular' && hasModeSubmission(student, mode)) return student;
+        return withSubmittedComment(student, mode, comments[student.studentId]);
       }),
     };
   });

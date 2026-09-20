@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ClassDetail, ClassSummary, Slot, StudentAttendance } from '@tool-lms/contracts';
-import { applySubmittedComments, autoSelectedSlotIndex, classCommentMeta, classesWithDetailProgress, computeClassCommentProgress, currentSessionNumber, detailForSelectedClass, getSlotDisplayNumber, orderClassSummaries, preferRicherCommentProgress, selectedSlot, sessionMode, slotCommentProgress, studentStats, visibleStudents } from './selectors';
+import { applySubmittedComments, autoSelectedSlotIndex, classCommentMeta, classesWithDetailProgress, computeClassCommentProgress, currentSessionNumber, detailForSelectedClass, existingContentComment, getSlotDisplayNumber, orderClassSummaries, preferRicherCommentProgress, selectedSlot, sessionMode, slotCommentProgress, studentStats, visibleStudents } from './selectors';
 
 const area = (type: string, content = '') => ({ grade: null, content, commentAreaId: null, type, checkpoint: null, courseProcessDemoId: null, courseProcessFinalEvaluationTitle: null, courseProcessFinalEvaluationId: null, demoQuestions: [] });
 const student = (id: string, name: string, status: string, areas: ReturnType<typeof area>[] = []): StudentAttendance => ({ id: `attendance-${id}`, studentId: id, displayName: name, status, commentByAreas: areas });
@@ -121,5 +121,17 @@ describe('class workspace selectors', () => {
     const next = applySubmittedComments(detail, 'slot-1', ['an', 'binh'], 'regular');
     expect(next.commentProgress).toMatchObject({ state: 'done', badgeText: 'Đã nhận xét', present: 2, completed: 2, missing: 0 });
     expect(next.slots[0].studentAttendance.every((item) => item.commentByAreas.some((area) => area.type === 'CONTENT'))).toBe(true);
+  });
+
+  it('replaces stale LMS comments with the text just submitted instead of keeping the previous CONTENT area', () => {
+    const an = student('an', 'An', 'ATTENDED', [area('CONTENT', 'Nhận xét cũ')]);
+    const detail = {
+      id: 'class-a',
+      commentProgress: { state: 'done', badgeText: 'Đã nhận xét', slotNumber: 1, present: 1, completed: 1, missing: 0 },
+      slots: [slot('slot-1', 0, [an])],
+    } as ClassDetail;
+    const next = applySubmittedComments(detail, 'slot-1', ['an'], 'regular', { an: 'Trong buổi học hôm nay, An hoàn thành tốt.' });
+    expect(existingContentComment(next.slots[0].studentAttendance[0])).toBe('Trong buổi học hôm nay, An hoàn thành tốt.');
+    expect(next.slots[0].studentAttendance[0].commentByAreas.filter((item) => item.type === 'CONTENT')).toHaveLength(1);
   });
 });

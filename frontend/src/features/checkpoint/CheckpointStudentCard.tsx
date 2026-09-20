@@ -58,11 +58,11 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
   // Resolve scores for header readout
   const theoryInput = draft.theoryInput;
   const practiceInput = draft.practiceInput;
-  const curTheory = theoryInput.trim() !== '' ? Number(theoryInput) : serverTheory != null ? Number(serverTheory) : null;
-  const curPractice = practiceInput.trim() !== '' ? Number(practiceInput) : serverPractice != null ? Number(serverPractice) : null;
+  const curTheory = theoryInput.trim() !== '' ? Number(theoryInput) : serverTheory != null ? Number(serverTheory) : result?.theoryScore ?? null;
+  const curPractice = practiceInput.trim() !== '' ? Number(practiceInput) : serverPractice != null ? Number(serverPractice) : result?.practiceScore ?? null;
   const hasBoth = curTheory !== null && curPractice !== null && !Number.isNaN(curTheory) && !Number.isNaN(curPractice);
-  const averageText = hasBoth ? ((curTheory + curPractice) / 2).toFixed(1) : '?';
-  const rank = hasBoth ? getCheckpointRank(curTheory, curPractice) : '';
+  const averageText = result ? formatScore(result.totalScore) : hasBoth ? ((curTheory + curPractice) / 2).toFixed(1) : '?';
+  const rank = result?.rank || (hasBoth ? getCheckpointRank(curTheory, curPractice) : '');
 
   const grade = async () => {
     try {
@@ -385,18 +385,6 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
                   </div>
                 )}
               </div>
-
-              {result && (
-                <section className="checkpoint-server-result" aria-label={`Kết quả Checkpoint từ máy chủ của ${student.displayName}`}>
-                  <strong>Kết quả chính thức từ máy chủ</strong>
-                  <div>
-                    <span>Lý thuyết <b>{formatScore(result.theoryScore)}</b></span>
-                    <span>Thực hành <b>{formatScore(result.practiceScore)}</b></span>
-                    <span>Trung bình <b>{formatScore(result.totalScore)}</b></span>
-                    <span>Rank <b>{result.rank}</b></span>
-                  </div>
-                </section>
-              )}
 
               {(rowError?.generation || rowError?.submission || rowError?.grading) && (
                 <div className="checkpoint-row-errors" aria-live="assertive">

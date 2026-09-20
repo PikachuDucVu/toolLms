@@ -138,4 +138,18 @@ describe('class list progress cache', () => {
     expect(cachedDetail().commentProgress).toMatchObject(done);
     expect(cachedListProgress()).toMatchObject(done);
   });
+
+  it('overlays the submitted comment text when LMS refetch still returns the previous CONTENT', () => {
+    const stale = [student(1, [area('CONTENT', 'Nhận xét buổi trước')])];
+    seed(detail(stale, done), done);
+    reconcileClassSubmissionsAfterRefetch({
+      classId: 'class-1',
+      slotId: 'slot-10',
+      studentIds: ['student-1'],
+      comments: { 'student-1': 'Trong buổi học hôm nay, con hoàn thành tốt.' },
+    });
+    expect(cachedDetail().slots[0].studentAttendance[0].commentByAreas.find((item) => item.type === 'CONTENT')?.content).toBe(
+      'Trong buổi học hôm nay, con hoàn thành tốt.',
+    );
+  });
 });

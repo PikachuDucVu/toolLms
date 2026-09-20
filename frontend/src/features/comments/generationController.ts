@@ -230,8 +230,9 @@ export async function submitSingleComment(scope: RegularCommentScope, studentId:
     if (!isCurrentSingle(context, scope, studentId)) return { total: 1, successfulIds: [], failures: [], safeTemplateCount: 0, refreshed: false };
     useCommentStore.getState().removeDraft(studentId);
     useCommentStore.getState().markSummarySynced(summary);
-    applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: [studentId] });
-    const refreshed = await refetchCurrentClass(context, [studentId]);
+    const comments = { [studentId]: draft.content };
+    applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: [studentId], comments });
+    const refreshed = await refetchCurrentClass(context, [studentId], comments);
     return { total: 1, successfulIds: [studentId], failures: [], safeTemplateCount: 0, refreshed };
   } catch (error) {
     if (isCurrentSingle(context, scope, studentId) && !isAbort(error)) useCommentStore.getState().setError(studentId, errorText(error));
@@ -314,8 +315,9 @@ export async function submitBatchComments(scope: RegularCommentScope, requestedI
       }
     }
     assertScope(context, scope);
-    if (successfulIds.length) applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds });
-    const refreshed = successfulIds.length ? await refetchCurrentClass(context, successfulIds) : false;
+    const comments = Object.fromEntries(successfulIds.map((id) => [id, frozenDrafts[id]?.content || '']));
+    if (successfulIds.length) applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds, comments });
+    const refreshed = successfulIds.length ? await refetchCurrentClass(context, successfulIds, comments) : false;
     return { total: scopeIds.length, successfulIds, failures, safeTemplateCount: 0, refreshed };
   } finally {
     releaseCommentController(controller);
@@ -472,17 +474,17 @@ function createCommentController(): AbortController {
 }
 function releaseCommentController(controller: AbortController) { contextControllers.delete(controller); releaseOperationController(controller); }
 function abortCommentOperations() { for (const controller of contextControllers) controller.abort(); contextControllers.clear(); }
-async function refetchCurrentClass(context: ContextSnapshot, successfulIds: string[] = []): Promise<boolean> {
+async function refetchCurrentClass(context: ContextSnapshot, successfulIds: string[] = [], comments: Record<string, string> = {}): Promise<boolean> {
   if (!isCurrentCommentContext(context)) return false;
   try {
     await appQueryClient().refetchQueries({ queryKey: classDetailQuery(context.classId).queryKey, exact: true });
     if (isCurrentCommentContext(context)) {
-      reconcileClassSubmissionsAfterRefetch({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds });
+      reconcileClassSubmissionsAfterRefetch({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds, comments });
     }
     return isCurrentCommentContext(context);
   } catch {
     if (isCurrentCommentContext(context) && successfulIds.length) {
-      applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds });
+      applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds, comments });
     }
     return false;
   }

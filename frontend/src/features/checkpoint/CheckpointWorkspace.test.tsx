@@ -81,7 +81,12 @@ describe('Checkpoint student and batch UI', () => {
     expect(bodies.find((body) => body.mode === 'score_only')).toMatchObject({ comment: '<p>AI nhận xét fixture</p>' });
     await user.click(screen.getByRole('button', { name: /(?:Re-)?submit Checkpoint$/ }));
     await waitFor(() => expect(bodies.some((body) => body.mode === 'full')).toBe(true));
-    expect(screen.getByLabelText('Kết quả Checkpoint từ máy chủ của Nguyễn An')).toHaveTextContent('Rank B');
+    await waitFor(() => expect(screen.getByLabelText('Điểm lý thuyết Checkpoint của Nguyễn An')).toHaveValue(4.5));
+    expect(screen.getByLabelText('Điểm thực hành Checkpoint của Nguyễn An')).toHaveValue(4);
+    expect(scoreRegion).toHaveTextContent('4.3');
+    expect(scoreRegion).toHaveTextContent('B');
+    expect(screen.queryByLabelText('Kết quả Checkpoint từ máy chủ của Nguyễn An')).not.toBeInTheDocument();
+    expect(screen.queryByText('Kết quả chính thức từ máy chủ')).not.toBeInTheDocument();
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
