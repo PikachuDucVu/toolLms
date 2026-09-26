@@ -12,6 +12,7 @@ export interface Env {
   LMS_PASSWORD?: string;
   KIEMTRA_BASE_URL?: string;
   KIEMTRA_API_SECRET?: string;
+  CLOUD_STORAGE_BASE_URL?: string;
 }
 
 export interface SessionRecord {

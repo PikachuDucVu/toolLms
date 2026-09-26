@@ -1,7 +1,6 @@
 import {
   AI_MODELS,
   ANTIGRAVITY_API_URL,
-  ANTIGRAVITY_CHAT_URL_HTTPS,
   CUSTOM_MODEL_OPTION_ID,
   DEFAULT_AI_MODEL,
   DEFAULT_THINKING_LEVEL,
@@ -96,6 +95,14 @@ function applyThinkingToBody(body: Record<string, unknown>, model: string, think
   body.reasoning = { effort: thinkingLevel };
 }
 
+export function gatewayAuthHeaders(key: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${key}`,
+    // Some Cloudflare subrequests drop Authorization before it reaches the gateway.
+    "x-api-key": key,
+  };
+}
+
 function isRetryableAiFailure(status?: number, error?: string): boolean {
   if (status === 522 || status === 524) return true;
   return /(?:error code:\s*)?(?:522|524)\b|too many redirects|network|fetch failed/i.test(error || "");
@@ -111,7 +118,7 @@ export async function callChatCompletion(
   thinkingLevel: ThinkingLevel = DEFAULT_THINKING_LEVEL,
 ): Promise<ChatResult> {
   const urls = provider === "antigravity"
-    ? [ANTIGRAVITY_API_URL, ANTIGRAVITY_CHAT_URL_HTTPS]
+    ? [ANTIGRAVITY_API_URL]
     : ["https://openrouter.ai/api/v1/chat/completions"];
   const key = provider === "antigravity" ? apiKey || env.ANTIGRAVITY_API_KEY : apiKey || openrouterKey || env.OPENROUTER_API_KEY;
   if (!key) return { error: provider === "antigravity" ? "Vui lòng nhập API Key" : "Please set OpenRouter API key" };
@@ -127,7 +134,7 @@ export async function callChatCompletion(
   const payload = JSON.stringify(body);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${key}`,
+    ...gatewayAuthHeaders(key),
     ...(provider !== "antigravity"
       ? { "HTTP-Referer": "https://mindx.edu.vn", "X-Title": "LMS Auto Comment" }
       : {}),
@@ -141,6 +148,7 @@ export async function callChatCompletion(
       response = await fetch(url, { method: "POST", headers, body: payload });
     } catch (error) {
       lastError = error instanceof Error ? error.message : "AI request failed";
+      console.error(JSON.stringify({ category: "ai_gateway_chat", status: 0, detail: lastError.slice(0, 160) }));
       if (index < urls.length - 1 && isRetryableAiFailure(undefined, lastError)) continue;
       return { error: lastError };
     }
@@ -153,6 +161,7 @@ export async function callChatCompletion(
     if (!response.ok) {
       lastError = text.slice(0, 200) || String(response.status);
       lastStatus = response.status;
+      console.error(JSON.stringify({ category: "ai_gateway_chat", status: response.status, detail: lastError.slice(0, 160) }));
       if (index < urls.length - 1 && isRetryableAiFailure(response.status, lastError)) continue;
       return { error: lastError, status: response.status };
     }
@@ -198,12 +207,19 @@ export async function generateCommentWithAi(
   const result = await callChatCompletion(env, provider, model, messages, input.aiApiKey, String(config.openrouter_key || ""), thinkingLevel);
   if (result.error) {
     const error = `Lỗi AI (${model}): ${result.error}`;
+    if (/Vui lòng nhập API Key|Please set OpenRouter API key/i.test(result.error)) {
+      return { comment: formatCommentHtml(error), error };
+    }
+    if (result.status === 522 || result.status === 524 || /(?:error code:\s*)?(?:522|524)\b/i.test(result.error)) {
+      return { comment: formatCommentHtml(error), error, directFallback: { messages, validationPolicy, safeComment } };
+    }
     return {
-      comment: formatCommentHtml(error),
-      error,
-      ...(result.status === 522 || result.status === 524 || /(?:error code:\s*)?(?:522|524)\b/i.test(result.error)
-        ? { directFallback: { messages, validationPolicy, safeComment } }
-        : {}),
+      comment: safeComment,
+      generationMeta: {
+        source: "safe_template",
+        transport: "server",
+        validationIssues: [error.slice(0, 500)],
+      },
     };
   }
 
@@ -326,7 +342,9 @@ export async function gradeHomeworkWithAi(
     : "";
   const evidenceHint = input.imageUrls.length
     ? "hình ảnh đính kèm và nội dung tệp code bên dưới (nếu có)"
-    : "nội dung các tệp code/văn bản bên dưới";
+    : textFiles.length
+      ? "nội dung các tệp code/văn bản bên dưới"
+      : "danh sách tệp học sinh đã nộp";
 
   const promptText = `Bạn là giáo viên chấm bài tập lập trình cho học sinh tại MindX Technology School.
 
@@ -349,16 +367,25 @@ Chỉ trả về JSON, không thêm gì khác.${codeSection}${otherSection}`;
   const content = input.imageUrls.length
     ? [{ type: "text", text: promptText }, ...input.imageUrls.map((url) => ({ type: "image_url", image_url: { url } }))]
     : promptText;
-  const result = await callChatCompletion(env, provider, model, content, input.apiKey, String(config.openrouter_key || ""), thinkingLevel);
+  let result = await callChatCompletion(env, provider, model, content, input.apiKey, String(config.openrouter_key || ""), thinkingLevel);
+  // Text-only models reject image parts. Retry with the same prompt text so every gateway model can grade.
+  if (result.error && input.imageUrls.length) {
+    result = await callChatCompletion(env, provider, model, promptText, input.apiKey, String(config.openrouter_key || ""), thinkingLevel);
+  }
   if (result.error) return { success: false, error: `AI lỗi: ${result.error}` };
   const raw = result.content || "";
-  const match = raw.match(/\{[^{}]*"score"\s*:\s*\d+[^{}]*\}/);
-  if (!match) return { success: false, error: "AI không trả về kết quả hợp lệ", raw };
   try {
-    const parsed = JSON.parse(match[0]) as { score?: number; note?: string };
-    return { success: true, score: Math.min(100, Math.max(0, Number(parsed.score ?? 100))), note: parsed.note || "" };
+    const parsed = extractJsonObject(raw) as { score?: number | string; note?: string };
+    const scoreNum = Number(parsed.score ?? 100);
+    const score = Number.isFinite(scoreNum) ? Math.min(100, Math.max(0, scoreNum)) : 100;
+    const note = typeof parsed.note === "string" ? parsed.note : "";
+    return { success: true, score, note };
   } catch {
-    return { success: false, error: "AI không trả về JSON hợp lệ", raw };
+    const match = raw.match(/\{[\s\S]*?"score"\s*:\s*(\d+)[\s\S]*?"note"\s*:\s*"([^"]*)"[\s\S]*?\}/);
+    if (match) {
+      return { success: true, score: Math.min(100, Math.max(0, Number(match[1]))), note: match[2] };
+    }
+    return { success: false, error: "AI không trả về kết quả hợp lệ", raw };
   }
 }
 

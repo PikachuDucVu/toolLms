@@ -1,6 +1,7 @@
-import type { ClassDetail, Slot, StudentAttendance, StudentWork } from '@tool-lms/contracts';
+import type { ClassDetail, Slot, StorageProductFile, StudentAttendance, StudentWork } from '@tool-lms/contracts';
 import { Eye, FolderGit2, MoreVertical } from 'lucide-react';
 import { memo, useCallback, useState } from 'react';
+import { ProductColumnCell } from '../studentWorks/public/ProductColumnCell';
 import { useToast } from '../../components/ui/Toast';
 import { attendancePresentation, existingContentComment, hasModeSubmission, isPresent, stripHtml, studentInitials } from '../classes/public/domain';
 import { CopyDialog } from '../comments/public/CopyDialog';
@@ -21,8 +22,26 @@ export const AssessmentCompactRow = memo(function AssessmentCompactRow({
   slot,
   sessionNumber = 1,
   works = [],
+  showProductColumn = false,
+  storageFiles = [],
+  storageLoading = false,
+  storageError = null,
+  productMenuOpen = false,
+  onToggleProductMenu,
+  onCloseProductMenu,
+  onRetryStorage,
+  onSubmitProducts,
 }: {
   works?: StudentWork[];
+  showProductColumn?: boolean;
+  storageFiles?: StorageProductFile[];
+  storageLoading?: boolean;
+  storageError?: string | null;
+  productMenuOpen?: boolean;
+  onToggleProductMenu?: (studentId: string) => void;
+  onCloseProductMenu?: () => void;
+  onRetryStorage?: () => void;
+  onSubmitProducts?: (studentId: string, files: StorageProductFile[], title: string, comment: string, workId?: string) => Promise<void>;
   student: StudentAttendance;
   index?: number;
   active: boolean;
@@ -98,7 +117,6 @@ export const AssessmentCompactRow = memo(function AssessmentCompactRow({
   };
 
   const pastComments = detail && slot ? pastStudentComments(detail, slot, student.studentId) : [];
-
   return (
     <div
       className={`student-list-item ${active ? 'active' : ''} ${studentBusy ? 'is-generating' : ''}`}
@@ -108,6 +126,8 @@ export const AssessmentCompactRow = memo(function AssessmentCompactRow({
       aria-pressed={active}
       onClick={select}
       onKeyDown={(e) => {
+        const target = e.target as HTMLElement;
+        if (target !== e.currentTarget && target.closest('button, a, input, textarea, select, summary, details')) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           select();
@@ -176,6 +196,25 @@ export const AssessmentCompactRow = memo(function AssessmentCompactRow({
           </span>
         )}
       </span>
+
+      {showProductColumn && (
+        <span className="cell-product" onClick={(event) => event.stopPropagation()}>
+          <ProductColumnCell
+            studentId={student.studentId}
+            studentName={student.displayName}
+            files={storageFiles}
+            works={works}
+            loading={storageLoading}
+            error={storageError}
+            locked={locked}
+            menuOpen={productMenuOpen}
+            onToggle={onToggleProductMenu}
+            onClose={onCloseProductMenu}
+            onRetry={onRetryStorage}
+            onSubmit={onSubmitProducts}
+          />
+        </span>
+      )}
 
       <span className="cell-comment">
         <span className="student-comment-cell-preview comment-text-snippet" title={preview}>{preview}</span>

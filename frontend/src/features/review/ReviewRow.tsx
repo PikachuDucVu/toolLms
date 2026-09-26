@@ -1,4 +1,4 @@
-import type { LearningLevel } from '@tool-lms/contracts';
+import type { LearningLevel, StorageProductFile, StudentWork } from '@tool-lms/contracts';
 import {
   CheckCircle2,
   ChevronDown,
@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { memo, useLayoutEffect, useRef } from 'react';
+import { ProductColumnCell } from '../studentWorks/public/ProductColumnCell';
 import { useToast } from '../../components/ui/Toast';
 import { queueLearningLevelAutosave } from '../assessments/public/controller';
 import { LEARNING_LEVEL_ORDER, levelCatalog } from '../assessments/public/selectors';
@@ -48,8 +49,19 @@ export type ReviewRowProps = {
   selected: boolean;
   locked: boolean;
   sessionNumber: number;
+  showProductColumn?: boolean;
+  storageFiles?: StorageProductFile[];
+  storageLoading?: boolean;
+  storageError?: string | null;
+  productMenuOpen?: boolean;
+  existingWorkCount?: number;
+  works?: StudentWork[];
   onOpenDetail: (studentId: string, trigger: HTMLButtonElement) => void;
   onGenerate: (studentId: string, hasDraft: boolean) => void;
+  onToggleProductMenu?: (studentId: string) => void;
+  onCloseProductMenu?: () => void;
+  onRetryStorage?: () => void;
+  onSubmitProducts?: (studentId: string, files: StorageProductFile[], title: string, comment: string, workId?: string) => Promise<void>;
 };
 
 export const ReviewRow = memo(function ReviewRow({
@@ -57,11 +69,22 @@ export const ReviewRow = memo(function ReviewRow({
   selected,
   locked,
   sessionNumber,
+  showProductColumn = false,
+  storageFiles = [],
+  storageLoading = false,
+  storageError = null,
+  productMenuOpen = false,
+  works = [],
   onOpenDetail,
   onGenerate,
+  onToggleProductMenu,
+  onCloseProductMenu,
+  onRetryStorage,
+  onSubmitProducts,
 }: ReviewRowProps) {
   const toast = useToast();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const assessmentBlocked =
     row.assessmentStatus.kind === 'loading' ||
     row.assessmentStatus.kind === 'load-error' ||
@@ -80,6 +103,7 @@ export const ReviewRow = memo(function ReviewRow({
   };
 
   const tone = REVIEW_AVATAR_TONES[row.index % REVIEW_AVATAR_TONES.length];
+
 
   return (
     <article
@@ -175,6 +199,25 @@ export const ReviewRow = memo(function ReviewRow({
         </small>
       </div>
 
+      {showProductColumn && (
+        <div className="regular-review-product-cell">
+          <ProductColumnCell
+            studentId={row.studentId}
+            studentName={row.studentName}
+            files={storageFiles}
+            works={works}
+            loading={storageLoading}
+            error={storageError}
+            locked={locked}
+            menuOpen={productMenuOpen}
+            onToggle={onToggleProductMenu}
+            onClose={onCloseProductMenu}
+            onRetry={onRetryStorage}
+            onSubmit={onSubmitProducts}
+          />
+        </div>
+      )}
+
       <div className="regular-review-comment-cell">
         {row.isDraft ? (
           <>
@@ -251,6 +294,16 @@ export function sameReviewRowProps(left: ReviewRowProps, right: ReviewRowProps):
     left.sessionNumber === right.sessionNumber &&
     left.onOpenDetail === right.onOpenDetail &&
     left.onGenerate === right.onGenerate &&
+    left.showProductColumn === right.showProductColumn &&
+    left.storageFiles === right.storageFiles &&
+    left.storageLoading === right.storageLoading &&
+    left.storageError === right.storageError &&
+    left.productMenuOpen === right.productMenuOpen &&
+    left.works === right.works &&
+    left.onToggleProductMenu === right.onToggleProductMenu &&
+    left.onCloseProductMenu === right.onCloseProductMenu &&
+    left.onRetryStorage === right.onRetryStorage &&
+    left.onSubmitProducts === right.onSubmitProducts &&
     leftRow.student === rightRow.student &&
     leftRow.studentId === rightRow.studentId &&
     leftRow.studentName === rightRow.studentName &&

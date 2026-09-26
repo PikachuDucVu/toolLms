@@ -5,17 +5,15 @@ export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
 
 export const DEFAULT_THINKING_LEVEL: ThinkingLevel = "high";
 
-// Hit the gateway app directly on port 8317. Port 443 goes through nginx, which 301-redirects
-// /v1/* back onto itself (infinite loop) — the Worker's fetch follows redirects and dies with
-// "Too many redirects". The host's geo-filter (nftables, VN/SG only) must allow Cloudflare's
-// egress ranges or this host silently drops the Worker's packets (manifests as "error code: 522").
-export const ANTIGRAVITY_BASE_URL = "http://ai.ducvu.io.vn:8317/v1";
+// Public HTTPS gateway only. Do not call :8317: that port hangs from Workers and
+// Cloudflare returns 502/522 before any fallback request can run.
+export const ANTIGRAVITY_BASE_URL = "https://ai.ducvu.io.vn/v1";
 export const ANTIGRAVITY_API_URL = `${ANTIGRAVITY_BASE_URL}/chat/completions`;
 export const ANTIGRAVITY_MODELS_URL = `${ANTIGRAVITY_BASE_URL}/models`;
-/** Public HTTPS fallback for listing models (443). Chat still prefers :8317 from the Worker. */
-export const ANTIGRAVITY_MODELS_URL_HTTPS = "https://ai.ducvu.io.vn/v1/models";
-/** Chat fallback when Cloudflare cannot reach :8317 (often 522). */
-export const ANTIGRAVITY_CHAT_URL_HTTPS = "https://ai.ducvu.io.vn/v1/chat/completions";
+/** Same endpoint as ANTIGRAVITY_MODELS_URL. Kept so older imports stay valid. */
+export const ANTIGRAVITY_MODELS_URL_HTTPS = ANTIGRAVITY_MODELS_URL;
+/** Same endpoint as ANTIGRAVITY_API_URL. Kept so older imports stay valid. */
+export const ANTIGRAVITY_CHAT_URL_HTTPS = ANTIGRAVITY_API_URL;
 
 /** Fallback list when /v1/models is unreachable */
 export const AI_MODELS = [

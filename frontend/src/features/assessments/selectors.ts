@@ -21,6 +21,10 @@ export function isProductProgressSession(sessionNumber?: number): boolean {
   return typeof sessionNumber === 'number' && sessionNumber >= 10 && sessionNumber <= 13;
 }
 
+export function showsStorageProductColumn(sessionNumber?: number): boolean {
+  return typeof sessionNumber === 'number' && sessionNumber >= 10;
+}
+
 export function levelCatalog(sessionNumber?: number) {
   return isProductProgressSession(sessionNumber) ? PRODUCT_PROGRESS_LEVELS : LEARNING_LEVELS;
 }

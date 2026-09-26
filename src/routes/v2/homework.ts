@@ -34,7 +34,7 @@ import {
   resolveHomeworkAiKey,
   type NormalizedHomeworkData,
 } from "../../services/homeworkService";
-import { LmsClient } from "../../services/lmsClient";
+import { LmsAuthenticationError, LmsClient } from "../../services/lmsClient";
 import { getCookie, saveSession, SESSION_COOKIE } from "../../services/sessionService";
 import { parseV2Json, requireV2Session, v2Error, v2Success } from "./helpers";
 
@@ -146,12 +146,18 @@ v2HomeworkRoutes.post("/ai-grade", async (c) => {
   const config = await getConfig(c.env);
   const availability = resolveHomeworkAiKey(c.env, config, body);
   if (!availability.available) return apiKeyRequired(c, availability.provider, availability.modelId);
-  const loaded = await loadHomework(c, session, body.classId);
-  if (loaded instanceof Response) return loaded;
-  const submission = findHomeworkSubmission(loaded, body.submissionId);
-  if (!submission) return v2Error(c, "NOT_FOUND", "Không tìm thấy bài nộp.", 404);
+
+  let attachments = body.attachments;
+  if (!attachments || !attachments.length) {
+    const loaded = await loadHomework(c, session, body.classId);
+    if (loaded instanceof Response) return loaded;
+    const submission = findHomeworkSubmission(loaded, body.submissionId);
+    if (!submission) return v2Error(c, "NOT_FOUND", "Không tìm thấy bài nộp.", 404);
+    attachments = submission.content.attachments;
+  }
+
   const result = await aiGradeHomework(c.env, config, {
-    attachments: submission.content.attachments,
+    attachments: attachments || [],
     lessonName: body.lessonName,
     studentName: body.studentName,
     modelId: body.modelId,
@@ -159,7 +165,10 @@ v2HomeworkRoutes.post("/ai-grade", async (c) => {
     thinkingLevel: body.thinkingLevel,
     apiKey: availability.ephemeralApiKey,
   });
-  if (!result.success) return v2Error(c, "UPSTREAM_ERROR", result.error, 502);
+  if (!result.success) {
+    if (isAiKeyError(result.error)) return apiKeyRequired(c, availability.provider, availability.modelId);
+    return v2Error(c, "UPSTREAM_ERROR", result.error, 502);
+  }
   return v2Success(c, { score: result.score, note: result.note });
 });
 
@@ -235,17 +244,28 @@ v2HomeworkRoutes.post("/jobs/:jobId/retry-failed", async (c) => {
 });
 
 async function loadHomework(c: V2Context, session: SessionRecord, classId: string): Promise<NormalizedHomeworkData | Response> {
-  const result = await getHomeworkSubmissions(new LmsClient(c.env), session, classId);
-  await saveSession(c.env, result.session);
-  if (result.body.error || result.body.errors?.length) {
-    return v2Error(c, "UPSTREAM_ERROR", result.body.errors?.[0]?.message || result.body.error || "Không thể tải bài tập.", 502);
+  try {
+    const result = await getHomeworkSubmissions(new LmsClient(c.env), session, classId);
+    await saveSession(c.env, result.session);
+    if (result.body.error || result.body.errors?.length) {
+      return v2Error(c, "UPSTREAM_ERROR", result.body.errors?.[0]?.message || result.body.error || "Không thể tải bài tập.", 502);
+    }
+    return normalizeHomeworkData(result.body.data?.findStudentSubmissionByClass);
+  } catch (error) {
+    if (error instanceof LmsAuthenticationError) {
+      return v2Error(c, "AUTH_REQUIRED", "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.", 401);
+    }
+    return v2Error(c, "UPSTREAM_ERROR", error instanceof Error ? error.message : "Không thể tải bài tập.", 502);
   }
-  return normalizeHomeworkData(result.body.data?.findStudentSubmissionByClass);
 }
 
 async function validateJobKey(c: V2Context, input: { modelId?: string; customModelId?: string; apiKey?: string }): Promise<Response | null> {
   const availability = resolveHomeworkAiKey(c.env, await getConfig(c.env), input);
   return availability.available ? null : apiKeyRequired(c, availability.provider, availability.modelId);
+}
+
+function isAiKeyError(error: string): boolean {
+  return /missing api key|invalid api key|vui lòng nhập api key|please set openrouter api key/i.test(error);
 }
 
 function apiKeyRequired(c: V2Context, provider: string, modelId: string): Response {

@@ -1,6 +1,9 @@
 name = "lms-auto-comment-tool"
 main = "src/worker.ts"
 compatibility_date = "2026-05-01"
+# ai.ducvu.io.vn is on the same zone as this Worker. Without this flag, fetch()
+# stays inside Cloudflare and never reaches the DNS-only origin (502/1042).
+compatibility_flags = ["global_fetch_strictly_public"]
 account_id = "aeac7a4c153aee0be799bea1169887ef"
 routes = [
   { pattern = "lms.ducvu.io.vn", custom_domain = true }
@@ -44,5 +47,6 @@ max_retries = 3
 
 [vars]
 KIEMTRA_BASE_URL = "https://kiemtra.ducvu.io.vn"
+CLOUD_STORAGE_BASE_URL = "https://spck.ducvu.io.vn"
 # Secret KIEMTRA_API_SECRET: wrangler secret put KIEMTRA_API_SECRET
 # Same value as kiemtra TOOLLMS_SECRET.

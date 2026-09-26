@@ -5,6 +5,7 @@ import { Dialog } from "../../components/ui/Dialog";
 import { useConfirm } from "../../components/ui/ConfirmDialog";
 import { useToast } from "../../components/ui/Toast";
 import { uploadThumbnail } from "./api";
+import { canShowThumbnail } from "./thumbnailSrc";
 
 export function StudentWorkDialog({
   open,
@@ -217,7 +218,7 @@ export function StudentWorkDialog({
             Ảnh đại diện (Thumbnail)
           </label>
           <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-            {thumbnail ? (
+            {thumbnail && canShowThumbnail(thumbnail) ? (
               <div
                 style={{
                   position: "relative",

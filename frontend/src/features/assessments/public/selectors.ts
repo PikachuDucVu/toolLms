@@ -5,6 +5,7 @@ export {
   LEARNING_LEVELS,
   PRODUCT_PROGRESS_LEVELS,
   isProductProgressSession,
+  showsStorageProductColumn,
   levelCatalog,
   normalizedAssessmentDraft,
 } from '../selectors';

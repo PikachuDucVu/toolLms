@@ -1,11 +1,14 @@
-import type { ClassDetail, Slot, StudentAttendance } from '@tool-lms/contracts';
+import type { ClassDetail, Slot, StorageProductFile, StudentAttendance, StudentWork } from '@tool-lms/contracts';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { QueryClient, QueryClientContext, useQuery } from '@tanstack/react-query';
-import { studentWorksQuery } from '../studentWorks/public/queries';
-import type { StudentWork } from '@tool-lms/contracts';
+import { useToast } from '../../components/ui/Toast';
+import { saveStudentWork } from '../studentWorks/public/api';
+import { storageProductsQuery, studentWorksQuery } from '../studentWorks/public/queries';
+import { buildStorageStudentWork, latestStudentWork } from '../studentWorks/public/storageSubmission';
 import emptyStudentsUrl from '../../assets/empty-students.jpg';
 import { AssessmentCompactRow } from './AssessmentCompactRow';
 import { StudentAssessmentDetail } from './StudentAssessmentDetail';
+import { showsStorageProductColumn } from './selectors';
 
 const fallbackQueryClient = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
 
@@ -31,8 +34,11 @@ export function StudentAssessmentList({
   onResetFilters: () => void;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [storageStudentId, setStorageStudentId] = useState<string | null>(null);
+  const toast = useToast();
   const contextClient = useContext(QueryClientContext);
   const queryClient = contextClient || fallbackQueryClient;
+  const showProductColumn = showsStorageProductColumn(sessionNumber);
   const studentWorksQueryRes = useQuery(
     {
       ...studentWorksQuery(detail.id, slot.id),
@@ -40,7 +46,15 @@ export function StudentAssessmentList({
     },
     queryClient,
   );
+  const storageQuery = useQuery(
+    {
+      ...storageProductsQuery(detail.id),
+      enabled: Boolean(contextClient && showProductColumn && detail.id),
+    },
+    queryClient,
+  );
   const studentWorksList = studentWorksQueryRes.data?.data.studentWorks || [];
+  const storageFiles = storageQuery.data?.data.files || [];
   const worksByStudent = useMemo(() => {
     const map = new Map<string, StudentWork[]>();
     for (const w of studentWorksList) {
@@ -58,6 +72,31 @@ export function StudentAssessmentList({
     },
     [onSelect],
   );
+  const toggleStorage = useCallback((studentId: string) => {
+    setStorageStudentId((current) => current === studentId ? null : studentId);
+  }, []);
+  const closeStorage = useCallback(() => setStorageStudentId(null), []);
+  const retryStorage = useCallback(() => {
+    void storageQuery.refetch();
+  }, [storageQuery]);
+  const submitStorageFiles = useCallback(async (studentId: string, files: StorageProductFile[], title: string, comment: string, workId?: string) => {
+    const current = latestStudentWork(worksByStudent.get(studentId) || []);
+    const id = workId || current?.id;
+    await saveStudentWork(slot.id, buildStorageStudentWork({
+      id,
+      classId: detail.id,
+      classSessionId: slot.id,
+      studentId,
+      sessionNumber,
+      title,
+      comment,
+      displayOrder: current?.displayOrder ?? (worksByStudent.get(studentId)?.length || 0),
+      files,
+    }));
+    await queryClient.invalidateQueries({ queryKey: ['studentWorks', detail.id, slot.id] });
+    toast.show(id ? 'Đã cập nhật sản phẩm trên LMS' : 'Đã nộp sản phẩm lên LMS', 'success');
+    setStorageStudentId(null);
+  }, [detail.id, queryClient, sessionNumber, slot.id, toast, worksByStudent]);
 
   if (!students.length) {
     return (
@@ -94,7 +133,7 @@ export function StudentAssessmentList({
   return (
     <div className="student-grid regular-mode" id="studentList" role="region" aria-label="Danh sách học sinh">
       <div className="student-workspace assessment-workspace">
-      <div className="student-compact-list" role="list" aria-label="Học sinh phù hợp bộ lọc">
+      <div className={`student-compact-list${showProductColumn ? ' has-product-column' : ''}`} role="list" aria-label="Học sinh phù hợp bộ lọc">
         <div className="student-table-header" role="row">
           <div className="th-col col-cb">
             <input type="checkbox" id="selectAllCb" aria-label="Chọn tất cả" />
@@ -103,6 +142,7 @@ export function StudentAssessmentList({
           <div className="th-col col-student">Học sinh</div>
           <div className="th-col col-attendance">Điểm danh</div>
           <div className="th-col col-level">Mức độ học tập</div>
+          {showProductColumn && <div className="th-col col-product">Sản phẩm</div>}
           <div className="th-col col-comment">Nhận xét hiện tại</div>
           <div className="th-col col-status">Trạng thái</div>
           <div className="th-col col-actions">Thao tác</div>
@@ -120,6 +160,15 @@ export function StudentAssessmentList({
               slot={slot}
               sessionNumber={sessionNumber}
               works={worksByStudent.get(student.studentId) || []}
+              showProductColumn={showProductColumn}
+              storageFiles={storageFiles}
+              storageLoading={storageQuery.isLoading}
+              storageError={storageQuery.error ? 'Không tải được file từ kho sản phẩm.' : null}
+              productMenuOpen={storageStudentId === student.studentId}
+              onToggleProductMenu={toggleStorage}
+              onCloseProductMenu={closeStorage}
+              onRetryStorage={retryStorage}
+              onSubmitProducts={submitStorageFiles}
             />
             {student.studentId === selected.studentId && drawerOpen && (
               <div className="mobile-student-detail">

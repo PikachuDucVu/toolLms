@@ -8,6 +8,7 @@ import {
   createStudentWork,
   deleteStudentWork,
   fetchStudentWorks,
+  rehostCloudStorageAssets,
   updateStudentWork,
   uploadThumbnailResource,
 } from "../../services/studentWorkService";
@@ -73,10 +74,18 @@ v2SlotStudentWorkRoutes.post("/:slotId/student-works", async (c) => {
   const body = await parseV2Json(c, SaveStudentWorkInputSchema);
   if (body instanceof Response) return body;
 
+  let prepared = body;
+  try {
+    prepared = await rehostCloudStorageAssets(body, c.env);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Không tải được file từ kho để nộp lên LMS.";
+    return v2Error(c, "VALIDATION_ERROR", message, 422);
+  }
+
   const client = new LmsClient(c.env);
-  const result = body.id
-    ? await updateStudentWork(client, session, body as typeof body & { id: string })
-    : await createStudentWork(client, session, body);
+  const result = prepared.id
+    ? await updateStudentWork(client, session, prepared as typeof prepared & { id: string })
+    : await createStudentWork(client, session, prepared);
 
   await saveSession(c.env, result.session);
 

@@ -167,13 +167,15 @@ describe("regular comment generation service", () => {
     expect(result.generationMeta?.validationIssues?.length).toBeGreaterThan(0);
   });
 
-  it("keeps non-timeout upstream failures as errors instead of invoking direct fallback", async () => {
+  it("uses the safe template when the AI gateway fails for a non-timeout error", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(aiResponse("unavailable", 503));
 
     const result = await generateRegularComment(env, config, input);
 
     expect(fetch).toHaveBeenCalledTimes(1);
-    expect(result.error).toContain("unavailable");
-    expect(result.directFallback).toBeUndefined();
+    expect(result.error).toBeUndefined();
+    expect(result.generationMeta).toMatchObject({ source: "safe_template", transport: "server" });
+    expect(result.generationMeta?.validationIssues?.join(" ")).toContain("unavailable");
+    expect(result.comment).toBe(formatCommentHtml(safeComment()));
   });
 });

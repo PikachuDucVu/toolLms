@@ -205,8 +205,8 @@ export async function aiGradeHomework(
       otherFiles.push(name);
     }
   }
-  if (!imageUrls.length && !textFiles.length) {
-    return { success: false, error: "Không có nội dung chấm được (chỉ hỗ trợ file ảnh và file code/văn bản)" };
+  if (!imageUrls.length && !textFiles.length && !otherFiles.length) {
+    return { success: false, error: "Không có tệp đính kèm để chấm" };
   }
   return gradeHomeworkWithAi(env, config, { ...input, imageUrls, textFiles, otherFiles });
 }

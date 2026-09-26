@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { transitionAuthContext } from '../../lib/operationContext';
 import { activateAssessmentContext, queueLearningLevelAutosave, resetAssessmentController, saveBulkLearningLevel, saveFullAssessment } from './autosaveController';
 import { useAssessmentStore } from './assessmentStore';
-import { assessmentDraft, assessmentStatus, hasDirtyAssessments, isProductProgressSession, levelCatalog, presentStudentIds, previousRegularSlotIds } from './selectors';
+import { assessmentDraft, assessmentStatus, hasDirtyAssessments, isProductProgressSession, levelCatalog, presentStudentIds, previousRegularSlotIds, showsStorageProductColumn } from './selectors';
 
 const timestamps = { createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' };
 
@@ -20,6 +20,9 @@ describe('assessment selectors and store', () => {
     expect(isProductProgressSession(10)).toBe(true);
     expect(isProductProgressSession(13)).toBe(true);
     expect(isProductProgressSession(14)).toBe(false);
+    expect(showsStorageProductColumn(9)).toBe(false);
+    expect(showsStorageProductColumn(10)).toBe(true);
+    expect(showsStorageProductColumn(14)).toBe(true);
     expect(levelCatalog(12).independent.shortLabel).toBe('Vượt tiến độ');
     expect(levelCatalog(4).independent.shortLabel).toBe('Nắm vững');
   });

@@ -68,7 +68,7 @@ export function HomeworkPage() {
 
   const markMutation = useMutation({ mutationFn: ({ requestClassId, submission, score, note, signal }: { requestClassId: string; submission: HomeworkSubmission; score: number; note: string; signal: AbortSignal }) => markHomework({ classId: requestClassId, id: submission.id, score, note }, signal), retry: false });
   const batchMutation = useMutation({ mutationFn: ({ requestClassId, submissions, signal }: { requestClassId: string; submissions: Array<{ id: string; score: number; note: string }>; signal: AbortSignal }) => batchMarkHomework({ classId: requestClassId, submissions }, signal), retry: false });
-  const aiMutation = useMutation({ mutationFn: ({ requestClassId, submission, studentName, lessonName, options, signal }: { requestClassId: string; submission: HomeworkSubmission; studentName: string; lessonName: string; options: HomeworkAiOptions; signal: AbortSignal }) => aiGradeHomework({ classId: requestClassId, submissionId: submission.id, lessonName, studentName, modelId: options.aiModel, customModelId: options.customModelId, thinkingLevel: options.thinkingLevel, ...apiKeyField(options.apiKey) }, signal), retry: false });
+  const aiMutation = useMutation({ mutationFn: ({ requestClassId, submission, studentName, lessonName, options, signal }: { requestClassId: string; submission: HomeworkSubmission; studentName: string; lessonName: string; options: HomeworkAiOptions; signal: AbortSignal }) => aiGradeHomework({ classId: requestClassId, submissionId: submission.id, lessonName, studentName, attachments: submission.content?.attachments || [], modelId: options.aiModel, customModelId: options.customModelId, thinkingLevel: options.thinkingLevel, ...apiKeyField(options.apiKey) }, signal), retry: false });
   const createJobMutation = useMutation({ mutationFn: ({ scope, apiKey, signal }: { scope: FrozenGradingScope; apiKey: string; signal: AbortSignal }) => createGradingJob({ ...scope, ...apiKeyField(apiKey) }, signal), retry: false });
   const cancelMutation = useMutation({ mutationFn: ({ jobId, signal }: { jobId: string; signal: AbortSignal }) => cancelGradingJob(jobId, signal), retry: false });
   const retryMutation = useMutation({ mutationFn: ({ jobId, scope, apiKey, signal }: { jobId: string; scope: FrozenGradingScope; apiKey: string; signal: AbortSignal }) => {
@@ -96,7 +96,6 @@ export function HomeworkPage() {
       const persisted = { id: submission.id, score: response.data.submission.score, note };
       updateHomeworkCache(queryClient, context.classId, (item) => item.id === submission.id ? { ...item, status: 'MARKED', score: persisted.score, note: persisted.note, markedAt: response.data.submission.markedAt, markedBy: response.data.submission.markedBy } : item);
       useHomeworkStore.getState().reconcilePersistedDrafts([persisted]);
-      if (useHomeworkStore.getState().status === 'SUBMITTED') useHomeworkStore.getState().setStatusAfterMark('');
       toast.show(`Đã chấm ${score} điểm!`);
     } catch (error) {
       if (isCurrentHomeworkContext(context) && !controller.signal.aborted) toast.show(error instanceof Error ? `Lỗi: ${error.message}` : 'Lỗi chấm điểm', 'error');
@@ -144,7 +143,6 @@ export function HomeworkPage() {
         return result?.success && submitted ? { ...item, status: 'MARKED', score: result.submission.score, note: submitted.note, markedAt: result.submission.markedAt, markedBy: result.submission.markedBy } : item;
       });
       useHomeworkStore.getState().reconcilePersistedDrafts(persisted);
-      if (!reload && useHomeworkStore.getState().status === 'SUBMITTED') useHomeworkStore.getState().setStatusAfterMark('');
       toast.show(`Đã chấm ${response.data.successCount}/${response.data.total} bài!`, response.data.failureCount ? 'info' : 'success');
       if (reload) await queryClient.refetchQueries({ queryKey: homeworkQuery(context.classId).queryKey, exact: true });
     } catch (error) {

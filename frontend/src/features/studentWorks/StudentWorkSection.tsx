@@ -7,6 +7,7 @@ import { useToast } from "../../components/ui/Toast";
 import { deleteStudentWork, saveStudentWork } from "./api";
 import { studentWorksQuery } from "./queries";
 import { StudentWorkDialog } from "./StudentWorkDialog";
+import { canShowThumbnail } from "./thumbnailSrc";
 
 const fallbackQueryClient = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
 
@@ -168,7 +169,7 @@ export function StudentWorkSection({
               }}
             >
               {/* Thumbnail */}
-              {work.latestData.thumbnail ? (
+              {canShowThumbnail(work.latestData.thumbnail) ? (
                 <div
                   style={{
                     width: 72,

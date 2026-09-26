@@ -132,7 +132,7 @@ describe("regular comment AI orchestration", () => {
 
     const result = await generateCommentWithAi(env, config, baseInput);
 
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(1);
     expect(result.error).toContain("522");
     expect(result.directFallback).toEqual({
       messages: buildCommentMessages(facts),

@@ -1,11 +1,11 @@
 import {
   AI_MODELS,
   ANTIGRAVITY_MODELS_URL,
-  ANTIGRAVITY_MODELS_URL_HTTPS,
   CUSTOM_MODEL_OPTION_ID,
   toAiModelInfo,
   type AiModelInfo,
 } from "../constants/aiModels";
+import { gatewayAuthHeaders } from "./aiClient";
 import type { Env } from "../types";
 
 interface RemoteModel {
@@ -60,19 +60,23 @@ async function tryFetchModels(url: string, key: string): Promise<{ models?: AiMo
     const response = await fetch(url, {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${key}`,
+        ...gatewayAuthHeaders(key),
         Accept: "application/json",
       },
     });
     const text = await response.text();
     if (!response.ok) {
-      return { error: text.slice(0, 200) || `HTTP ${response.status}` };
+      const error = text.slice(0, 200) || `HTTP ${response.status}`;
+      console.error(JSON.stringify({ category: "ai_gateway_models", status: response.status, detail: error.slice(0, 160) }));
+      return { error };
     }
     const models = parseModelsPayload(text);
     if (!models) return { error: "Invalid or empty models response" };
     return { models };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : String(error) };
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error(JSON.stringify({ category: "ai_gateway_models", status: 0, detail: detail.slice(0, 160) }));
+    return { error: detail };
   }
 }
 
@@ -112,12 +116,9 @@ function isCacheFresh(cache: ModelsCachePayload): boolean {
 }
 
 async function fetchFromGateway(key: string): Promise<{ models?: AiModelInfo[]; error?: string }> {
-  // Prefer direct :8317 (same path as chat). Fall back to HTTPS :443 if Worker cannot reach the port.
   const primary = await tryFetchModels(ANTIGRAVITY_MODELS_URL, key);
   if (primary.models) return primary;
-  const secondary = await tryFetchModels(ANTIGRAVITY_MODELS_URL_HTTPS, key);
-  if (secondary.models) return secondary;
-  return { error: secondary.error || primary.error || "Failed to fetch models" };
+  return { error: primary.error || "Failed to fetch models" };
 }
 
 export async function fetchRemoteAiModels(

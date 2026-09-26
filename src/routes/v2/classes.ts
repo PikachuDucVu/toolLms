@@ -5,6 +5,7 @@ import type { RequestContextVariables } from "../../middleware/requestContext";
 import { fetchClassDetail, fetchOrderedClasses, normalizeClassList } from "../../services/classService";
 import { LmsClient } from "../../services/lmsClient";
 import { saveSession } from "../../services/sessionService";
+import { fetchClassStorageProducts, isSafeStorageClassId } from "../../services/storageProductService";
 import { requireV2Session, v2Error, v2Success } from "./helpers";
 
 export const v2ClassesRoutes = new Hono<{ Bindings: Env; Variables: RequestContextVariables }>();
@@ -18,6 +19,22 @@ v2ClassesRoutes.get("/", async (c) => {
     return v2Error(c, "UPSTREAM_ERROR", result.body.errors?.[0]?.message || result.body.error || "Không thể tải danh sách lớp.", 502);
   }
   return v2Success(c, { classes: normalizeClassList(result.classes) });
+});
+
+v2ClassesRoutes.get("/:classId/storage-products", async (c) => {
+  const session = await requireV2Session(c);
+  if (session instanceof Response) return session;
+  const classId = c.req.param("classId");
+  if (!isSafeStorageClassId(classId)) {
+    return v2Error(c, "VALIDATION_ERROR", "Mã lớp không hợp lệ.", 422);
+  }
+  try {
+    const files = await fetchClassStorageProducts(c.env, classId);
+    return v2Success(c, { files });
+  } catch (error) {
+    console.error("storage products failed", error instanceof Error ? error.message : "unknown");
+    return v2Error(c, "UPSTREAM_ERROR", "Không thể tải file từ kho sản phẩm.", 502);
+  }
 });
 
 v2ClassesRoutes.get("/:classId", async (c) => {

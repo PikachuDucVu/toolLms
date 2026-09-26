@@ -67,7 +67,7 @@ function detail(students: StudentAttendance[], progress: ClassDetail['commentPro
   };
 }
 
-function summary(progress = pending): ClassSummary {
+function summary(progress: ClassDetail['commentProgress'] = pending): ClassSummary {
   const source = detail([], progress);
   return {
     id: source.id,
@@ -87,7 +87,7 @@ function envelope<T>(data: T) {
   return { success: true as const, data, requestId: 'class-cache-test' };
 }
 
-function seed(current: ClassDetail, listProgress = pending) {
+function seed(current: ClassDetail, listProgress: ClassDetail['commentProgress'] = pending) {
   appQueryClient().setQueryData(classDetailQuery(current.id).queryKey, envelope({ class: current }));
   appQueryClient().setQueryData(commentsClassesQuery().queryKey, envelope({ classes: [summary(listProgress)] }));
 }

@@ -2,15 +2,27 @@ import {
   DeleteStudentWorkResponseSchema,
   SaveStudentWorkInputSchema,
   SaveStudentWorkResponseSchema,
+  StorageProductsResponseSchema,
   StudentWorksResponseSchema,
   UploadResourceResponseSchema,
   type DeleteStudentWorkResponse,
   type SaveStudentWorkInput,
   type SaveStudentWorkResponse,
+  type StorageProductsResponse,
   type StudentWorksResponse,
   type UploadResourceResponse,
 } from "@tool-lms/contracts";
 import { apiRequest } from "../../lib/apiClient";
+
+export async function fetchStorageProducts(
+  classId: string,
+  signal?: AbortSignal,
+): Promise<StorageProductsResponse> {
+  return apiRequest(`/api/v2/classes/${encodeURIComponent(classId)}/storage-products`, {
+    schema: StorageProductsResponseSchema,
+    signal,
+  });
+}
 
 export async function fetchStudentWorks(
   slotId: string,

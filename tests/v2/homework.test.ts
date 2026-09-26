@@ -354,4 +354,75 @@ describe('Phase 4 v2 grading-job security', () => {
     expect(mutations).toEqual([]);
     expect(queued).toEqual([]);
   });
+
+  it('grades homework with AI directly from client attachments without loading from LMS', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes('get-presigned-url')) {
+        return Response.json({ success: true, url: 'http://local.test/file.js' });
+      }
+      if (url.includes('/file.js')) {
+        return new Response('console.log("hello world");', { status: 200, headers: { 'content-type': 'text/javascript' } });
+      }
+      if (url.includes('chat/completions')) {
+        return Response.json({
+          choices: [{ message: { content: '{"score": 95, "note": "Làm bài rất tốt"}' } }],
+        });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const currentEnv = env({ antigravityKey: 'test-key' });
+    const response = await request('/api/v2/homework/ai-grade', {
+      method: 'POST',
+      body: JSON.stringify({
+        classId: 'class-1',
+        submissionId: 'submission-1',
+        studentName: 'Phan Trường Giang',
+        lessonName: 'Homework 5',
+        attachments: ['classes/class-1/test.js'],
+      }),
+    }, currentEnv);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      success: true,
+      data: { score: 95, note: 'Làm bài rất tốt' },
+    });
+  });
+
+  it('grades homework when files cannot be downloaded by evaluating based on submitted file list', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes('get-presigned-url')) {
+        return new Response('Not found', { status: 404 });
+      }
+      if (url.includes('chat/completions')) {
+        return Response.json({
+          choices: [{ message: { content: '{"score": 100, "note": "Học sinh nộp đầy đủ file theo yêu cầu"}' } }],
+        });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const currentEnv = env({ antigravityKey: 'test-key' });
+    const response = await request('/api/v2/homework/ai-grade', {
+      method: 'POST',
+      body: JSON.stringify({
+        classId: 'class-1',
+        submissionId: 'submission-1',
+        studentName: 'Phan Trường Giang',
+        lessonName: 'Homework 5',
+        attachments: ['1788886185216-bt.js', '1788886185213-styles.css'],
+      }),
+    }, currentEnv);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      success: true,
+      data: { score: 100, note: 'Học sinh nộp đầy đủ file theo yêu cầu' },
+    });
+  });
 });

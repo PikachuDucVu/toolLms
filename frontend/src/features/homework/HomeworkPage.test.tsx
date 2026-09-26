@@ -135,19 +135,20 @@ describe('React homework page parity', () => {
     expect(screen.getByLabelText('Nhận xét cho An')).toHaveValue('Bản nháp giữ lại');
   });
 
-  it('manual mark changes the pending filter to all and sends the edited draft', async () => {
+  it('manual mark preserves the filter and sends the edited draft', async () => {
     const user = userEvent.setup(); renderPage(); await chooseClass(user);
     const row = screen.getByRole('row', { name: /An/ });
     await user.clear(within(row).getByLabelText('Điểm của An')); await user.type(within(row).getByLabelText('Điểm của An'), '88');
     await user.type(within(row).getByLabelText('Nhận xét cho An'), 'Làm tốt');
     await user.click(within(row).getByRole('button', { name: /Gửi/ }));
-    await waitFor(() => expect(screen.getByLabelText('Trạng thái')).toHaveValue(''));
+    await waitFor(() => expect(screen.getByLabelText('Trạng thái')).toHaveValue('SUBMITTED'));
     expect(captured.find((item) => item.path === '/api/v2/homework/mark')?.body).toMatchObject({ classId: 'class-1', id: 'submission-1', score: 88, note: 'Làm tốt' });
     expect(await screen.findByText('Đã chấm 88 điểm!')).toBeInTheDocument();
   });
 
   it('reconciles only a successful single row and preserves the other edited draft and selection', async () => {
     const user = userEvent.setup(); renderPage(); await chooseClass(user);
+    await user.selectOptions(screen.getByLabelText('Trạng thái'), '');
     const an = screen.getByRole('row', { name: /An/ });
     const binh = screen.getByRole('row', { name: /Bình/ });
     await user.clear(within(an).getByLabelText('Điểm của An')); await user.type(within(an).getByLabelText('Điểm của An'), '88');
@@ -163,6 +164,7 @@ describe('React homework page parity', () => {
     expect(screen.getByLabelText('Nhận xét cho Bình')).toHaveValue('Bản nháp của Bình');
     expect(screen.getByLabelText('Chọn bài của An')).not.toBeChecked();
     expect(screen.getByLabelText('Chọn bài của Bình')).toBeChecked();
+    expect(screen.getByLabelText('Trạng thái')).toHaveValue('');
   });
 
   it('preserves failed and unrelated drafts after a partial selected batch and reconciles the successful note', async () => {

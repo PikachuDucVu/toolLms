@@ -8,3 +8,4 @@ export * from './comments';
 export * from './demo';
 export * from './checkpoint';
 export * from './studentWorks';
+export * from './storageProducts';

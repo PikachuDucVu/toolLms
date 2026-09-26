@@ -120,6 +120,7 @@ export const HomeworkAiGradeRequestSchema = HomeworkAiOptionsSchema.extend({
   submissionId: EntityIdSchema,
   lessonName: z.string().max(500),
   studentName: z.string().max(500),
+  attachments: z.array(z.string().min(1).max(2_000)).max(50).optional(),
 });
 export type HomeworkAiGradeRequest = z.infer<typeof HomeworkAiGradeRequestSchema>;
 export const HomeworkAiGradeResponseSchema = successEnvelope(z.object({
