@@ -4,6 +4,7 @@ import { AppProviders } from './app/providers';
 import { App } from './app/App';
 import { safeClientErrorEvent } from './lib/clientErrorReporting';
 import './styles/app.css';
+import './styles/workspace-layout.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root application mount');

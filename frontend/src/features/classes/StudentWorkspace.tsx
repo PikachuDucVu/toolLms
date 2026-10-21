@@ -2,6 +2,7 @@ import type { ClassDetail, Slot, StudentAttendance } from '@tool-lms/contracts';
 import { useEffect } from 'react';
 import { AssessmentWorkspace } from '../assessments/public/AssessmentWorkspace';
 import { useCommentStore } from '../comments/public/store';
+import { SessionCommentModeContext, useSlotCommentMode } from '../comments/public/sessionMode';
 import { activateCommentContext, deactivateCommentContext } from '../comments/public/controller';
 import { DemoWorkspace } from '../demo/public/DemoWorkspace';
 import { CheckpointWorkspace } from '../checkpoint/public/CheckpointWorkspace';
@@ -50,6 +51,7 @@ export function StudentWorkspace({
   onNoteDraft: (value: string) => void;
   onResetFilters: () => void;
 }) {
+  const commentMode = useSlotCommentMode(detail.id, slot.id);
   const commentOperationActive = useCommentStore(
     (state) => state.studentBusy.size > 0 || Boolean(state.batch) || state.summaryBusy,
   );
@@ -61,6 +63,7 @@ export function StudentWorkspace({
   }, [detail.id, mode, slot.id]);
 
   return (
+    <SessionCommentModeContext.Provider value={commentMode}>
     <div className="comments-student-area" style={{ marginTop: 16, padding: '0 24px 20px' }} data-review-focus-fallback tabIndex={-1}>
       {mode === 'regular' && (
         <AssessmentWorkspace
@@ -120,5 +123,6 @@ export function StudentWorkspace({
 
       {mode === 'regular' && <ReviewDialog detail={detail} slot={slot} sessionNumber={sessionNumber} />}
     </div>
+    </SessionCommentModeContext.Provider>
   );
 }

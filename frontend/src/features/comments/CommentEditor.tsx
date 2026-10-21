@@ -8,6 +8,7 @@ import { CopyDialog } from './CopyDialog';
 import { copyWithFallback, individualZaloText } from './copyExport';
 import { useCommentStore } from './commentStore';
 import { generateSingleComment, submitSingleComment, type RegularCommentScope } from './generationController';
+import { useSessionCommentMode } from './sessionMode';
 import { isProductProgressSession } from '../assessments/public/selectors';
 
 export function CommentEditor({
@@ -35,6 +36,7 @@ export function CommentEditor({
   );
   const summary = useCommentStore((state) => state.summaryDraft);
   const [copyText, setCopyText] = useState('');
+  const commentMode = useSessionCommentMode();
   const scope: RegularCommentScope = { detail, slot, sessionNumber, selectedStudentId };
 
   const existingComment = stripHtml(existingContentComment(student));
@@ -50,13 +52,8 @@ export function CommentEditor({
       if (!accepted) return;
     }
     try {
-      const meta = await generateSingleComment(scope, student.studentId);
-      toast.show(
-        meta.source === 'safe_template'
-          ? 'AI chưa bám đúng level; hệ thống đã dùng mẫu an toàn.'
-          : 'Đã tạo nhận xét!',
-        meta.source === 'safe_template' ? 'info' : 'success',
-      );
+      await generateSingleComment(scope, student.studentId);
+      toast.show('Đã tạo nhận xét!', 'success');
     } catch (cause) {
       if (!(cause instanceof DOMException && cause.name === 'AbortError')) {
         toast.show(`Lỗi tạo nhận xét: ${cause instanceof Error ? cause.message : String(cause)}`, 'error');
@@ -119,7 +116,7 @@ export function CommentEditor({
         <div className="regular-ai-generating" role="status" aria-live="polite">
           <div className="spinner" aria-hidden="true" />
           <div className="regular-ai-generating-title">AI đang tạo nhận xét cho {student.displayName}...</div>
-          <div className="regular-ai-generating-desc">{isProductProgressSession(sessionNumber) ? 'Đang tổng hợp tiến độ sản phẩm, ghi chú và lịch sử buổi học.' : 'Đang tổng hợp mức độ nắm bài, ghi chú và lịch sử buổi học.'}</div>
+          <div className="regular-ai-generating-desc">{isProductProgressSession(sessionNumber, commentMode) ? 'Đang tổng hợp tiến độ sản phẩm, ghi chú và lịch sử buổi học.' : 'Đang tổng hợp mức độ nắm bài, ghi chú và lịch sử buổi học.'}</div>
         </div>
       ) : (
         <textarea
@@ -131,10 +128,6 @@ export function CommentEditor({
           placeholder="Nhập nhận xét thủ công, hoặc bấm Tạo nhận xét AI..."
           onChange={(event) => useCommentStore.getState().editDraft(student.studentId, event.target.value)}
         />
-      )}
-
-      {draft?.generationMeta?.source === 'safe_template' && (
-        <p className="comment-warning">AI chưa bám đúng level; hệ thống đã dùng mẫu an toàn.</p>
       )}
 
       {draft?.generationMeta?.validationIssues.length ? (

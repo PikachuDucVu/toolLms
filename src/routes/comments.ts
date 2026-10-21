@@ -78,7 +78,6 @@ commentsRoutes.post("/generate_comment", async (c) => {
           direct_fallback: {
             messages: generated.directFallback.messages,
             validation_policy: generated.directFallback.validationPolicy,
-            safe_comment: generated.directFallback.safeComment,
           },
         }
       : {}),

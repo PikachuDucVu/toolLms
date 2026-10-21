@@ -18,6 +18,7 @@ import { queueLearningLevelAutosave } from '../assessments/public/controller';
 import { LEARNING_LEVEL_ORDER, levelCatalog } from '../assessments/public/selectors';
 import { useAssessmentStore } from '../assessments/public/store';
 import { useCommentStore } from '../comments/public/store';
+import { useSessionCommentMode } from '../comments/public/sessionMode';
 import { DuplicateWarning } from './DuplicateWarning';
 import type { ReviewRow as ReviewRowData } from './selectors';
 
@@ -83,6 +84,7 @@ export const ReviewRow = memo(function ReviewRow({
   onSubmitProducts,
 }: ReviewRowProps) {
   const toast = useToast();
+  const levels = levelCatalog(sessionNumber, useSessionCommentMode());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const assessmentBlocked =
@@ -181,7 +183,7 @@ export const ReviewRow = memo(function ReviewRow({
               >
                 {LEARNING_LEVEL_ORDER.map((level) => (
                   <option key={level} value={level}>
-                    {levelCatalog(sessionNumber)[level].code} · {levelCatalog(sessionNumber)[level].shortLabel}
+                    {levels[level].code} · {levels[level].shortLabel}
                   </option>
                 ))}
               </select>

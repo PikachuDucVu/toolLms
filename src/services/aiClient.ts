@@ -22,12 +22,9 @@ import { bytesToDataUrl } from "./remoteFileContent";
 import {
   buildCommentFacts,
   buildCommentMessages,
-  buildRepairMessages,
-  buildSafeComment,
   buildValidationPolicy,
   formatCommentHtml,
   normalizeAiComment,
-  validateComment,
   type AttendanceStatus,
   type ChatMessage,
   type CommentValidationPolicy,
@@ -44,7 +41,7 @@ export function cleanAiResponse(content: string): string {
   return formatCommentHtml(content);
 }
 
-export type CommentGenerationSource = "ai" | "ai_repair" | "safe_template";
+export type CommentGenerationSource = "ai" | "ai_repair";
 export type CommentGenerationTransport = "server" | "direct";
 
 export interface CommentGenerationMeta {
@@ -56,7 +53,6 @@ export interface CommentGenerationMeta {
 export interface DirectCommentFallback {
   messages: ChatMessage[];
   validationPolicy: CommentValidationPolicy;
-  safeComment: string;
 }
 
 export interface GeneratedCommentResult {
@@ -116,6 +112,7 @@ export async function callChatCompletion(
   apiKey?: string,
   openrouterKey?: string,
   thinkingLevel: ThinkingLevel = DEFAULT_THINKING_LEVEL,
+  requestId?: string,
 ): Promise<ChatResult> {
   const urls = provider === "antigravity"
     ? [ANTIGRAVITY_API_URL]
@@ -148,7 +145,7 @@ export async function callChatCompletion(
       response = await fetch(url, { method: "POST", headers, body: payload });
     } catch (error) {
       lastError = error instanceof Error ? error.message : "AI request failed";
-      console.error(JSON.stringify({ category: "ai_gateway_chat", status: 0, detail: lastError.slice(0, 160) }));
+      console.error(JSON.stringify({ category: "ai_gateway_chat", ...(requestId ? { requestId } : {}), status: 0, detail: lastError.slice(0, 160) }));
       if (index < urls.length - 1 && isRetryableAiFailure(undefined, lastError)) continue;
       return { error: lastError };
     }
@@ -161,7 +158,7 @@ export async function callChatCompletion(
     if (!response.ok) {
       lastError = text.slice(0, 200) || String(response.status);
       lastStatus = response.status;
-      console.error(JSON.stringify({ category: "ai_gateway_chat", status: response.status, detail: lastError.slice(0, 160) }));
+      console.error(JSON.stringify({ category: "ai_gateway_chat", ...(requestId ? { requestId } : {}), status: response.status, detail: lastError.slice(0, 160) }));
       if (index < urls.length - 1 && isRetryableAiFailure(response.status, lastError)) continue;
       return { error: lastError, status: response.status };
     }
@@ -188,6 +185,7 @@ export async function generateCommentWithAi(
     isLate?: boolean;
     sessionSummary?: string;
     sessionNumber?: number | string;
+    sessionCommentMode?: import("@tool-lms/contracts").SessionCommentMode;
     modelId?: string;
     customModelId?: string;
     thinkingLevel?: string;
@@ -195,6 +193,7 @@ export async function generateCommentWithAi(
     customPrompt?: string;
     aiApiKey?: string;
     homeworkStatus?: HomeworkStatusInput;
+    requestId?: string;
   },
 ): Promise<GeneratedCommentResult> {
   const model = resolveModelId(input.modelId, input.customModelId ?? String(config.custom_model_id || ""), String(config.ai_model || DEFAULT_AI_MODEL));
@@ -202,67 +201,35 @@ export async function generateCommentWithAi(
   const facts = buildCommentFacts(input);
   const messages = buildCommentMessages(facts);
   const validationPolicy = buildValidationPolicy(facts);
-  const safeComment = formatCommentHtml(buildSafeComment(facts));
   const provider = getModelProvider(model);
-  const result = await callChatCompletion(env, provider, model, messages, input.aiApiKey, String(config.openrouter_key || ""), thinkingLevel);
+  const result = await callChatCompletion(env, provider, model, messages, input.aiApiKey, String(config.openrouter_key || ""), thinkingLevel, input.requestId);
   if (result.error) {
     const error = `Lỗi AI (${model}): ${result.error}`;
     if (/Vui lòng nhập API Key|Please set OpenRouter API key/i.test(result.error)) {
       return { comment: formatCommentHtml(error), error };
     }
     if (result.status === 522 || result.status === 524 || /(?:error code:\s*)?(?:522|524)\b/i.test(result.error)) {
-      return { comment: formatCommentHtml(error), error, directFallback: { messages, validationPolicy, safeComment } };
+      return { comment: formatCommentHtml(error), error, directFallback: { messages, validationPolicy } };
     }
     return {
-      comment: safeComment,
-      generationMeta: {
-        source: "safe_template",
-        transport: "server",
-        validationIssues: [error.slice(0, 500)],
-      },
+      comment: "",
+      error,
     };
   }
 
   const initialComment = normalizeAiComment(result.content || "");
-  const initialValidation = validateComment(initialComment, validationPolicy);
-  if (initialValidation.valid) {
+  if (!initialComment) {
     return {
-      comment: formatCommentHtml(initialComment),
-      generationMeta: { source: "ai", transport: "server" },
-    };
-  }
-
-  const repairMessages = buildRepairMessages(messages, initialComment, initialValidation.issues);
-  const repairResult = await callChatCompletion(env, provider, model, repairMessages, input.aiApiKey, String(config.openrouter_key || ""), thinkingLevel);
-  if (!repairResult.error) {
-    const repairedComment = normalizeAiComment(repairResult.content || "");
-    const repairedValidation = validateComment(repairedComment, validationPolicy);
-    if (repairedValidation.valid) {
-      return {
-        comment: formatCommentHtml(repairedComment),
-        generationMeta: {
-          source: "ai_repair",
-          transport: "server",
-          validationIssues: initialValidation.issues,
-        },
-      };
-    }
-    return {
-      comment: safeComment,
-      generationMeta: {
-        source: "safe_template",
-        transport: "server",
-        validationIssues: [...new Set([...initialValidation.issues, ...repairedValidation.issues])],
-      },
+      comment: "",
+      error: "AI không trả về nội dung nhận xét.",
     };
   }
 
   return {
-    comment: safeComment,
+    comment: formatCommentHtml(initialComment),
     generationMeta: {
-      source: "safe_template",
+      source: "ai",
       transport: "server",
-      validationIssues: [...initialValidation.issues, `Lần sửa AI thất bại: ${repairResult.error}`],
     },
   };
 }

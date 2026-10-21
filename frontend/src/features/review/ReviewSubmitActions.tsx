@@ -25,7 +25,7 @@ export function useReviewScopedActions({ detail, slot, sessionNumber }: { detail
     if (!accepted) return;
     try {
       const result = await generateBatchComments(scope(useClassWorkspaceStore.getState().studentId), frozenIds);
-      toast.show(result.failures.length ? `Đã tạo ${result.successfulIds.length}/${result.total}; ${result.failures.length} học sinh lỗi.` : `Đã tạo ${result.successfulIds.length} nhận xét!`, result.failures.length || result.safeTemplateCount ? 'info' : 'success');
+      toast.show(result.failures.length ? `Đã tạo ${result.successfulIds.length}/${result.total}; ${result.failures.length} học sinh lỗi.` : `Đã tạo ${result.successfulIds.length} nhận xét!`, result.failures.length ? 'info' : 'success');
     } catch (error) {
       if (!(error instanceof DOMException && error.name === 'AbortError')) toast.show(`Lỗi tạo nhận xét cả lớp: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
@@ -57,8 +57,8 @@ export function useReviewScopedActions({ detail, slot, sessionNumber }: { detail
     }
     useClassWorkspaceStore.getState().setStudentId(studentId);
     try {
-      const meta = await generateSingleComment(scope(studentId), studentId);
-      toast.show(meta.source === 'safe_template' ? 'AI chưa bám đúng level; hệ thống đã dùng mẫu an toàn.' : 'Đã tạo nhận xét!', meta.source === 'safe_template' ? 'info' : 'success');
+      await generateSingleComment(scope(studentId), studentId);
+      toast.show('Đã tạo nhận xét!', 'success');
     } catch (error) {
       if (!(error instanceof DOMException && error.name === 'AbortError')) toast.show(`Lỗi tạo nhận xét: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }

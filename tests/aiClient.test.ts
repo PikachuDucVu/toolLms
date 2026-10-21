@@ -72,7 +72,7 @@ describe("regular comment AI orchestration", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses one AI call when the first response is valid", async () => {
+  it("uses one AI call and accepts the AI response directly", async () => {
     const valid = buildSafeComment(buildCommentFacts(baseInput));
     vi.mocked(fetch).mockResolvedValueOnce(aiResponse(valid));
 
@@ -83,45 +83,37 @@ describe("regular comment AI orchestration", () => {
     expect(result.comment).toBe(formatCommentHtml(valid));
   });
 
-  it("repairs exactly once when the first response misses the level", async () => {
-    const valid = buildSafeComment(buildCommentFacts(baseInput));
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(aiResponse("Minh Anh đi học đúng giờ. Con học bình thường."))
-      .mockResolvedValueOnce(aiResponse(valid));
+  it("accepts AI response directly without rejecting on validation criteria", async () => {
+    const rawAiComment = "Minh Anh đi học đầy đủ. Con tiếp thu bài tốt và rất chủ động trong giờ học.";
+    vi.mocked(fetch).mockResolvedValueOnce(aiResponse(rawAiComment));
 
     const result = await generateCommentWithAi(env, config, baseInput);
 
-    expect(fetch).toHaveBeenCalledTimes(2);
-    expect(result.generationMeta?.source).toBe("ai_repair");
-    expect(result.generationMeta?.transport).toBe("server");
-    expect(result.generationMeta?.validationIssues?.length).toBeGreaterThan(0);
-    const secondBody = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
-    expect(secondBody.messages.at(-1).content).toContain("Bản nháp trên chưa đạt vì");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.generationMeta).toEqual({ source: "ai", transport: "server" });
+    expect(result.comment).toBe(formatCommentHtml(rawAiComment));
+    expect(result.error).toBeUndefined();
   });
 
-  it("uses the safe template when both AI drafts are invalid", async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(aiResponse("Minh Anh học ổn."))
-      .mockResolvedValueOnce(aiResponse("Con học bình thường."));
+  it("returns an error when AI returns blank content", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(aiResponse("   "));
 
     const result = await generateCommentWithAi(env, config, baseInput);
-    const expectedSafe = buildSafeComment(buildCommentFacts(baseInput));
 
-    expect(fetch).toHaveBeenCalledTimes(2);
-    expect(result.generationMeta?.source).toBe("safe_template");
-    expect(result.comment).toBe(formatCommentHtml(expectedSafe));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.generationMeta).toBeUndefined();
+    expect(result.error).toContain("AI không trả về nội dung nhận xét");
+    expect(result.comment).toBe("");
   });
 
-  it("uses the safe template when the single repair call errors", async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(aiResponse("Minh Anh học ổn."))
-      .mockResolvedValueOnce(aiResponse("upstream unavailable", 503));
+  it("returns an error when the AI gateway call fails", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(aiResponse("upstream unavailable", 503));
 
     const result = await generateCommentWithAi(env, config, baseInput);
 
-    expect(fetch).toHaveBeenCalledTimes(2);
-    expect(result.generationMeta?.source).toBe("safe_template");
-    expect(result.generationMeta?.validationIssues?.at(-1)).toContain("Lần sửa AI thất bại");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.generationMeta).toBeUndefined();
+    expect(result.error).toContain("upstream unavailable");
   });
 
   it("returns a 522 direct-fallback envelope built from the exact same policy", async () => {
@@ -137,7 +129,6 @@ describe("regular comment AI orchestration", () => {
     expect(result.directFallback).toEqual({
       messages: buildCommentMessages(facts),
       validationPolicy: buildValidationPolicy(facts),
-      safeComment: formatCommentHtml(buildSafeComment(facts)),
     });
   });
 });

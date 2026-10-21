@@ -1,3 +1,4 @@
+import type { SessionCommentMode } from '@tool-lms/contracts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo } from 'react';
@@ -9,6 +10,7 @@ import { useToast } from '../../components/ui/Toast';
 import { hasUnsavedAssessmentWork, isAssessmentOperationActive } from '../assessments/public/controller';
 import { useAssessmentStore } from '../assessments/public/store';
 import { useCommentStore } from '../comments/public/store';
+import { useSessionCommentModeStore, useSlotCommentMode } from '../comments/public/sessionMode';
 import { hasUnsavedCommentWork, isCommentOperationActive } from '../comments/public/controller';
 import { createOperationController, releaseOperationController } from '../../lib/operationContext';
 import { hasUnsavedDemoWork, isDemoOperationActive, useDemoStore } from '../demo/public/store';
@@ -81,6 +83,7 @@ export function CommentsWorkspace() {
   );
   const slot = selectedSlot(detail, activeSlotIndex);
   const mode = sessionMode(slot, activeSlotIndex);
+  const commentMode = useSlotCommentMode(classId, slot?.id || '');
 
   const isClassesLoading = Boolean(auth.session && classesQuery.isLoading);
   const isDetailLoading = Boolean(classId && detailQuery.isLoading);
@@ -228,6 +231,28 @@ export function CommentsWorkspace() {
   const chooseSlot = async (value: string) => {
     if (value === slotIndex || !(await allowAssessmentContextChange())) return;
     useClassWorkspaceStore.getState().setSlotIndex(value);
+  };
+
+  const chooseCommentMode = async (value: SessionCommentMode) => {
+    if (!slot || mode !== 'regular' || value === commentMode) return;
+    const capturedClassId = classId;
+    const capturedSlotIndex = activeSlotIndex;
+    const capturedSlotId = slot.id;
+    const operationActive = () => isAssessmentOperationActive() || isCommentOperationActive() ||
+      isDemoOperationActive() || isCheckpointOperationActive();
+    if (operationActive()) return;
+    if (Object.values(useCommentStore.getState().drafts).some((draft) => draft.content.trim())) {
+      const accepted = await confirm({
+        title: 'Đổi loại nhận xét cho buổi này?',
+        description: 'Bản nháp và nhận xét đã gửi được giữ nguyên, không tự viết lại. Hãy tạo lại nhận xét AI nếu muốn nội dung dùng loại nhận xét mới.',
+        confirmLabel: 'Đổi loại nhận xét',
+      });
+      if (!accepted) return;
+    }
+    const live = useClassWorkspaceStore.getState();
+    if (live.classId !== capturedClassId || live.activeSlotIndex !== capturedSlotIndex || operationActive()) return;
+    useSessionCommentModeStore.getState().setMode(capturedClassId, capturedSlotId, value);
+    toast.show('Đã đổi loại nhận xét riêng cho buổi này. Bản nháp hiện có được giữ nguyên.', 'success');
   };
 
   const chooseClass = async (id: string) => {
@@ -385,6 +410,22 @@ export function CommentsWorkspace() {
               </h2>
             </div>
             <div className="student-header-meta" id="studentHeaderMeta">
+              {slot && mode === 'regular' && (
+                <div className="session-comment-mode">
+                  <label htmlFor="sessionCommentMode">Loại nhận xét</label>
+                  <select
+                    id="sessionCommentMode"
+                    className="form-select"
+                    value={commentMode}
+                    disabled={isDetailLoading || assessmentOperationActive || commentOperationActive || demoOperationActive || checkpointOperationActive}
+                    onChange={(event) => void chooseCommentMode(event.target.value as SessionCommentMode)}
+                  >
+                    <option value="auto">Tự động theo buổi học</option>
+                    <option value="regular">Buổi học thường</option>
+                    <option value="spck">Cuối khóa / SPCK</option>
+                  </select>
+                </div>
+              )}
               <span id="selectedClassSlotMeta" className="selected-meta-text">
                 {detail && slot ? (
                   <>

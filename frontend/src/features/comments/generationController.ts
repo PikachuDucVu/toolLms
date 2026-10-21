@@ -4,13 +4,16 @@ import type {
   CommentHomeworkStatus,
   GenerateCommentRequest,
   LearningLevel,
+  SessionCommentMode,
   Slot,
   StudentAttendance,
 } from '@tool-lms/contracts';
 import { appQueryClient } from '../../app/providers';
+import { ApiError } from '../../lib/apiError';
 import { currentAuthEpoch, createOperationController, isCurrentAuthEpoch, registerWorkflowReset, releaseOperationController } from '../../lib/operationContext';
 import { readAiApiKey } from '../../lib/persistence';
-import { normalizedAssessmentDraft } from '../assessments/public/selectors';
+import { isProductProgressSession, normalizedAssessmentDraft } from '../assessments/public/selectors';
+import { sessionCommentModeFor } from './sessionMode';
 import { captureAssessmentContext, isCurrentAssessmentContext, saveFullAssessment, waitForAssessmentSaves } from '../assessments/public/controller';
 import { useAssessmentStore } from '../assessments/public/store';
 import { classDetailQuery, useClassWorkspaceStore, applyOptimisticClassSubmissions, reconcileClassSubmissionsAfterRefetch } from '../classes/public/domain';
@@ -25,8 +28,11 @@ export type RegularCommentScope = {
   sessionNumber: number;
   selectedStudentId: string | null;
 };
-export type BatchOutcome = { total: number; successfulIds: string[]; failures: Array<{ studentId: string; message: string }>; safeTemplateCount: number };
+export type BatchOutcome = { total: number; successfulIds: string[]; failures: Array<{ studentId: string; message: string }> };
 export type SubmitOutcome = BatchOutcome & { refreshed: boolean };
+
+const COMMENT_GENERATION_MAX_RETRIES = 3;
+const COMMENT_GENERATION_BATCH_CONCURRENCY = 3;
 
 type ContextSnapshot = CommentContext & { authEpoch: number };
 type StudentSnapshot = {
@@ -41,6 +47,7 @@ type StudentSnapshot = {
   pastSlots: ReturnType<typeof pastCommentSlots>;
   homeworkStatus: CommentHomeworkStatus | null;
   sessionNumber: number;
+  sessionCommentMode: SessionCommentMode;
 };
 
 let epoch = 0;
@@ -95,7 +102,7 @@ export async function generateSingleComment(scope: RegularCommentScope, studentI
     const homework = await loadHomeworkFacts(scope, controller.signal);
     assertCurrentSingle(context, scope, studentId);
     const snapshot = snapshotStudent(scope, student, homework[studentId] || null);
-    const response = await generateComment(buildGenerationRequest(context, snapshot, config, summary), controller.signal);
+    const response = await generateCommentWithRetry(buildGenerationRequest(context, snapshot, config, summary), controller.signal);
     if (!isCurrentSingle(context, scope, studentId)) return response.data.meta;
     useCommentStore.getState().setDraft(studentId, { content: cleanComment(response.data.comment), kind: 'generated', generationMeta: response.data.meta });
     return response.data.meta;
@@ -113,13 +120,12 @@ export async function generateBatchComments(scope: RegularCommentScope, requeste
   if (isCommentOperationActive()) throw new Error('Đang có thao tác nhận xét khác chạy');
   const scopeIds = unique(requestedIds).filter((id) => scope.slot.studentAttendance.some((student) => student.studentId === id && isPresent(student)));
   if (!scopeIds.length) throw new Error('Không có học sinh phù hợp để tạo nhận xét');
-  const initial: CommentBatchState = { kind: 'generate', phase: 'persisting', scopeIds, total: scopeIds.length, completed: 0, successful: 0, safeTemplateCount: 0, failures: {}, currentStudentId: null };
+  const initial: CommentBatchState = { kind: 'generate', phase: 'persisting', scopeIds, total: scopeIds.length, completed: 0, successful: 0, failures: {}, currentStudentId: null };
   useCommentStore.getState().startBatch(initial);
   scopeIds.forEach((id) => useCommentStore.getState().setError(id, null));
   const controller = createCommentController();
   const successfulIds: string[] = [];
   const failures: Array<{ studentId: string; message: string }> = [];
-  let safeTemplateCount = 0;
   try {
     const config = await currentGenerationConfig();
     assertScope(context, scope);
@@ -145,23 +151,22 @@ export async function generateBatchComments(scope: RegularCommentScope, requeste
     const snapshots = scopeIds.filter((studentId) => persisted.has(studentId)).map((studentId) => snapshotStudent(scope, requireStudent(scope, studentId), homework[studentId] || null));
     useCommentStore.getState().updateBatch({ phase: 'generating', total: scopeIds.length, completed: failures.length });
     assertScope(context, scope);
-    await Promise.all(snapshots.map(async (snapshot) => {
+    await runWithConcurrency(snapshots, COMMENT_GENERATION_BATCH_CONCURRENCY, async (snapshot) => {
       try {
-        const response = await generateComment(buildGenerationRequest(context, snapshot, config, summary), controller.signal);
+        const response = await generateCommentWithRetry(buildGenerationRequest(context, snapshot, config, summary), controller.signal);
         if (!isCurrentCommentContext(context)) return;
         useCommentStore.getState().setDraft(snapshot.studentId, { content: cleanComment(response.data.comment), kind: 'generated', generationMeta: response.data.meta });
         successfulIds.push(snapshot.studentId);
-        if (response.data.meta.source === 'safe_template') safeTemplateCount += 1;
-        useCommentStore.getState().updateBatch({ successful: successfulIds.length, safeTemplateCount });
+        useCommentStore.getState().updateBatch({ successful: successfulIds.length });
       } catch (error) {
         if (isAbort(error)) throw error;
         if (isCurrentCommentContext(context)) recordFailure(snapshot.studentId, errorText(error), failures);
       } finally {
         if (isCurrentCommentContext(context)) incrementBatch();
       }
-    }));
+    });
     assertScope(context, scope);
-    return { total: scopeIds.length, successfulIds, failures, safeTemplateCount };
+    return { total: scopeIds.length, successfulIds, failures };
   } finally {
     releaseCommentController(controller);
     if (isCurrentCommentContext(context)) useCommentStore.getState().finishBatch();
@@ -227,13 +232,13 @@ export async function submitSingleComment(scope: RegularCommentScope, studentId:
       learningLevel: assessment.learningLevel,
       ...(draft.generationMeta ? { generationMeta: draft.generationMeta } : {}),
     }, controller.signal);
-    if (!isCurrentSingle(context, scope, studentId)) return { total: 1, successfulIds: [], failures: [], safeTemplateCount: 0, refreshed: false };
+    if (!isCurrentSingle(context, scope, studentId)) return { total: 1, successfulIds: [], failures: [], refreshed: false };
     useCommentStore.getState().removeDraft(studentId);
     useCommentStore.getState().markSummarySynced(summary);
     const comments = { [studentId]: draft.content };
     applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: [studentId], comments });
     const refreshed = await refetchCurrentClass(context, [studentId], comments);
-    return { total: 1, successfulIds: [studentId], failures: [], safeTemplateCount: 0, refreshed };
+    return { total: 1, successfulIds: [studentId], failures: [], refreshed };
   } catch (error) {
     if (isCurrentSingle(context, scope, studentId) && !isAbort(error)) useCommentStore.getState().setError(studentId, errorText(error));
     throw error;
@@ -257,7 +262,7 @@ export async function submitBatchComments(scope: RegularCommentScope, requestedI
   });
   if (!scopeIds.length) throw new Error('Không có bản nháp phù hợp để gửi');
   const frozenDrafts = Object.fromEntries(scopeIds.map((id) => [id, { ...draftsAtStart[id], generationMeta: draftsAtStart[id].generationMeta ? { ...draftsAtStart[id].generationMeta!, validationIssues: [...draftsAtStart[id].generationMeta!.validationIssues] } : null }]));
-  useCommentStore.getState().startBatch({ kind: 'submit', phase: 'persisting', scopeIds, total: scopeIds.length, completed: 0, successful: 0, safeTemplateCount: 0, failures: {}, currentStudentId: null });
+  useCommentStore.getState().startBatch({ kind: 'submit', phase: 'persisting', scopeIds, total: scopeIds.length, completed: 0, successful: 0, failures: {}, currentStudentId: null });
   scopeIds.forEach((id) => useCommentStore.getState().setError(id, null));
   const controller = createCommentController();
   const failures: Array<{ studentId: string; message: string }> = [];
@@ -318,7 +323,7 @@ export async function submitBatchComments(scope: RegularCommentScope, requestedI
     const comments = Object.fromEntries(successfulIds.map((id) => [id, frozenDrafts[id]?.content || '']));
     if (successfulIds.length) applyOptimisticClassSubmissions({ classId: context.classId, slotId: context.slotId, studentIds: successfulIds, comments });
     const refreshed = successfulIds.length ? await refetchCurrentClass(context, successfulIds, comments) : false;
-    return { total: scopeIds.length, successfulIds, failures, safeTemplateCount: 0, refreshed };
+    return { total: scopeIds.length, successfulIds, failures, refreshed };
   } finally {
     releaseCommentController(controller);
     if (isCurrentCommentContext(context)) useCommentStore.getState().finishBatch();
@@ -344,7 +349,8 @@ async function currentGenerationConfig(): Promise<CommentGenerationConfig> {
 }
 
 async function loadHomeworkFacts(scope: RegularCommentScope, signal: AbortSignal): Promise<Record<string, CommentHomeworkStatus | null>> {
-  if (![2, 3, 4, 7, 8].includes(scope.sessionNumber)) return Object.fromEntries(scope.slot.studentAttendance.map((student) => [student.studentId, null]));
+  const mode = sessionCommentModeFor(scope.detail.id, scope.slot.id);
+  if (isProductProgressSession(scope.sessionNumber, mode) || ![2, 3, 4, 7, 8].includes(scope.sessionNumber)) return Object.fromEntries(scope.slot.studentAttendance.map((student) => [student.studentId, null]));
   try {
     const response = await getCommentHomework(scope.detail.id, signal);
     return homeworkStatuses(response, scope.sessionNumber, scope.slot.studentAttendance);
@@ -368,6 +374,7 @@ function snapshotStudent(scope: RegularCommentScope, student: StudentAttendance,
     pastSlots: pastCommentSlots(scope.detail, scope.slot, student.studentId),
     homeworkStatus,
     sessionNumber: scope.sessionNumber,
+    sessionCommentMode: sessionCommentModeFor(scope.detail.id, scope.slot.id),
   };
 }
 
@@ -392,6 +399,7 @@ function buildGenerationRequest(context: ContextSnapshot, snapshot: StudentSnaps
     customPrompt: config.customPrompt,
     ...(config.apiKey ? { apiKey: config.apiKey } : {}),
     sessionNumber: snapshot.sessionNumber,
+    sessionCommentMode: snapshot.sessionCommentMode,
   };
 }
 
@@ -448,8 +456,48 @@ function sameCommentDraft(left: CommentDraft | undefined, right: CommentDraft | 
     && JSON.stringify(left?.generationMeta?.validationIssues || []) === JSON.stringify(right?.generationMeta?.validationIssues || []);
 }
 function unique(values: string[]): string[] { return Array.from(new Set(values.map(String))); }
-function errorText(error: unknown): string { return error instanceof Error ? error.message : String(error || 'Lỗi không xác định'); }
+function errorText(error: unknown): string {
+  if (error instanceof ApiError && error.requestId && error.requestId !== 'unknown') {
+    return `${error.message} (Mã yêu cầu: ${error.requestId})`;
+  }
+  return error instanceof Error ? error.message : String(error || 'Lỗi không xác định');
+}
 function isAbort(error: unknown): boolean { return error instanceof DOMException && error.name === 'AbortError'; }
+async function generateCommentWithRetry(request: GenerateCommentRequest, signal: AbortSignal) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= COMMENT_GENERATION_MAX_RETRIES; attempt += 1) {
+    try {
+      return await generateComment(request, signal);
+    } catch (error) {
+      if (isAbort(error) || signal.aborted || !isRetryableGenerationError(error) || attempt === COMMENT_GENERATION_MAX_RETRIES) throw error;
+      lastError = error;
+      await waitBeforeGenerationRetry(300 * 2 ** attempt, signal);
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(errorText(lastError));
+}
+function isRetryableGenerationError(error: unknown): boolean {
+  if (error instanceof TypeError) return true;
+  if (!(error instanceof Error)) return true;
+  const code = 'code' in error ? String(error.code) : '';
+  const status = 'status' in error ? Number(error.status) : 0;
+  return code === 'UPSTREAM_ERROR' || status >= 500;
+}
+function waitBeforeGenerationRetry(milliseconds: number, signal: AbortSignal): Promise<void> {
+  if (signal.aborted) return Promise.reject(new DOMException('Generation aborted', 'AbortError'));
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      signal.removeEventListener('abort', abort);
+      resolve();
+    }, milliseconds);
+    const abort = () => {
+      clearTimeout(timeout);
+      signal.removeEventListener('abort', abort);
+      reject(new DOMException('Generation aborted', 'AbortError'));
+    };
+    signal.addEventListener('abort', abort, { once: true });
+  });
+}
 function recordFailure(studentId: string, message: string, failures: Array<{ studentId: string; message: string }>) {
   if (!failures.some((item) => item.studentId === studentId)) failures.push({ studentId, message });
   useCommentStore.getState().setError(studentId, message);

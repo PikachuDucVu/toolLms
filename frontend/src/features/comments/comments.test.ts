@@ -56,6 +56,22 @@ describe('copy and export parity helpers', () => {
     expect(result).toEqual({ count: 1, text: copyExportFixtures.classZalo });
   });
 
+  it('exports early SPCK progress and home product work instead of Denise homework', () => {
+    const drafts = { 'student-1': { content: 'Con làm sản phẩm tốt.', kind: 'manual' as const, generationMeta: null } };
+    const text = classZaloText({ slot: detail.slots[1], sessionNumber: 2, summary: 'Thực hành', drafts, sessionCommentMode: 'spck' }).text;
+    expect(text).toContain('buổi học số 2');
+    expect(text).toContain('Tiếp tục hoàn thiện sản phẩm cuối khóa');
+    expect(text).not.toContain('Denise');
+    expect(text).not.toContain('3. BTVN');
+    useAssessmentStore.setState({ drafts: { 'student-1': { learningLevel: 'independent', note: '' } } });
+    const csv = regularCommentsCsv(detail.slots[1].studentAttendance, drafts, useAssessmentStore.getState(), 2, 'spck');
+    expect(csv).toContain('Mức độ tiến độ');
+    expect(csv).toContain('Vượt tiến độ');
+    const regularText = classZaloText({ slot: detail.slots[1], sessionNumber: 10, summary: 'Thực hành', drafts, sessionCommentMode: 'regular' }).text;
+    expect(regularText).toContain('Denise');
+    expect(regularText).not.toContain('Tiếp tục hoàn thiện sản phẩm cuối khóa');
+  });
+
   it('matches the exact quoted UTF-8 CSV fixture', () => {
     useAssessmentStore.setState({ drafts: { 'student-1': { learningLevel: 'independent', note: 'Nhanh, "chính xác"' } } });
     const csv = regularCommentsCsv(detail.slots[1].studentAttendance, { 'student-1': { content: 'AI draft', kind: 'generated', generationMeta: null } }, useAssessmentStore.getState());

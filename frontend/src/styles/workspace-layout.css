@@ -1,0 +1,145 @@
+/* ============================================================
+   Comments workspace: fit to viewport on desktop
+   ------------------------------------------------------------
+   On desktop the page itself never scrolls. The "Danh sách lớp" card
+   fills the sidebar and only its class list scrolls. The right column
+   stretches the "Danh sách học sinh" card so the student table fills
+   the remaining height; when the window is too short for a usable
+   table, the right column scrolls instead (table header and action
+   bar stay pinned) rather than squeezing the table to nothing.
+   Loaded after app.css so it wins over the legacy !important rules.
+   ============================================================ */
+
+@media (min-width: 1025px) {
+  .app-container.app-container--comments {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    /* Extremely short windows fall back to normal page scrolling. */
+    min-height: 520px;
+    padding-bottom: 16px;
+  }
+
+  .app-container--comments > .header {
+    flex: none;
+  }
+
+  .app-container--comments > .comments-page {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .app-container--comments .main-grid {
+    flex: 1 1 auto;
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  /* ---------- Left: Danh sách lớp ---------- */
+  .app-container--comments .sidebar {
+    min-height: 0;
+  }
+
+  .app-container--comments .sidebar > .card {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .app-container--comments .sidebar > .card > .card-header {
+    flex: none;
+  }
+
+  .app-container--comments .sidebar > .card > .card-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .app-container--comments .sidebar .class-status-legend {
+    flex: none;
+  }
+
+  .app-container--comments .sidebar .class-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  /* ---------- Right: Buổi học + Danh sách học sinh ---------- */
+  .app-container--comments .workspace-main {
+    gap: 16px;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .app-container--comments .workspace-main > * {
+    flex: none;
+  }
+
+  /* Grows to fill the column but never shrinks below its content, whose
+     height is driven by the table's minimum below. overflow: clip (not
+     hidden) keeps the rounded corners without becoming a scroll
+     container, so sticky children still pin to .workspace-main. */
+  .app-container--comments .workspace-main > .student-main-card {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+    overflow: clip;
+  }
+
+  .app-container--comments .student-main-card > * {
+    flex: none;
+  }
+
+  .app-container--comments .student-main-card > .student-card-body,
+  .app-container--comments .student-card-body > .comments-student-area,
+  .app-container--comments .comments-student-area > .student-workspace-section {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+  }
+
+  .app-container--comments .comments-student-area > .student-workspace-section > * {
+    flex: none;
+  }
+
+  /* Regular mode: filters and the batch action bar stay put,
+     only the student table scrolls. */
+  .app-container--comments .student-workspace-section > .student-grid.regular-mode,
+  .app-container--comments .student-grid.regular-mode > .student-workspace {
+    display: flex !important;
+    flex: 1 0 auto;
+    flex-direction: column;
+  }
+
+  .app-container--comments .student-grid.regular-mode .student-compact-list {
+    flex: 1 1 260px;
+    min-height: 260px;
+    overflow: auto !important;
+  }
+
+  .app-container--comments .student-grid.regular-mode .student-table-header {
+    position: sticky !important;
+    top: 0;
+    z-index: 3;
+  }
+
+  /* The action bar sat flush under the table; give it breathing room.
+     Pinned to the bottom of the column when the column scrolls. */
+  .app-container--comments .student-workspace-section > .action-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    margin-top: 12px;
+  }
+}

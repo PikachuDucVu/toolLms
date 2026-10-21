@@ -151,6 +151,50 @@ describe("v2 regular comments routes", () => {
     expect(GenerateCommentResponseSchema.parse(raw).data.meta).toEqual({ source: "ai", transport: "direct", validationIssues: [] });
   });
 
+  it.each([
+    { sessionNumber: 7, sessionCommentMode: 'spck', summary: 'Thực hành', expected: 'Ý NGHĨA TIẾN ĐỘ BẮT BUỘC', excluded: 'TÌNH TRẠNG BTVN' },
+    { sessionNumber: 10, sessionCommentMode: 'regular', summary: 'SPCK', expected: 'Ý NGHĨA LEVEL BẮT BUỘC', excluded: 'Ý NGHĨA TIẾN ĐỘ BẮT BUỘC' },
+  ])("honors $sessionCommentMode mode on authoritative session $sessionNumber", async ({ sessionNumber, sessionCommentMode, summary, expected, excluded }) => {
+    const detail = rawDetail({ slots: [{
+      ...(rawDetail().slots[0]), index: sessionNumber - 1,
+    }] });
+    const { aiCalls } = generationMock(detail, [Response.json({ choices: [{ message: { content: 'Nhận xét theo chế độ đã chọn.' } }] })]);
+    const response = await request('/api/v2/comments/generate', {
+      method: 'POST',
+      body: JSON.stringify({
+        classId: 'class-1', slotId: 'slot-1', studentId: 'student-present', studentName: 'Không phải tên thật',
+        sessionNumber: 1, sessionCommentMode, sessionSummary: summary, teacherNote: '', learningLevel: 'independent',
+        attendanceStatus: 'ABSENT', homeworkStatus: { submitted: false, previousSession: 6 },
+        modelId: 'claude-sonnet-4-6', thinkingLevel: 'off', apiKey: 'test-key',
+      }),
+    });
+    expect(response.status).toBe(200);
+    const prompt = aiCalls[0].messages[1].content;
+    expect(prompt).toContain(expected);
+    expect(prompt).not.toContain(excluded);
+    expect(prompt).toContain('Nguyễn Văn An');
+    expect(prompt).not.toContain('Không phải tên thật');
+  });
+
+  it("correlates upstream AI failures with the API request id in Worker logs", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    generationMock(rawDetail(), [new Response("model overloaded", { status: 503 })]);
+
+    const response = await request("/api/v2/comments/generate", {
+      method: "POST",
+      body: JSON.stringify({
+        classId: "class-1", slotId: "slot-1", studentId: "student-present", studentName: "Nguyễn Văn An",
+        pastSlots: [], sessionSummary: "", teacherNote: "", learningLevel: "understands_and_asks",
+        attendanceStatus: "ATTENDED", modelId: "claude-sonnet-4-6", thinkingLevel: "off", apiKey: "test-key",
+      }),
+    });
+
+    expect(response.status).toBe(502);
+    const body = await response.json() as any;
+    const requestId = body.error.requestId as string;
+    expect(log.mock.calls.some(([message]) => String(message).includes('"category":"ai_gateway_chat"') && String(message).includes(`"requestId":"${requestId}"`) && String(message).includes('"status":503'))).toBe(true);
+  });
+
   it("uses the loaded slot number so sessions 10-13 generate product-progress comments", async () => {
     const safe = buildSafeComment(buildCommentFacts({
       studentName: "Nguyễn Văn An", learningLevel: "independent", attendanceStatus: "ATTENDED", commentLength: "medium", sessionNumber: 10,

@@ -25,6 +25,11 @@ describe('assessment selectors and store', () => {
     expect(showsStorageProductColumn(14)).toBe(true);
     expect(levelCatalog(12).independent.shortLabel).toBe('Vượt tiến độ');
     expect(levelCatalog(4).independent.shortLabel).toBe('Nắm vững');
+    expect(isProductProgressSession(7, 'spck')).toBe(true);
+    expect(isProductProgressSession(10, 'regular')).toBe(false);
+    expect(levelCatalog(7, 'spck').independent.shortLabel).toBe('Vượt tiến độ');
+    expect(levelCatalog(10, 'regular').independent.shortLabel).toBe('Nắm vững');
+    expect(showsStorageProductColumn(7, 'spck')).toBe(true);
   });
 
   it('orders strictly previous slot indexes nearest first and caps them at 100', () => {

@@ -17,7 +17,6 @@ export type CommentBatchState = {
   total: number;
   completed: number;
   successful: number;
-  safeTemplateCount: number;
   failures: Record<string, string>;
   currentStudentId?: string | null;
 };

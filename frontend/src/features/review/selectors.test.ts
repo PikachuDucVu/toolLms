@@ -39,13 +39,12 @@ describe('React review pure selectors', () => {
     expect(filterReviewRows(rows, filters({ sort: 'level' })).map((item) => item.studentId)).toEqual(['student-3', 'student-4', 'student-2', 'student-1']);
   });
 
-  it('includes safe-template and validation status in warning counts and the attention filter exactly once', () => {
-    useCommentStore.getState().setDraft('student-1', { content: 'Nhận xét an toàn đủ nội dung.', kind: 'generated', generationMeta: { source: 'safe_template', transport: 'server', validationIssues: [] } });
+  it('includes only validation status in warning counts and the attention filter', () => {
     useCommentStore.getState().setDraft('student-2', { content: 'Nhận xét cần kiểm tra nội dung.', kind: 'generated', generationMeta: { source: 'ai', transport: 'server', validationIssues: ['level_mismatch'] } });
     const rows = currentRows();
     const attention = filterReviewRows(rows, filters({ alertFilter: 'attention' }));
-    expect(new Set(attention.map((item) => item.studentId))).toEqual(new Set(['student-1', 'student-2']));
-    expect(reviewWarningText(rows.find((item) => item.studentId === 'student-1')!)).toBe('Nhận xét dùng mẫu an toàn');
+    expect(new Set(attention.map((item) => item.studentId))).toEqual(new Set(['student-2']));
+    expect(reviewWarningText(rows.find((item) => item.studentId === 'student-1')!)).toBe('');
     expect(reviewWarningText(rows.find((item) => item.studentId === 'student-2')!)).toBe('1 cảnh báo kiểm tra nội dung');
   });
 

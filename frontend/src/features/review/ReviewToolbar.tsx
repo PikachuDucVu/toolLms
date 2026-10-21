@@ -10,6 +10,7 @@ import { useAssessmentStore } from '../assessments/public/store';
 import { CopyDialog } from '../comments/public/CopyDialog';
 import { classZaloText, copyWithFallback, downloadCsv, regularCommentsCsv } from '../comments/public/copyExport';
 import { useCommentStore } from '../comments/public/store';
+import { useSessionCommentMode } from '../comments/public/sessionMode';
 import { ReviewFilters } from './ReviewFilters';
 import { ReviewSubmitActions } from './ReviewSubmitActions';
 import type { ReviewRow } from './selectors';
@@ -37,6 +38,8 @@ export function ReviewToolbar({
 }) {
   const confirm = useConfirm();
   const toast = useToast();
+  const commentMode = useSessionCommentMode();
+  const levels = levelCatalog(sessionNumber, commentMode);
   const drafts = useCommentStore((state) => state.drafts);
   const summary = useCommentStore((state) => state.summaryDraft);
   const batch = useCommentStore((state) => state.batch);
@@ -56,11 +59,11 @@ export function ReviewToolbar({
     if (!value) return;
     const level = value as LearningLevel;
     const targets = presentIds.filter((studentId) => assessmentDraft(useAssessmentStore.getState(), studentId).learningLevel !== level);
-    if (!targets.length) return toast.show(`Tất cả học sinh có mặt đã ở ${levelCatalog(sessionNumber)[level].code}`, 'info');
+    if (!targets.length) return toast.show(`Tất cả học sinh có mặt đã ở ${levels[level].code}`, 'info');
     const accepted = await confirm({
-      title: `Đặt ${levelCatalog(sessionNumber)[level].code} cho cả lớp?`,
+      title: `Đặt ${levels[level].code} cho cả lớp?`,
       description: `Áp dụng cho đúng ${targets.length} học sinh có mặt. Ghi chú và bản nháp nhận xét được giữ nguyên.`,
-      confirmLabel: `Đặt ${levelCatalog(sessionNumber)[level].code}`,
+      confirmLabel: `Đặt ${levels[level].code}`,
     });
     if (!accepted) return;
     try {
@@ -68,7 +71,7 @@ export function ReviewToolbar({
       toast.show(
         result.failures.length
           ? `Đã đặt level cho ${result.successfulIds.length}/${targets.length} học sinh.`
-          : `Đã đặt ${levelCatalog(sessionNumber)[level].code} cho ${targets.length} học sinh.`,
+          : `Đã đặt ${levels[level].code} cho ${targets.length} học sinh.`,
         result.failures.length ? 'info' : 'success'
       );
     } catch (error) {
@@ -79,7 +82,7 @@ export function ReviewToolbar({
   };
 
   const copyAll = async () => {
-    const value = classZaloText({ slot, sessionNumber, summary, drafts });
+    const value = classZaloText({ slot, sessionNumber, summary, drafts, sessionCommentMode: commentMode });
     if (!value.count) return toast.show('Chưa có nhận xét nào', 'error');
     const mobile = window.innerWidth <= 768 || 'ontouchstart' in window;
     if (!mobile && (await copyWithFallback(value.text))) {
@@ -90,7 +93,7 @@ export function ReviewToolbar({
   };
 
   const exportAll = () => {
-    downloadCsv(detail, slot, regularCommentsCsv(slot.studentAttendance, drafts, useAssessmentStore.getState(), sessionNumber), sessionNumber);
+    downloadCsv(detail, slot, regularCommentsCsv(slot.studentAttendance, drafts, useAssessmentStore.getState(), sessionNumber, commentMode), sessionNumber);
     toast.show('Đã export CSV!', 'success');
   };
 
@@ -135,7 +138,7 @@ export function ReviewToolbar({
               <option value="">Mức cả lớp ({presentIds.length})</option>
               {LEARNING_LEVEL_ORDER.map((level) => (
                 <option key={level} value={level}>
-                  {levelCatalog(sessionNumber)[level].code} · {levelCatalog(sessionNumber)[level].shortLabel}
+                  {levels[level].code} · {levels[level].shortLabel}
                 </option>
               ))}
             </select>
@@ -181,13 +184,6 @@ export function ReviewToolbar({
               Object.keys(batch.failures).length > 0
                 ? `${Object.keys(batch.failures).length} học sinh lỗi; bản nháp liên quan được giữ lại.`
                 : undefined
-            }
-            extraMeta={
-              batch.safeTemplateCount > 0 ? (
-                <div className="progress-notice progress-notice-warning">
-                  <small>{batch.safeTemplateCount} nhận xét dùng mẫu an toàn.</small>
-                </div>
-              ) : undefined
             }
           />
         </div>

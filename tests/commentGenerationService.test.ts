@@ -74,44 +74,23 @@ describe("regular comment generation service", () => {
     expect(result).not.toHaveProperty("error");
   });
 
-  it("repairs once during the server-owned direct fallback and preserves validation issues", async () => {
+  it("accepts direct fallback AI comment output without rejecting based on evaluation criteria", async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(aiResponse("error code: 522", 522))
-      .mockResolvedValueOnce(aiResponse("Minh Anh học bình thường."))
-      .mockResolvedValueOnce(aiResponse(safeComment()));
-
-    const result = await generateRegularComment(env, config, input);
-
-    expect(fetch).toHaveBeenCalledTimes(3);
-    expect(result.generationMeta).toMatchObject({ source: "ai_repair", transport: "direct" });
-    expect(result.generationMeta?.validationIssues?.length).toBeGreaterThan(0);
-  });
-
-  it("keeps the legacy repair attempt for an empty primary server completion", async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(aiJsonResponse({ choices: [] }))
-      .mockResolvedValueOnce(aiResponse(safeComment()));
+      .mockResolvedValueOnce(aiResponse("Minh Anh học bình thường."));
 
     const result = await generateRegularComment(env, config, input);
 
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(result).toEqual({
-      comment: formatCommentHtml(safeComment()),
-      generationMeta: {
-        source: "ai_repair",
-        transport: "server",
-        validationIssues: expect.any(Array),
-      },
-    });
-    const repairBody = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
-    expect(repairBody.messages.at(-1).content).toContain("Bản nháp trên chưa đạt vì");
+    expect(result.comment).toBe("<p>Minh Anh học bình thường.</p>");
+    expect(result.generationMeta).toEqual({ source: "ai", transport: "direct" });
   });
 
   it.each([
     ["empty choices", { choices: [] }],
     ["missing message", { choices: [{}] }],
     ["blank content", { choices: [{ message: { content: "   \n" } }] }],
-  ])("uses the safe template immediately when the first direct response has %s", async (_label, directBody) => {
+  ])("returns an error when the first direct response has %s", async (_label, directBody) => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(aiResponse("error code: 522", 522))
       .mockResolvedValueOnce(aiJsonResponse(directBody));
@@ -119,63 +98,19 @@ describe("regular comment generation service", () => {
     const result = await generateRegularComment(env, config, input);
 
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(result).toEqual({
-      comment: formatCommentHtml(safeComment()),
-      generationMeta: {
-        source: "safe_template",
-        transport: "direct",
-        validationIssues: ["Direct AI thất bại: AI không trả về nội dung"],
-      },
-    });
+    expect(result.generationMeta).toBeUndefined();
+    expect(result.comment).toBe("");
+    expect(result.error).toContain("AI không trả về nội dung");
   });
 
-  it("strictly rejects a blank direct repair completion", async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(aiResponse("error code: 522", 522))
-      .mockResolvedValueOnce(aiResponse("Học ổn."))
-      .mockResolvedValueOnce(aiJsonResponse({ choices: [{ message: { content: "  " } }] }));
-
-    const result = await generateRegularComment(env, config, input);
-
-    expect(fetch).toHaveBeenCalledTimes(3);
-    expect(result.comment).toBe(formatCommentHtml(safeComment()));
-    expect(result.generationMeta).toEqual({
-      source: "safe_template",
-      transport: "direct",
-      validationIssues: [
-        "Nhận xét dùng cụm đánh giá mơ hồ.",
-        "Thiếu mức độ nắm được kiến thức chính.",
-        "Thiếu sự chủ động hỏi lại.",
-        "Thiếu khả năng làm tiếp sau khi được giải đáp.",
-        "Thiếu thông tin đi học đúng giờ.",
-        "Độ dài chưa phù hợp (1 câu; cần 2–5 câu).",
-        "Direct AI thất bại: AI không trả về nội dung",
-      ],
-    });
-  });
-
-  it("uses the safe template with direct transport when fallback and repair both fail validation", async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(aiResponse("error code: 522", 522))
-      .mockResolvedValueOnce(aiResponse("Học ổn."))
-      .mockResolvedValueOnce(aiResponse("Học bình thường."));
-
-    const result = await generateRegularComment(env, config, input);
-
-    expect(result.comment).toBe(formatCommentHtml(safeComment()));
-    expect(result.generationMeta).toMatchObject({ source: "safe_template", transport: "direct" });
-    expect(result.generationMeta?.validationIssues?.length).toBeGreaterThan(0);
-  });
-
-  it("uses the safe template when the AI gateway fails for a non-timeout error", async () => {
+  it("returns an error when the AI gateway fails for a non-timeout error", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(aiResponse("unavailable", 503));
 
     const result = await generateRegularComment(env, config, input);
 
     expect(fetch).toHaveBeenCalledTimes(1);
-    expect(result.error).toBeUndefined();
-    expect(result.generationMeta).toMatchObject({ source: "safe_template", transport: "server" });
-    expect(result.generationMeta?.validationIssues?.join(" ")).toContain("unavailable");
-    expect(result.comment).toBe(formatCommentHtml(safeComment()));
+    expect(result.error).toContain("unavailable");
+    expect(result.generationMeta).toBeUndefined();
+    expect(result.comment).toBe("");
   });
 });

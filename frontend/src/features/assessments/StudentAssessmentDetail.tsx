@@ -7,6 +7,7 @@ import { CommentEditor } from '../comments/public/CommentEditor';
 import { PastCommentsDialog } from '../comments/public/PastCommentsDialog';
 import { StudentWorkSection } from '../studentWorks/public/StudentWorkSection';
 import { useCommentStore } from '../comments/public/store';
+import { useSessionCommentMode } from '../comments/public/sessionMode';
 import { saveFullAssessment } from './autosaveController';
 import { InheritedAssessmentBadge } from './InheritedAssessmentBadge';
 import { LearningLevelControl } from './LearningLevelControl';
@@ -33,6 +34,7 @@ export function StudentAssessmentDetail({
   onClose?: () => void;
 }) {
   const toast = useToast();
+  const commentMode = useSessionCommentMode();
   const [showPast, setShowPast] = useState(false);
   const attendance = attendancePresentation(student.status);
   const existing = stripHtml(existingContentComment(student));
@@ -120,7 +122,7 @@ export function StudentAssessmentDetail({
 
       <section className="student-detail-section assessment-editor">
         <div className="student-detail-section-title">
-          <span>{isProductProgressSession(sessionNumber) ? "Đánh giá tiến độ sản phẩm" : "Đánh giá buổi học"}</span>
+          <span>{isProductProgressSession(sessionNumber, commentMode) ? "Đánh giá tiến độ sản phẩm" : "Đánh giá buổi học"}</span>
           {past.length > 0 && (
             <button
               type="button"

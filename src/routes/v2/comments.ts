@@ -52,7 +52,7 @@ v2CommentsRoutes.post("/generate", async (c) => {
       attendanceStatus: normalizeAttendanceStatus(authoritativeAttendance.status),
       isLate: authoritativeAttendance.status === "LATE_ARRIVED",
       sessionNumber: loaded.context.sessionNumber,
-    });
+    }, c.get("requestId"));
     if (generated.error) {
       if (/Vui lòng nhập API Key|Please set OpenRouter API key/i.test(generated.error)) {
         return v2Error(c, "API_KEY_REQUIRED", "Cần API key để sử dụng model đã chọn.", 422);

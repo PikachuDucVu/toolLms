@@ -1,3 +1,4 @@
+import { useSessionCommentMode } from '../comments/public/sessionMode';
 import type { LearningLevel } from '@tool-lms/contracts';
 import { queueLearningLevelAutosave } from './autosaveController';
 import { useAssessmentStore } from './assessmentStore';
@@ -16,7 +17,7 @@ export function LearningLevelControl({
 }) {
   const state = useAssessmentStore();
   const draft = assessmentDraft(state, studentId);
-  const isSpck = isProductProgressSession(sessionNumber);
+  const isSpck = isProductProgressSession(sessionNumber, useSessionCommentMode());
   const levelMap = isSpck ? PRODUCT_PROGRESS_LEVELS : LEARNING_LEVELS;
 
   const choose = (learningLevel: LearningLevel) => {

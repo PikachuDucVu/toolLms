@@ -1,10 +1,11 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppProviders, appQueryClient } from '../../app/providers';
 import { useAssessmentStore } from '../assessments';
 import { useCommentStore } from '../comments/commentStore';
+import { sessionCommentModeFor, useSessionCommentModeStore } from '../comments/sessionMode';
 import { CommentsWorkspace } from './CommentsWorkspace';
 import { useClassWorkspaceStore } from './store';
 
@@ -35,6 +36,7 @@ function json(data: unknown) { return new Response(JSON.stringify(data), { heade
 
 beforeEach(() => {
   localStorage.clear();
+  useSessionCommentModeStore.setState({ modes: {} });
   appQueryClient().clear();
   useClassWorkspaceStore.getState().reset();
   useCommentStore.getState().reset();
@@ -50,6 +52,7 @@ beforeEach(() => {
       return new Promise<Response>((resolve) => { resolveRefresh = resolve; });
     }
     if (path === '/api/v2/classes/class-b') return json(envelope({ class: detail('class-b', 'Lớp B', 'Học sinh B') }));
+    if (path.includes('/storage-products')) return json(envelope({ classId: 'class-a', files: [] }));
     if (/^\/api\/v2\/slots\/[^/]+\/assessments(?:\?|$)/.test(path)) return json(envelope({ assessments: [] }));
     if (/^\/api\/v2\/slots\/[^/]+\/assessments\//.test(path)) {
       assessmentWrites.push({ path, method: options?.method || 'GET' });
@@ -66,6 +69,46 @@ afterEach(() => {
 });
 
 describe('comments workspace context safety', () => {
+  it('switches an early session to SPCK and keeps the override separate from other sessions', async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter><AppProviders><CommentsWorkspace /></AppProviders></MemoryRouter>);
+    await user.click(await screen.findByRole('option', { name: /Lớp A/ }));
+    await screen.findAllByRole('heading', { name: 'Học sinh A' });
+    await waitFor(() => expect(useAssessmentStore.getState().load.loading).toBe(false));
+    const select = screen.getByLabelText('Loại nhận xét');
+    expect(screen.queryByText('Chỉ buổi này · lưu trên trình duyệt này')).not.toBeInTheDocument();
+    expect(select).toHaveValue('auto');
+    await user.selectOptions(select, 'spck');
+    expect(select).toHaveValue('spck');
+    expect(screen.getAllByText('Đánh giá tiến độ sản phẩm').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Level cả lớp')).toHaveTextContent('Vượt tiến độ');
+    expect(sessionCommentModeFor('class-a', 'class-a-slot-1')).toBe('spck');
+    await user.selectOptions(screen.getByLabelText('Buổi học'), '1');
+    expect(screen.getByLabelText('Loại nhận xét')).toHaveValue('auto');
+    expect(screen.getByLabelText('Level cả lớp')).toHaveTextContent('Nắm vững');
+    await user.selectOptions(screen.getByLabelText('Buổi học'), '0');
+    expect(screen.getByLabelText('Loại nhận xét')).toHaveValue('spck');
+    await user.click(screen.getByRole('option', { name: /Lớp B/ }));
+    await screen.findAllByRole('heading', { name: 'Học sinh B' });
+    expect(screen.getByLabelText('Loại nhận xét')).toHaveValue('auto');
+  });
+
+  it('asks before changing mode with drafts and preserves them after confirmation', async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter><AppProviders><CommentsWorkspace /></AppProviders></MemoryRouter>);
+    await user.click(await screen.findByRole('option', { name: /Lớp A/ }));
+    await screen.findAllByRole('heading', { name: 'Học sinh A' });
+    act(() => useCommentStore.getState().editDraft('class-a-student-1', 'Bản nháp giữ nguyên'));
+    await user.selectOptions(screen.getByLabelText('Loại nhận xét'), 'spck');
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('Bản nháp và nhận xét đã gửi được giữ nguyên');
+    await user.click(screen.getByRole('button', { name: 'Hủy' }));
+    expect(screen.getByLabelText('Loại nhận xét')).toHaveValue('auto');
+    await user.selectOptions(screen.getByLabelText('Loại nhận xét'), 'spck');
+    await user.click(screen.getByRole('button', { name: 'Đổi loại nhận xét' }));
+    expect(screen.getByLabelText('Loại nhận xét')).toHaveValue('spck');
+    expect(useCommentStore.getState().drafts['class-a-student-1'].content).toBe('Bản nháp giữ nguyên');
+  });
+
   it('auto-selects slot zero and ignores a delayed refresh after the live class context changes', async () => {
     const user = userEvent.setup();
     render(<MemoryRouter><AppProviders><CommentsWorkspace /></AppProviders></MemoryRouter>);
@@ -110,6 +153,7 @@ describe('comments workspace context safety', () => {
     expect(useAssessmentStore.getState().classRefreshBusy).toBe(true);
     expect(screen.getByRole('option', { name: /Lớp B/ })).toBeDisabled();
     expect(screen.getByLabelText('Buổi học')).toBeDisabled();
+    expect(screen.getByLabelText('Loại nhận xét')).toBeDisabled();
     expect(screen.getByLabelText('Level cả lớp')).toBeDisabled();
     expect(note).toBeDisabled();
     expect(level).toBeDisabled();

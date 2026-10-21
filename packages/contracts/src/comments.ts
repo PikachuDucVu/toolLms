@@ -6,7 +6,7 @@ const PreservedNonEmptyTextSchema = z.string().min(1).max(COMMENT_MAX_LENGTH).re
   message: 'Text must not be blank',
 });
 
-export const CommentGenerationSourceSchema = z.enum(['ai', 'ai_repair', 'safe_template']);
+export const CommentGenerationSourceSchema = z.enum(['ai', 'ai_repair']);
 export type CommentGenerationSource = z.infer<typeof CommentGenerationSourceSchema>;
 export const CommentGenerationTransportSchema = z.enum(['server', 'direct']);
 export type CommentGenerationTransport = z.infer<typeof CommentGenerationTransportSchema>;
@@ -50,6 +50,9 @@ export const PastCommentSlotSchema = z.object({
 });
 export type PastCommentSlot = z.infer<typeof PastCommentSlotSchema>;
 
+export const SessionCommentModeSchema = z.enum(['auto', 'regular', 'spck']);
+export type SessionCommentMode = z.infer<typeof SessionCommentModeSchema>;
+
 export const GenerateCommentRequestSchema = z.object({
   classId: EntityIdSchema,
   slotId: EntityIdSchema,
@@ -70,6 +73,7 @@ export const GenerateCommentRequestSchema = z.object({
   customPrompt: z.string().max(2_000).default(''),
   apiKey: z.string().max(2_000).optional(),
   sessionNumber: z.number().int().positive().max(500).optional(),
+  sessionCommentMode: SessionCommentModeSchema.optional(),
 });
 export type GenerateCommentRequest = z.infer<typeof GenerateCommentRequestSchema>;
 export const GenerateCommentResponseSchema = successEnvelope(z.object({

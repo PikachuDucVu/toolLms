@@ -1,10 +1,12 @@
 import type { LearningLevel } from '@tool-lms/contracts';
 import { ArrowUpDown, BarChart2, ChevronDown, Search, TriangleAlert } from 'lucide-react';
 import { useEffect } from 'react';
+import { useSessionCommentMode } from '../comments/public/sessionMode';
 import { LEARNING_LEVEL_ORDER, levelCatalog } from '../assessments/public/selectors';
 import { useReviewStore, type ReviewAlertFilter, type ReviewLevelFilter, type ReviewSort } from './reviewStore';
 
 export function ReviewFilters({ sessionNumber }: { sessionNumber: number }) {
+  const commentMode = useSessionCommentMode();
   const searchInput = useReviewStore((state) => state.searchInput);
   const search = useReviewStore((state) => state.search);
   const alertFilter = useReviewStore((state) => state.alertFilter);
@@ -73,7 +75,7 @@ export function ReviewFilters({ sessionNumber }: { sessionNumber: number }) {
             <option value="all">Tất cả</option>
             {LEARNING_LEVEL_ORDER.map((level: LearningLevel) => (
               <option key={level} value={level}>
-                {levelCatalog(sessionNumber)[level].code}
+                {levelCatalog(sessionNumber, commentMode)[level].code}
               </option>
             ))}
           </select>

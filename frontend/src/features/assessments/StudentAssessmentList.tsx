@@ -8,7 +8,8 @@ import { buildStorageStudentWork, latestStudentWork } from '../studentWorks/publ
 import emptyStudentsUrl from '../../assets/empty-students.jpg';
 import { AssessmentCompactRow } from './AssessmentCompactRow';
 import { StudentAssessmentDetail } from './StudentAssessmentDetail';
-import { showsStorageProductColumn } from './selectors';
+import { showsStorageProductColumn, isProductProgressSession } from './selectors';
+import { useSessionCommentMode } from '../comments/public/sessionMode';
 
 const fallbackQueryClient = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
 
@@ -38,7 +39,8 @@ export function StudentAssessmentList({
   const toast = useToast();
   const contextClient = useContext(QueryClientContext);
   const queryClient = contextClient || fallbackQueryClient;
-  const showProductColumn = showsStorageProductColumn(sessionNumber);
+  const commentMode = useSessionCommentMode();
+  const showProductColumn = showsStorageProductColumn(sessionNumber, commentMode);
   const studentWorksQueryRes = useQuery(
     {
       ...studentWorksQuery(detail.id, slot.id),
@@ -141,7 +143,7 @@ export function StudentAssessmentList({
           <div className="th-col col-stt">STT</div>
           <div className="th-col col-student">Học sinh</div>
           <div className="th-col col-attendance">Điểm danh</div>
-          <div className="th-col col-level">Mức độ học tập</div>
+          <div className="th-col col-level">{isProductProgressSession(sessionNumber, commentMode) ? 'Tiến độ sản phẩm' : 'Mức độ học tập'}</div>
           {showProductColumn && <div className="th-col col-product">Sản phẩm</div>}
           <div className="th-col col-comment">Nhận xét hiện tại</div>
           <div className="th-col col-status">Trạng thái</div>

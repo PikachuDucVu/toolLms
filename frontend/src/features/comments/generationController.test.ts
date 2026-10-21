@@ -7,6 +7,7 @@ import { useAssessmentStore } from '../assessments/assessmentStore';
 import { classDetailQuery, commentsClassesQuery } from '../classes/queries';
 import { useClassWorkspaceStore } from '../classes/store';
 import { useCommentStore } from './commentStore';
+import { useSessionCommentModeStore } from './sessionMode';
 import { activateCommentContext, generateBatchComments, generateSingleComment, resetCommentController, saveSessionSummary, submitBatchComments, submitSingleComment } from './generationController';
 
 const detail = makeDetail(7);
@@ -15,6 +16,7 @@ const envelope = (data: unknown) => ({ success: true, data, requestId: 'comment-
 
 beforeEach(() => {
   localStorage.clear();
+  useSessionCommentModeStore.setState({ modes: {} });
   appQueryClient().clear();
   resetAssessmentController();
   resetCommentController();
@@ -50,6 +52,45 @@ describe('regular comment generation controller', () => {
     expect(calls[2].body).toMatchObject({ classId: 'class-1', slotId: 'slot-1', studentId: 'student-1', studentName: 'Học sinh 1', learningLevel: 'independent', teacherNote: 'Hoàn thành nhanh', sessionSummary: 'Vòng lặp', sessionNumber: 1 });
     expect(calls.some((call) => call.path.includes('/comments/submit'))).toBe(false);
     expect(useCommentStore.getState().drafts['student-1']).toMatchObject({ content: 'An chủ động hoàn thành bài.', kind: 'generated' });
+  });
+
+  it.each(['single', 'batch'] as const)('passes the per-slot SPCK mode through %s generation and skips homework lookup', async (kind) => {
+    const requests: Record<string, unknown>[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = pathOf(input); const body = bodyOf(init);
+      if (path === '/api/v2/config') return json(envelope(config(false)));
+      if (path.includes('/assessments/')) return json(envelope({ assessment: assessment('student-1', body.learningLevel as string, body.note as string) }));
+      if (path === '/api/v2/comments/generate') {
+        requests.push(body);
+        return json(envelope({ comment: 'Đúng tiến độ sản phẩm.', meta: { source: 'ai', transport: 'server', validationIssues: [] } }));
+      }
+      throw new Error(`Unexpected request ${path}`);
+    }));
+    useSessionCommentModeStore.getState().setMode('class-1', 'slot-1', 'spck');
+    const earlyScope = { ...scope('student-1'), sessionNumber: 2 };
+    if (kind === 'single') await generateSingleComment(earlyScope, 'student-1');
+    else await generateBatchComments(earlyScope, ['student-1']);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ sessionCommentMode: 'spck', sessionNumber: 2, homeworkStatus: null });
+  });
+
+  it('retries a single student after a transient AI failure', async () => {
+    let attempts = 0;
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = pathOf(input); const body = bodyOf(init);
+      if (path === '/api/v2/config') return json(envelope(config(false)));
+      if (path.includes('/assessments/student-1')) return json(envelope({ assessment: assessment('student-1', body.learningLevel as string, body.note as string) }));
+      if (path === '/api/v2/comments/generate') {
+        attempts += 1;
+        if (attempts === 1) return json({ success: false, error: { code: 'UPSTREAM_ERROR', message: 'AI tạm lỗi', requestId: 'failed-once' } }, 502);
+        return json(envelope({ comment: 'Thành công sau khi thử lại', meta: { source: 'ai', transport: 'server', validationIssues: [] } }));
+      }
+      throw new Error(`Unhandled ${path}`);
+    }));
+
+    await generateSingleComment(scope('student-1'), 'student-1');
+    expect(attempts).toBe(2);
+    expect(useCommentStore.getState().drafts['student-1']?.content).toBe('Thành công sau khi thử lại');
   });
 
   it('allows a no-key Antigravity request when the server has no OpenRouter key', async () => {
@@ -147,7 +188,7 @@ describe('regular comment generation controller', () => {
     expect(useCommentStore.getState().drafts['student-1']).toBeUndefined();
   });
 
-  it('persists with concurrency three, then fires every AI request at once and retains per-student failures', async () => {
+  it('persists with concurrency three, limits AI concurrency, and retains per-student failures', async () => {
     let assessmentActive = 0; let maxAssessmentActive = 0; let aiActive = 0; let maxAiActive = 0; const aiStarts: string[] = [];
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = pathOf(input); const body = bodyOf(init);
@@ -163,19 +204,19 @@ describe('regular comment generation controller', () => {
         expect(useCommentStore.getState().batch?.currentStudentId).toBeNull();
         await delay(10); aiActive -= 1;
         if (id === 'student-2') return json({ success: false, error: { code: 'UPSTREAM_ERROR', message: 'AI tạm lỗi', requestId: 'failed-ai' } }, 502);
-        return json(envelope({ comment: `${id} generated`, meta: { source: id === 'student-3' ? 'safe_template' : 'ai', transport: 'server', validationIssues: [] } }));
+        return json(envelope({ comment: `${id} generated`, meta: { source: 'ai', transport: 'server', validationIssues: [] } }));
       }
       throw new Error(`Unhandled ${path}`);
     }));
     const result = await generateBatchComments(scope(null), slot.studentAttendance.map((student) => student.studentId));
     expect(maxAssessmentActive).toBe(3);
-    expect(maxAiActive).toBe(7);
-    expect(aiStarts).toEqual(['student-1', 'student-2', 'student-3', 'student-4', 'student-5', 'student-6', 'student-7']);
-    expect(result).toMatchObject({ total: 7, safeTemplateCount: 1 });
+    expect(maxAiActive).toBe(3);
+    expect(aiStarts).toEqual(['student-1', 'student-2', 'student-3', 'student-4', 'student-5', 'student-6', 'student-7', 'student-2', 'student-2', 'student-2']);
+    expect(result).toMatchObject({ total: 7 });
     expect(result.successfulIds).toHaveLength(6);
-    expect(result.failures).toEqual([{ studentId: 'student-2', message: 'AI tạm lỗi' }]);
+    expect(result.failures).toEqual([{ studentId: 'student-2', message: 'AI tạm lỗi (Mã yêu cầu: failed-ai)' }]);
     expect(useCommentStore.getState().drafts['student-2']).toBeUndefined();
-    expect(useCommentStore.getState().errors['student-2']).toBe('AI tạm lỗi');
+    expect(useCommentStore.getState().errors['student-2']).toBe('AI tạm lỗi (Mã yêu cầu: failed-ai)');
   });
 });
 
@@ -337,7 +378,7 @@ describe('regular comment submission controller', () => {
     expect(submitBodies.map((body) => body.studentId)).toEqual(['student-1', 'student-2', 'student-3']);
     expect(submitBodies.map((body) => body.summary)).toEqual(['Vòng lặp', 'Vòng lặp', undefined]);
     expect(result.successfulIds).toEqual(['student-2', 'student-3']);
-    expect(result.failures).toEqual([{ studentId: 'student-1', message: 'LMS tạm lỗi' }]);
+    expect(result.failures).toEqual([{ studentId: 'student-1', message: 'LMS tạm lỗi (Mã yêu cầu: submit-failed)' }]);
     expect(useCommentStore.getState().drafts['student-1']?.content).toBe('student-1 draft');
     expect(useCommentStore.getState().drafts['student-2']).toBeUndefined();
     expect(useCommentStore.getState().drafts['student-3']).toBeUndefined();

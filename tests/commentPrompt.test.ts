@@ -172,6 +172,35 @@ describe("comment prompt facts and messages", () => {
     expect(userMessage).toContain("Tuyệt đối KHÔNG nhắc đến BTVN");
   });
 
+  it("uses an explicit SPCK override for an early session without changing its number", () => {
+    const facts = factsFor("independent", {
+      studentName: "Minh Anh", sessionNumber: 7, sessionSummary: "Thực hành lập trình",
+      sessionCommentMode: "spck", homeworkStatus: { submitted: false, previousSession: 6 },
+    });
+    expect(facts.sessionNumber).toBe(7);
+    expect(facts.isSpck).toBe(true);
+    expect(facts.homeworkStatus).toBeNull();
+    expect(buildCommentMessages(facts)[1].content).toContain("Ý NGHĨA TIẾN ĐỘ BẮT BUỘC");
+    expect(buildCommentMessages(facts)[1].content).not.toContain("TÌNH TRẠNG BTVN");
+  });
+
+  it("lets regular mode override both late session numbers and SPCK keywords", () => {
+    const facts = factsFor("independent", {
+      studentName: "Minh Anh", sessionNumber: 10, sessionSummary: "SPCK",
+      sessionCommentMode: "regular", homeworkStatus: { submitted: false, previousSession: 9 },
+    });
+    expect(facts.isSpck).toBe(false);
+    expect(facts.homeworkStatus).not.toBeNull();
+    expect(buildCommentMessages(facts)[1].content).toContain("Ý NGHĨA LEVEL BẮT BUỘC");
+    expect(buildCommentMessages(facts)[1].content).not.toContain("Ý NGHĨA TIẾN ĐỘ BẮT BUỘC");
+  });
+
+  it("keeps auto mode compatible with existing number and summary detection", () => {
+    expect(factsFor("independent", { studentName: "An", sessionNumber: 10, sessionCommentMode: "auto" }).isSpck).toBe(true);
+    expect(factsFor("independent", { studentName: "An", sessionNumber: 7, sessionCommentMode: "auto" }).isSpck).toBe(false);
+    expect(factsFor("independent", { studentName: "An", sessionNumber: 7, sessionSummary: "Sản phẩm cuối khóa", sessionCommentMode: "auto" }).isSpck).toBe(true);
+  });
+
   it("includes session summary and subordinate custom instructions", () => {
     const facts = factsFor("independent", {
       studentName: "Minh Anh",

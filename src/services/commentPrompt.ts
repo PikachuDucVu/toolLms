@@ -1,3 +1,4 @@
+import type { SessionCommentMode } from "@tool-lms/contracts";
 import { LEARNING_LEVELS, PRODUCT_PROGRESS_LEVELS, normalizeLearningLevel, type LearningLevel } from "../constants/learningLevels";
 
 export type AttendanceStatus = "ATTENDED" | "LATE_ARRIVED" | "ABSENT" | "ABSENT_WITH_NOTICE" | "UNKNOWN";
@@ -36,6 +37,7 @@ export interface CommentPromptInput {
   isLate?: boolean;
   sessionSummary?: string;
   sessionNumber?: number | string;
+  sessionCommentMode?: SessionCommentMode;
   commentLength?: string;
   customPrompt?: string;
   homeworkStatus?: HomeworkStatusInput;
@@ -309,7 +311,7 @@ NGUYÊN TẮC BẮT BUỘC:
 8. VĂN PHONG VÀ ĐỐI TƯỢNG BÁO CÁO: Nhận xét gửi tới PHỤ HUYNH nhằm báo cáo khách quan, đúng mực sư phạm về tình hình học tập của con, KHÔNG phải trò chuyện trực tiếp hay tâm sự với học sinh.
    - Tuyệt đối KHÔNG dùng trợ từ cảm thán hoặc khẩu ngữ như "nhé", "nha", "nhé!", "nha!".
    - Tránh các câu kết mang tính cảm xúc hay dặn dò thân mật trực tiếp với học sinh (như "Con cố gắng lên nhé", "Con nhớ hoàn thiện sản phẩm nhé"). Câu kết phải là câu báo cáo/nhắc nhở khách quan cho phụ huynh nắm được (ví dụ: "Con tiếp tục trau chuốt sản phẩm để chuẩn bị cho buổi thuyết trình.", "Phụ huynh nhắc con dành thêm thời gian ở nhà để hoàn thiện kịp tiến độ.").
-9. Chỉ trả về một đoạn nhận xét duy nhất (2–3 câu), không giải thích cách viết.`;
+9. Chỉ trả về một đoạn nhận xét duy nhất theo độ dài yêu cầu, không giải thích cách viết.`;
 
 export function normalizeAttendanceStatus(value: unknown, isLate?: boolean): AttendanceStatus {
   if (value === "ATTENDED" || value === "LATE_ARRIVED" || value === "ABSENT" || value === "ABSENT_WITH_NOTICE") {
@@ -413,7 +415,8 @@ export function buildCommentFacts(input: CommentPromptInput): CommentFacts {
   const parsedSessionNumber = input.sessionNumber != null && Number.isFinite(Number(input.sessionNumber))
     ? Number(input.sessionNumber)
     : undefined;
-  const isSpck = isSpckSummary(sessionSummary, parsedSessionNumber);
+  const isSpck = input.sessionCommentMode === "spck" ||
+    (input.sessionCommentMode !== "regular" && isSpckSummary(sessionSummary, parsedSessionNumber));
   const mode: CommentMode = attendanceStatus === "ABSENT" || attendanceStatus === "ABSENT_WITH_NOTICE"
     ? "absence"
     : teacherNote

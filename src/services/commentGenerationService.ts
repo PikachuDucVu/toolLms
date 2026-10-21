@@ -8,10 +8,8 @@ import {
   type GeneratedCommentResult,
 } from "./aiClient";
 import {
-  buildRepairMessages,
   formatCommentHtml,
   normalizeAiComment,
-  validateComment,
 } from "./commentPrompt";
 
 export type RegularCommentGenerationInput = GenerateCommentRequest;
@@ -40,6 +38,7 @@ export async function generateRegularComment(
   env: Env,
   config: AppConfig,
   input: RegularCommentGenerationInput,
+  requestId?: string,
 ): Promise<GeneratedCommentResult> {
   const generated = await generateCommentWithAi(env, config, {
     studentName: input.studentName,
@@ -58,6 +57,8 @@ export async function generateRegularComment(
     aiApiKey: input.apiKey,
     homeworkStatus: input.homeworkStatus ?? undefined,
     sessionNumber: input.sessionNumber,
+    sessionCommentMode: input.sessionCommentMode,
+    requestId,
   });
   if (!generated.directFallback) return generated;
 
@@ -78,54 +79,28 @@ export async function generateRegularComment(
     input.apiKey,
     undefined,
     thinkingLevel,
+    requestId,
   );
   if (!first.error) {
     const firstComment = normalizeAiComment(first.content || "");
-    const firstValidation = validateComment(firstComment, fallback.validationPolicy);
-    if (firstValidation.valid) {
+    if (firstComment) {
       return {
         comment: formatCommentHtml(firstComment),
         generationMeta: { source: "ai", transport: "direct" },
       };
     }
-
-    accumulatedIssues = firstValidation.issues;
-    const repair = await callDirectFallbackChatCompletion(
-      env,
-      "antigravity",
-      model,
-      buildRepairMessages(fallback.messages, firstComment, firstValidation.issues),
-      input.apiKey,
-      undefined,
-      thinkingLevel,
-    );
-    if (!repair.error) {
-      const repairedComment = normalizeAiComment(repair.content || "");
-      const repairedValidation = validateComment(repairedComment, fallback.validationPolicy);
-      if (repairedValidation.valid) {
-        return {
-          comment: formatCommentHtml(repairedComment),
-          generationMeta: {
-            source: "ai_repair",
-            transport: "direct",
-            validationIssues: firstValidation.issues,
-          },
-        };
-      }
-      accumulatedIssues = [...new Set([...firstValidation.issues, ...repairedValidation.issues])];
-    } else {
-      accumulatedIssues = [...accumulatedIssues, `Direct AI thất bại: ${repair.error}`];
-    }
+    accumulatedIssues = ["Direct AI không trả về nội dung nhận xét."];
   } else {
     accumulatedIssues = [`Direct AI thất bại: ${first.error}`];
   }
 
+  return generationFailure(accumulatedIssues);
+}
+
+function generationFailure(issues: string[]): GeneratedCommentResult {
+  const detail = issues.length ? ` ${issues.join(" ")}` : "";
   return {
-    comment: fallback.safeComment,
-    generationMeta: {
-      source: "safe_template",
-      transport: "direct",
-      validationIssues: accumulatedIssues,
-    },
+    comment: "",
+    error: `AI chưa tạo được nhận xét phù hợp sau khi kiểm tra nội dung.${detail}`.slice(0, 1_000),
   };
 }

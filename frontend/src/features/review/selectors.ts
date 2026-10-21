@@ -1,4 +1,4 @@
-import type { LearningLevel, StudentAttendance } from '@tool-lms/contracts';
+import type { LearningLevel, SessionCommentMode, StudentAttendance } from '@tool-lms/contracts';
 import type { AssessmentState } from '../assessments/public/store';
 import { assessmentDraft, assessmentStatus, levelCatalog } from '../assessments/public/selectors';
 import { attendancePresentation, existingContentComment, isPresent, normalizeVietnameseText, stripHtml } from '../classes/public/domain';
@@ -88,9 +88,10 @@ export function buildReviewRows(
   assessments: AssessmentState,
   analysis: Pick<ReviewCommentState, 'drafts' | 'errors'> = comments,
   sessionNumber?: number,
+  mode: SessionCommentMode = 'auto',
 ): ReviewRow[] {
-  const base = students.map((student, index) => buildBaseRow(student, index, comments, assessments, sessionNumber));
-  const analysisBase = students.map((student, index) => buildBaseRow(student, index, { ...comments, drafts: analysis.drafts, errors: analysis.errors }, assessments, sessionNumber));
+  const base = students.map((student, index) => buildBaseRow(student, index, comments, assessments, sessionNumber, mode));
+  const analysisBase = students.map((student, index) => buildBaseRow(student, index, { ...comments, drafts: analysis.drafts, errors: analysis.errors }, assessments, sessionNumber, mode));
   const duplicateCounts = buildReviewDuplicateCounts(analysisBase);
   return base.map((row) => {
     const operationError = analysis.errors[row.studentId] || '';
@@ -99,7 +100,7 @@ export function buildReviewRows(
   });
 }
 
-function buildBaseRow(student: StudentAttendance, index: number, comments: ReviewCommentState, assessments: AssessmentState, sessionNumber?: number): ReviewRow {
+function buildBaseRow(student: StudentAttendance, index: number, comments: ReviewCommentState, assessments: AssessmentState, sessionNumber?: number, mode: SessionCommentMode = 'auto'): ReviewRow {
   const draft = comments.drafts[student.studentId];
   const draftContent = draft?.content || '';
   const existingContent = existingContentComment(student);
@@ -108,9 +109,7 @@ function buildBaseRow(student: StudentAttendance, index: number, comments: Revie
   const commentText = stripHtml(isDraft ? draftContent : existingContent);
   const learningLevel = assessmentDraft(assessments, student.studentId).learningLevel;
   const validationCount = draft?.generationMeta?.validationIssues.length || 0;
-  const generationWarning = draft?.generationMeta?.source === 'safe_template'
-    ? 'Nhận xét dùng mẫu an toàn'
-    : validationCount ? `${validationCount} cảnh báo kiểm tra nội dung` : '';
+  const generationWarning = validationCount ? `${validationCount} cảnh báo kiểm tra nội dung` : '';
   return {
     index,
     student,
@@ -119,7 +118,7 @@ function buildBaseRow(student: StudentAttendance, index: number, comments: Revie
     attendance: attendancePresentation(student.status),
     isPresent: isPresent(student),
     learningLevel,
-    learningLevelInfo: levelCatalog(sessionNumber)[learningLevel],
+    learningLevelInfo: levelCatalog(sessionNumber, mode)[learningLevel],
     assessmentStatus: assessmentStatus(assessments, student.studentId),
     commentText,
     isDraft,

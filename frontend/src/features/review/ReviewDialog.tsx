@@ -7,6 +7,7 @@ import { showsStorageProductColumn } from '../assessments/public/selectors';
 import { useAssessmentStore } from '../assessments/public/store';
 import { useClassWorkspaceStore } from '../classes/public/domain';
 import { useCommentStore } from '../comments/public/store';
+import { useSessionCommentMode } from '../comments/public/sessionMode';
 import { saveStudentWork } from '../studentWorks/public/api';
 import { storageProductsQuery, studentWorksQuery } from '../studentWorks/public/queries';
 import { buildStorageStudentWork, latestStudentWork } from '../studentWorks/public/storageSubmission';
@@ -19,6 +20,7 @@ import { useReviewStore } from './reviewStore';
 import { safeId } from './ReviewRow';
 
 export function ReviewDialog({ detail, slot, sessionNumber }: { detail: ClassDetail; slot: Slot; sessionNumber: number }) {
+  const commentMode = useSessionCommentMode();
   const open = useReviewStore((state) => state.open);
   const selectedStudentId = useReviewStore((state) => state.selectedStudentId);
   const search = useReviewStore((state) => state.search);
@@ -35,13 +37,13 @@ export function ReviewDialog({ detail, slot, sessionNumber }: { detail: ClassDet
   const dialogRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const drawerReturnFocusRef = useRef<HTMLElement | null>(null);
-  const allRows = useMemo(() => buildReviewRows(slot.studentAttendance, { drafts, errors, studentBusy }, assessments, analysis, sessionNumber), [analysis, assessments, drafts, errors, sessionNumber, slot.studentAttendance, studentBusy]);
+  const allRows = useMemo(() => buildReviewRows(slot.studentAttendance, { drafts, errors, studentBusy }, assessments, analysis, sessionNumber, commentMode), [analysis, assessments, commentMode, drafts, errors, sessionNumber, slot.studentAttendance, studentBusy]);
   const filteredRows = useMemo(() => filterReviewRows(allRows, { search, alertFilter, levelFilter, sort }), [alertFilter, allRows, levelFilter, search, sort]);
   const locked = Boolean(batch || summaryBusy || studentBusy.size || assessments.bulkBusy || assessments.classRefreshBusy || assessments.load.loading || assessments.load.error);
   const toast = useToast();
   const contextClient = useContext(QueryClientContext);
   const queryClient = contextClient || fallbackReviewQueryClient;
-  const showProductColumn = showsStorageProductColumn(sessionNumber);
+  const showProductColumn = showsStorageProductColumn(sessionNumber, commentMode);
   const [productMenuStudentId, setProductMenuStudentId] = useState<string | null>(null);
   const storageQuery = useQuery({
     ...storageProductsQuery(detail.id),

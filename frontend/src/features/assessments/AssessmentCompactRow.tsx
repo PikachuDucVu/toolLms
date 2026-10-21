@@ -8,6 +8,7 @@ import { CopyDialog } from '../comments/public/CopyDialog';
 import { copyWithFallback, individualZaloText } from '../comments/public/copyExport';
 import { PastCommentsDialog } from '../comments/public/PastCommentsDialog';
 import { useCommentStore } from '../comments/public/store';
+import { useSessionCommentMode } from '../comments/public/sessionMode';
 import { generateSingleComment, type RegularCommentScope } from '../comments/public/controller';
 import { useAssessmentStore } from './assessmentStore';
 import { assessmentDraft, assessmentStatus, levelCatalog, pastStudentComments } from './selectors';
@@ -76,7 +77,8 @@ export const AssessmentCompactRow = memo(function AssessmentCompactRow({
   const attendance = attendancePresentation(student.status);
   const existingComment = stripHtml(existingContentComment(student));
   const draftComment = stripHtml(commentDraft?.content || '');
-  const level = levelCatalog(sessionNumber)[draft.learningLevel];
+  const commentMode = useSessionCommentMode();
+  const level = levelCatalog(sessionNumber, commentMode)[draft.learningLevel];
   const preview = commentError
     ? `Lỗi: ${commentError}`
     : draftComment || existingComment || (
@@ -93,13 +95,8 @@ export const AssessmentCompactRow = memo(function AssessmentCompactRow({
     if (!detail || !slot) return;
     try {
       const scope: RegularCommentScope = { detail, slot, sessionNumber, selectedStudentId: student.studentId };
-      const meta = await generateSingleComment(scope, student.studentId);
-      toast.show(
-        meta.source === 'safe_template'
-          ? 'AI chưa bám đúng level; hệ thống đã dùng mẫu an toàn.'
-          : 'Đã tạo nhận xét!',
-        meta.source === 'safe_template' ? 'info' : 'success',
-      );
+      await generateSingleComment(scope, student.studentId);
+      toast.show('Đã tạo nhận xét!', 'success');
     } catch (cause) {
       if (!(cause instanceof DOMException && cause.name === 'AbortError')) {
         toast.show(`Lỗi tạo nhận xét: ${cause instanceof Error ? cause.message : String(cause)}`, 'error');

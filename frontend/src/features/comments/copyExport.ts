@@ -1,4 +1,4 @@
-import type { ClassDetail, Slot, StudentAttendance } from '@tool-lms/contracts';
+import type { ClassDetail, SessionCommentMode, Slot, StudentAttendance } from '@tool-lms/contracts';
 import type { AssessmentState } from '../assessments/public/store';
 import { isProductProgressSession, levelCatalog, normalizedAssessmentDraft } from '../assessments/public/selectors';
 import { existingContentComment, isPresent, stripHtml } from '../classes/public/domain';
@@ -8,7 +8,7 @@ export function individualZaloText(studentName: string, comment: string, summary
   return `📚 NHẬN XÉT BUỔI HỌC\n\n👤 Học sinh: ${studentName}\n📖 Nội dung: ${summary || 'Thực hành lập trình'}\n\n📝 Nhận xét:\n${stripHtml(comment)}\n\n---\nMindX Technology School`;
 }
 
-export function classZaloText(input: { slot: Slot; sessionNumber: number; summary: string; drafts: Record<string, CommentDraft> }): { text: string; count: number } {
+export function classZaloText(input: { slot: Slot; sessionNumber: number; summary: string; drafts: Record<string, CommentDraft>; sessionCommentMode?: SessionCommentMode }): { text: string; count: number } {
   const comments = input.slot.studentAttendance.filter(isPresent).flatMap((student) => {
     const comment = input.drafts[student.studentId]?.content || existingContentComment(student);
     return comment.trim() ? [{ studentName: student.displayName, comment: stripHtml(comment) }] : [];
@@ -19,17 +19,17 @@ export function classZaloText(input: { slot: Slot; sessionNumber: number; summar
   let text = `Em xin chào quý phụ huynh, em xin phép gửi phần nhận xét sau buổi học số ${input.sessionNumber} ngày ${date} để các bậc phụ huynh tiện theo dõi và nhắc nhở các bạn học viên ạ:\n\n`;
   text += `1. Nội dung kiến thức buổi học:\n${input.summary || 'Thực hành lập trình'}\n\n2. Nhận xét tình hình lớp học:\n`;
   for (const item of comments) text += `- ${item.studentName}: ${item.comment}\n\n`;
-  if (input.sessionNumber >= 10) text += '3. Công việc cần hoàn thiện:\n- Tiếp tục hoàn thiện sản phẩm cuối khóa theo hướng dẫn của thầy.\n\n';
+  if (isProductProgressSession(input.sessionNumber, input.sessionCommentMode)) text += '3. Công việc cần hoàn thiện:\n- Tiếp tục hoàn thiện sản phẩm cuối khóa theo hướng dẫn của thầy.\n\n';
   else text += `3. BTVN:\n- Làm bài tập buổi ${input.sessionNumber} trên Denise.\n\n`;
   text += 'Trên đây là một vài lời nhận xét của em về buổi học vừa rồi. Em xin chúc quý phụ huynh có buổi tối vui vẻ ạ. @All';
   return { text, count: comments.length };
 }
 
-export function regularCommentsCsv(students: StudentAttendance[], drafts: Record<string, CommentDraft>, assessments: AssessmentState, sessionNumber?: number): string {
-  const headers = ['Họ tên', 'Trạng thái', isProductProgressSession(sessionNumber) ? 'Mức độ tiến độ' : 'Mức độ nắm bài', 'Ghi chú bổ sung', 'Nhận xét hiện tại', 'Nhận xét AI'];
+export function regularCommentsCsv(students: StudentAttendance[], drafts: Record<string, CommentDraft>, assessments: AssessmentState, sessionNumber?: number, mode: SessionCommentMode = 'auto'): string {
+  const headers = ['Họ tên', 'Trạng thái', isProductProgressSession(sessionNumber, mode) ? 'Mức độ tiến độ' : 'Mức độ nắm bài', 'Ghi chú bổ sung', 'Nhận xét hiện tại', 'Nhận xét AI'];
   const rows = students.map((student) => {
     const assessment = normalizedAssessmentDraft(assessments, student.studentId);
-    const level = levelCatalog(sessionNumber)[assessment.learningLevel];
+    const level = levelCatalog(sessionNumber, mode)[assessment.learningLevel];
     return [
       student.displayName,
       student.status === 'ATTENDED' ? 'Có mặt' : student.status === 'LATE_ARRIVED' ? 'Đi muộn' : 'Vắng',

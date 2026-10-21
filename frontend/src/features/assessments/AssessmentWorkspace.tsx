@@ -6,6 +6,7 @@ import { useToast } from '../../components/ui/Toast';
 import { safeErrorMessage } from '../../app/providers';
 import { StudentFilters } from '../classes/public/components';
 import { BatchActions } from '../comments/public/BatchActions';
+import { useSessionCommentMode } from '../comments/public/sessionMode';
 import type { AttendanceFilter, ProgressFilter } from '../classes/public/domain';
 import { activateAssessmentContext, deactivateAssessmentContext, saveBulkLearningLevel } from './autosaveController';
 import { useAssessmentStore, type AssessmentContext } from './assessmentStore';
@@ -48,6 +49,7 @@ export function AssessmentWorkspace({
   const [bulkLevel, setBulkLevel] = useState('');
   const confirm = useConfirm();
   const toast = useToast();
+  const levels = levelCatalog(sessionNumber, useSessionCommentMode());
   const previousSlotIds = useMemo(() => previousRegularSlotIds(detail.slots, slot.id), [detail.slots, slot.id]);
   const query = useAssessmentsQuery(context, previousSlotIds);
   const bulkBusy = useAssessmentStore((state) => state.bulkBusy);
@@ -83,11 +85,11 @@ export function AssessmentWorkspace({
     const targets = presentIds.filter(
       (studentId) => assessmentDraft(useAssessmentStore.getState(), studentId).learningLevel !== learningLevel,
     );
-    if (!targets.length) return toast.show(`Tất cả học sinh có mặt đã ở ${levelCatalog(sessionNumber)[learningLevel].code}`, 'info');
+    if (!targets.length) return toast.show(`Tất cả học sinh có mặt đã ở ${levels[learningLevel].code}`, 'info');
     const accepted = await confirm({
-      title: `Đặt ${levelCatalog(sessionNumber)[learningLevel].code} cho cả lớp?`,
-      description: `Mức độ của ${targets.length} học sinh có mặt sẽ đổi thành ${levelCatalog(sessionNumber)[learningLevel].code} · ${levelCatalog(sessionNumber)[learningLevel].label}. Ghi chú và bản nháp hiện có được giữ nguyên.`,
-      confirmLabel: `Đặt ${levelCatalog(sessionNumber)[learningLevel].code}`,
+      title: `Đặt ${levels[learningLevel].code} cho cả lớp?`,
+      description: `Mức độ của ${targets.length} học sinh có mặt sẽ đổi thành ${levels[learningLevel].code} · ${levels[learningLevel].label}. Ghi chú và bản nháp hiện có được giữ nguyên.`,
+      confirmLabel: `Đặt ${levels[learningLevel].code}`,
     });
     if (!accepted || useAssessmentStore.getState().context?.epoch !== context.epoch) return;
     try {
@@ -98,7 +100,7 @@ export function AssessmentWorkspace({
           'info',
         );
       } else {
-        toast.show(`Đã đặt ${levelCatalog(sessionNumber)[learningLevel].code} cho ${targets.length} học sinh có mặt.`, 'success');
+        toast.show(`Đã đặt ${levels[learningLevel].code} cho ${targets.length} học sinh có mặt.`, 'success');
       }
     } catch (error) {
       if (!(error instanceof DOMException && error.name === 'AbortError')) {
@@ -145,7 +147,7 @@ export function AssessmentWorkspace({
             </option>
             {LEARNING_LEVEL_ORDER.map((level) => (
               <option key={level} value={level}>
-                {levelCatalog(sessionNumber)[level].code} · {levelCatalog(sessionNumber)[level].shortLabel}
+                {levels[level].code} · {levels[level].shortLabel}
               </option>
             ))}
           </select>

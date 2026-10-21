@@ -321,6 +321,33 @@ html[data-theme="dark"] body::before {
   font-weight: 700 !important;
 }
 
+.session-comment-mode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  max-width: 100%;
+  margin-bottom: 6px;
+  text-align: left;
+}
+
+.session-comment-mode label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.session-comment-mode .form-select {
+  width: auto;
+  max-width: 100%;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.session-comment-mode .form-select:disabled {
+  cursor: not-allowed;
+}
+
 /* 2. Inputs, Search & Selects */
 .student-search-control input.form-input,
 .student-search-control input,
@@ -3688,5 +3715,165 @@ html[data-theme="dark"] body::before {
   grid-column: 2;
   color: var(--text-muted);
   font-size: 12px;
+}
+
+/* Homework page: give filters and grading actions room to breathe. */
+.homework-page > .homework-filters,
+.homework-page > .homework-table-card {
+  margin-bottom: 20px;
+}
+
+.homework-filters-header.card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+  padding: 20px 22px 22px;
+}
+
+.homework-filters-header h2 {
+  margin: 0;
+}
+
+.homework-filters-header .filters {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(250px, 1.4fr) minmax(160px, 0.8fr) auto;
+  align-items: end;
+  gap: 16px;
+  width: 100%;
+}
+
+.homework-filter-field,
+.batch-score-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.homework-filter-field > span,
+.batch-score-field > span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.homework-filter-field .form-select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+}
+
+.homework-refresh-btn {
+  min-height: 44px;
+  padding-inline: 18px;
+  gap: 8px;
+}
+
+.homework-table-header.card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+  padding: 20px 22px 22px;
+}
+
+.homework-table-header h2 {
+  margin: 0;
+}
+
+.homework-table-actions {
+  min-width: 0;
+  width: 100%;
+}
+
+.batch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  width: 100%;
+}
+
+.batch-score-field {
+  flex: 0 0 122px;
+}
+
+.batch-score-field .score-input {
+  width: 100%;
+  min-height: 40px;
+}
+
+.batch-actions > .btn {
+  min-height: 40px;
+  padding-inline: 14px;
+  gap: 8px;
+}
+
+.homework-table {
+  min-width: 1120px;
+}
+
+.homework-table td {
+  vertical-align: middle;
+}
+
+.homework-table .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.homework-table .row-actions .btn {
+  min-height: 34px;
+}
+
+@media (max-width: 900px) {
+  .homework-filters-header .filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .homework-refresh-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .homework-filters-header.card-header,
+  .homework-table-header.card-header {
+    padding: 18px 16px;
+    gap: 16px;
+  }
+
+  .homework-filters-header .filters {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 13px;
+  }
+
+  .homework-refresh-btn {
+    width: 100%;
+  }
+
+  .batch-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .batch-score-field {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .batch-actions > .btn {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.3;
+    text-align: center;
+  }
 }
 

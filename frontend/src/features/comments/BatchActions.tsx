@@ -10,6 +10,7 @@ import { useReviewStore } from '../review/public/store';
 import { CopyDialog } from './CopyDialog';
 import { classZaloText, copyWithFallback, downloadCsv, regularCommentsCsv } from './copyExport';
 import { useCommentStore, type CommentBatchState } from './commentStore';
+import { useSessionCommentMode } from './sessionMode';
 import { generateBatchComments, submitBatchComments, type RegularCommentScope } from './generationController';
 
 export function BatchActions({
@@ -29,6 +30,7 @@ export function BatchActions({
 }) {
   const confirm = useConfirm();
   const toast = useToast();
+  const commentMode = useSessionCommentMode();
   const drafts = useCommentStore((state) => state.drafts);
   const batch = useCommentStore((state) => state.batch);
   const operationBusy = useCommentStore(
@@ -64,10 +66,8 @@ export function BatchActions({
         );
       const message = result.failures.length
         ? `Đã tạo ${result.successfulIds.length}/${result.total} nhận xét. Lỗi: ${failedNames.join(', ')}${result.failures.length > 3 ? '...' : ''}`
-        : result.safeTemplateCount
-          ? 'AI chưa bám đúng level; hệ thống đã dùng mẫu an toàn.'
-          : `Đã tạo ${result.successfulIds.length} nhận xét!`;
-      toast.show(message, result.failures.length || result.safeTemplateCount ? 'info' : 'success');
+        : `Đã tạo ${result.successfulIds.length} nhận xét!`;
+      toast.show(message, result.failures.length ? 'info' : 'success');
     } catch (cause) {
       if (!(cause instanceof DOMException && cause.name === 'AbortError')) {
         toast.show(`Lỗi tạo nhận xét cả lớp: ${cause instanceof Error ? cause.message : String(cause)}`, 'error');
@@ -101,7 +101,7 @@ export function BatchActions({
   };
 
   const copyAll = async () => {
-    const value = classZaloText({ slot, sessionNumber, summary, drafts });
+    const value = classZaloText({ slot, sessionNumber, summary, drafts, sessionCommentMode: commentMode });
     if (!value.count) return toast.show('Chưa có nhận xét nào', 'error');
     const mobile = window.innerWidth <= 768 || 'ontouchstart' in window;
     if (!mobile && (await copyWithFallback(value.text))) {
@@ -112,7 +112,7 @@ export function BatchActions({
   };
 
   const exportCsv = () => {
-    downloadCsv(detail, slot, regularCommentsCsv(slot.studentAttendance, drafts, useAssessmentStore.getState(), sessionNumber), sessionNumber);
+    downloadCsv(detail, slot, regularCommentsCsv(slot.studentAttendance, drafts, useAssessmentStore.getState(), sessionNumber, commentMode), sessionNumber);
     toast.show('Đã export CSV!', 'success');
   };
 
@@ -268,13 +268,6 @@ function BatchProgress({
         Object.keys(batch.failures).length > 0
           ? `${Object.keys(batch.failures).length} học sinh lỗi; bản nháp liên quan được giữ lại.`
           : undefined
-      }
-      extraMeta={
-        batch.safeTemplateCount > 0 ? (
-          <div className="progress-notice progress-notice-warning">
-            <small>{batch.safeTemplateCount} nhận xét dùng mẫu an toàn.</small>
-          </div>
-        ) : undefined
       }
     />
   );

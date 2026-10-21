@@ -163,6 +163,11 @@ describe('shared network contracts', () => {
     });
     expect(generation.commentLength).toBe('medium');
     expect(generation.customPrompt).toBe('');
+    expect(generation.sessionCommentMode).toBeUndefined();
+    for (const sessionCommentMode of ['auto', 'regular', 'spck']) {
+      expect(GenerateCommentRequestSchema.parse({ ...generation, sessionCommentMode }).sessionCommentMode).toBe(sessionCommentMode);
+    }
+    expect(GenerateCommentRequestSchema.safeParse({ ...generation, sessionCommentMode: 'invalid' }).success).toBe(false);
     expect(GenerateCommentResponseSchema.parse({
       success: true, requestId: 'comment-generate',
       data: { comment: '<p>Nhận xét</p>', meta: { source: 'ai_repair', transport: 'direct', validationIssues: ['Thiếu dữ kiện.'] } },
@@ -171,7 +176,7 @@ describe('shared network contracts', () => {
     expect(SaveSummaryRequestSchema.safeParse({ classId: 'class-1', summary: '' }).success).toBe(false);
     expect(SubmitCommentRequestSchema.parse({
       classId: 'class-1', studentId: 'student-1', attendanceId: 'attendance-1', comment: '<p>Tốt</p>', summary: 'Buổi học',
-      generationMeta: { source: 'safe_template', transport: 'server' },
+      generationMeta: { source: 'ai_repair', transport: 'server' },
     }).generationMeta?.validationIssues).toEqual([]);
     expect(SubmitCommentResponseSchema.parse({
       success: true, requestId: 'comment-submit', data: {

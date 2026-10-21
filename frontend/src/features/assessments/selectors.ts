@@ -1,4 +1,4 @@
-import type { Assessment, ClassDetail, LearningLevel, Slot, StudentAttendance } from '@tool-lms/contracts';
+import type { Assessment, ClassDetail, LearningLevel, SessionCommentMode, Slot, StudentAttendance } from '@tool-lms/contracts';
 import type { AssessmentState, AssessmentDraft, SyncedAssessment } from './assessmentStore';
 
 export const DEFAULT_LEARNING_LEVEL: LearningLevel = 'understands_and_asks';
@@ -17,16 +17,17 @@ export const PRODUCT_PROGRESS_LEVELS: Record<LearningLevel, { code: `L${1 | 2 | 
   needs_support: { code: 'L1', label: 'Chậm tiến độ, cần kèm sát', shortLabel: 'Cần kèm sát', help: 'Chưa xong chức năng cốt lõi, gặp nhiều lỗi, cần làm bù ở nhà' },
 };
 
-export function isProductProgressSession(sessionNumber?: number): boolean {
+export function isProductProgressSession(sessionNumber?: number, mode: SessionCommentMode = 'auto'): boolean {
+  if (mode !== 'auto') return mode === 'spck';
   return typeof sessionNumber === 'number' && sessionNumber >= 10 && sessionNumber <= 13;
 }
 
-export function showsStorageProductColumn(sessionNumber?: number): boolean {
-  return typeof sessionNumber === 'number' && sessionNumber >= 10;
+export function showsStorageProductColumn(sessionNumber?: number, mode: SessionCommentMode = 'auto'): boolean {
+  return mode === 'spck' || (typeof sessionNumber === 'number' && sessionNumber >= 10);
 }
 
-export function levelCatalog(sessionNumber?: number) {
-  return isProductProgressSession(sessionNumber) ? PRODUCT_PROGRESS_LEVELS : LEARNING_LEVELS;
+export function levelCatalog(sessionNumber?: number, mode: SessionCommentMode = 'auto') {
+  return isProductProgressSession(sessionNumber, mode) ? PRODUCT_PROGRESS_LEVELS : LEARNING_LEVELS;
 }
 
 export const LEARNING_LEVEL_ORDER = (Object.keys(LEARNING_LEVELS) as LearningLevel[])
