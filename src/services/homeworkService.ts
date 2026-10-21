@@ -13,6 +13,7 @@ import {
 import type { AppConfig, Env, HomeworkSubmission, LmsGraphqlResponse, SessionRecord } from "../types";
 import { getModelProvider, gradeHomeworkWithAi, resolveModelId } from "./aiClient";
 import { LmsClient, type LmsCallResult } from "./lmsClient";
+import { SCRATCH_PROJECT_EXTENSIONS, scratchArchiveToText } from "./scratchProject";
 
 const PRESIGNED_URL_API = "https://resources.mindx.edu.vn/api/v1/get-presigned-url";
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"]);
@@ -40,6 +41,8 @@ const MAX_ARCHIVE_FILES = 40;
 const MAX_ARCHIVE_TOTAL_CHARS = 15000;
 // Skip archives too large to unzip in a Worker without blowing memory/CPU
 const MAX_ARCHIVE_BYTES = 15 * 1024 * 1024;
+// .sb3 bundles every costume/sound; only project.json is decompressed, so allow bigger downloads
+const MAX_SCRATCH_BYTES = 30 * 1024 * 1024;
 
 export function validateFileKey(fileKey: string): void {
   if (!fileKey || fileKey.length > 2048) throw new Error("Missing file key");
@@ -161,6 +164,16 @@ export async function extractArchiveTextFiles(fileKey: string): Promise<Array<{ 
   return files;
 }
 
+// Download a Scratch project (.sb3/.sprite3) and render its blocks as readable pseudo-code.
+export async function extractScratchProjectText(fileKey: string): Promise<string | null> {
+  const url = await getDownloadUrl(fileKey);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Download failed");
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength > MAX_SCRATCH_BYTES) throw new Error("Scratch project too large");
+  return scratchArchiveToText(bytes);
+}
+
 export async function aiGradeHomework(
   env: Env,
   config: AppConfig,
@@ -190,6 +203,14 @@ export async function aiGradeHomework(
     } else if (TEXT_EXTENSIONS.has(ext)) {
       try {
         textFiles.push({ name, content: await getTextFileContent(attachment) });
+      } catch {
+        otherFiles.push(name);
+      }
+    } else if (SCRATCH_PROJECT_EXTENSIONS.has(ext)) {
+      try {
+        const content = await extractScratchProjectText(attachment);
+        if (content) textFiles.push({ name, content });
+        else otherFiles.push(name);
       } catch {
         otherFiles.push(name);
       }

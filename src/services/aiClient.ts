@@ -19,6 +19,7 @@ import type { AppConfig, Env } from "../types";
 import { extractJsonObject } from "./aiJson";
 import { roundCheckpointScore } from "./checkpointGrading";
 import { bytesToDataUrl } from "./remoteFileContent";
+import { isScratchProjectFile } from "./scratchProject";
 import {
   buildCommentFacts,
   buildCommentMessages,
@@ -307,6 +308,9 @@ export async function gradeHomeworkWithAi(
   const otherSection = otherFiles.length
     ? `\n\nCÁC TỆP KHÔNG ĐỌC ĐƯỢC NỘI DUNG (chỉ có tên, ví dụ file nhị phân/thiết kế): ${otherFiles.join(", ")}`
     : "";
+  const scratchHint = textFiles.some((file) => isScratchProjectFile(file.name))
+    ? "\nLưu ý: tệp Scratch (.sb3) đã được chuyển thành pseudo-code tiếng Việt theo từng nhân vật/sân khấu (thụt lề = khối nằm bên trong). Với Scratch, hãy đánh giá logic khối lệnh (sự kiện, vòng lặp, điều kiện, biến, tin nhắn, bản sao) và mức độ hoàn thiện trò chơi/câu chuyện thay cho cú pháp code; script không gắn khối sự kiện sẽ không chạy.\n"
+    : "";
   const evidenceHint = input.imageUrls.length
     ? "hình ảnh đính kèm và nội dung tệp code bên dưới (nếu có)"
     : textFiles.length
@@ -324,7 +328,7 @@ Tiêu chí chấm:
 - Hoàn thành yêu cầu bài tập (có làm đúng theo đề bài không)
 - Chất lượng code/project (gọn gàng, logic)
 - Sáng tạo (có thêm tính năng, trang trí riêng không)
-
+${scratchHint}
 Cho điểm từ 0 đến 100 và nhận xét ngắn gọn bằng tiếng Việt (2-3 câu).
 
 Trả về kết quả CHÍNH XÁC theo định dạng JSON:
