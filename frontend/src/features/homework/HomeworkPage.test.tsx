@@ -115,7 +115,7 @@ describe('React homework page parity', () => {
     const stats = screen.getByLabelText('Thống kê bài nộp');
     expect(within(stats).getByText('Tổng bài nộp').nextSibling).toHaveTextContent('3');
     expect(within(stats).getByText('Chờ chấm').nextSibling).toHaveTextContent('2');
-    expect(screen.getByRole('heading', { name: 'Danh sách bài nộp (2)' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Danh sách bài nộp2 bài' })).toBeInTheDocument();
     expect(screen.queryByText('Chi')).not.toBeInTheDocument();
     expect(screen.queryByText('quiz-1.zip')).not.toBeInTheDocument();
   });

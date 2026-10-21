@@ -141,5 +141,7 @@
     bottom: 0;
     z-index: 4;
     margin-top: 12px;
+    /* Keep the last button clear of the fixed settings FAB. */
+    padding-right: 76px;
   }
 }
