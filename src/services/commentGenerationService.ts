@@ -46,6 +46,7 @@ export async function generateRegularComment(
     pastComments: collectPastComments(input.pastSlots),
     notes: input.teacherNote,
     learningLevel: input.learningLevel,
+    previousAssessment: input.previousAssessment,
     attendanceStatus: input.attendanceStatus,
     isLate: input.isLate,
     sessionSummary: input.sessionSummary,

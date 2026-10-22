@@ -74,6 +74,37 @@ describe('regular comment generation controller', () => {
     expect(requests[0]).toMatchObject({ sessionCommentMode: 'spck', sessionNumber: 2, homeworkStatus: null });
   });
 
+  it('sends the last attended, assessed session as the progress baseline', async () => {
+    const requests: Record<string, unknown>[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = pathOf(input); const body = bodyOf(init);
+      if (path === '/api/v2/config') return json(envelope(config(false)));
+      if (path.includes('/assessments/')) return json(envelope({ assessment: assessment(String(path.split('/').at(-1)), body.learningLevel as string, body.note as string) }));
+      if (path.endsWith('/homework')) return json({ success: false, error: { code: 'NOT_FOUND', message: 'Không có BTVN', requestId: 'homework-missing' } }, 404);
+      if (path === '/api/v2/comments/generate') {
+        requests.push(body);
+        return json(envelope({ comment: 'Con đã có sự tiến bộ hơn so với buổi trước.', meta: { source: 'ai', transport: 'server', validationIssues: [] } }));
+      }
+      throw new Error(`Unexpected request ${path}`);
+    }));
+    const history = makeHistoryDetail();
+    useAssessmentStore.getState().hydrate(useAssessmentStore.getState().context!, [], [
+      { studentId: 'student-1', slotId: 'slot-p0', learningLevel: 'needs_support' },
+      { studentId: 'student-1', slotId: 'slot-p1', learningLevel: 'needs_prompting' },
+      { studentId: 'student-1', slotId: 'slot-p2', learningLevel: 'independent' },
+      { studentId: 'student-2', slotId: 'slot-p0', learningLevel: 'independent' },
+    ]);
+    useAssessmentStore.getState().setLearningLevelDraft('student-1', 'understands_and_asks');
+
+    const historyScope = { detail: history, slot: history.slots[3], sessionNumber: 4 };
+    await generateSingleComment({ ...historyScope, selectedStudentId: 'student-1' }, 'student-1');
+    await generateBatchComments({ ...historyScope, selectedStudentId: null }, ['student-2']);
+
+    // Session 3 was missed, so session 2 is the baseline; student 2 only has session 1, which never counts.
+    expect(requests[0]).toMatchObject({ studentId: 'student-1', learningLevel: 'understands_and_asks', previousAssessment: { sessionNumber: 2, learningLevel: 'needs_prompting' } });
+    expect(requests[1]).toMatchObject({ studentId: 'student-2', previousAssessment: null });
+  });
+
   it('retries a single student after a transient AI failure', async () => {
     let attempts = 0;
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -417,6 +448,19 @@ function json(value: unknown, status = 200) { return new Response(JSON.stringify
 function pathOf(input: RequestInfo | URL) { return new URL(typeof input === 'string' ? `http://local${input}` : input instanceof URL ? input : input.url).pathname; }
 function bodyOf(init?: RequestInit): Record<string, unknown> { return init?.body ? JSON.parse(String(init.body)) : {}; }
 function delay(ms: number) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+function makeHistoryDetail(): ClassDetail {
+  const base = makeDetail(2);
+  const attendance = (status: 'ATTENDED' | 'ABSENT') => base.slots[0].studentAttendance.map((student) => student.studentId === 'student-1' ? { ...student, status } : student);
+  return {
+    ...base,
+    slots: [
+      { id: 'slot-p0', index: 0, date: '2026-01-01', summary: '', studentAttendance: attendance('ATTENDED') },
+      { id: 'slot-p1', index: 1, date: '2026-01-02', summary: '', studentAttendance: attendance('ATTENDED') },
+      { id: 'slot-p2', index: 2, date: '2026-01-03', summary: '', studentAttendance: attendance('ABSENT') },
+      { ...base.slots[0], index: 3, date: '2026-01-04' },
+    ],
+  };
+}
 function makeDetail(count: number): ClassDetail {
   const common = { id: 'class-1', name: 'Lớp A', status: 'RUNNING', startDate: null, endDate: null, recentlyEnded: false, course: null, sites: [], slotCount: 1, commentProgress: { state: 'pending' as const, badgeText: 'Chưa nhận xét' as const, slotNumber: 1, present: count, completed: 0, missing: count }, courseProcessId: null, courseProcess: null };
   return { ...common, slots: [{ id: 'slot-1', index: 0, date: '2026-01-01', summary: '<p>Vòng lặp</p>', studentAttendance: Array.from({ length: count }, (_, index) => ({ id: `attendance-${index + 1}`, studentId: `student-${index + 1}`, displayName: `Học sinh ${index + 1}`, status: 'ATTENDED', commentByAreas: [] })) }] };

@@ -1,9 +1,17 @@
 import type { SessionCommentMode } from "@tool-lms/contracts";
-import { LEARNING_LEVELS, PRODUCT_PROGRESS_LEVELS, normalizeLearningLevel, type LearningLevel } from "../constants/learningLevels";
+import {
+  LEARNING_LEVELS,
+  PRODUCT_PROGRESS_LEVELS,
+  isLearningLevel,
+  learningLevelRank,
+  normalizeLearningLevel,
+  type LearningLevel,
+} from "../constants/learningLevels";
 
 export type AttendanceStatus = "ATTENDED" | "LATE_ARRIVED" | "ABSENT" | "ABSENT_WITH_NOTICE" | "UNKNOWN";
 export type CommentMode = "quick" | "detailed" | "absence";
 export type CommentLength = "short" | "medium" | "long";
+export type ProgressTrend = "improved" | "declined" | "same";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -27,12 +35,18 @@ export interface HomeworkStatusInput {
   lesson_name?: string;
 }
 
+export interface PreviousAssessmentInput {
+  sessionNumber: number;
+  learningLevel: LearningLevel;
+}
+
 export interface CommentPromptInput {
   studentName: string;
   studentCallName?: string;
   pastComments?: string;
   notes?: string;
   learningLevel?: LearningLevel;
+  previousAssessment?: PreviousAssessmentInput | null;
   attendanceStatus?: AttendanceStatus | string;
   isLate?: boolean;
   sessionSummary?: string;
@@ -50,12 +64,19 @@ interface NormalizedHomeworkStatus {
   previousSessionLabel: string;
 }
 
+export interface ProgressFact {
+  previousSessionNumber: number;
+  previousLevel: LearningLevel;
+  trend: ProgressTrend;
+}
+
 export interface CommentFacts {
   studentName: string;
   studentCallName: string;
   previousComment: string;
   teacherNote: string;
   learningLevel: LearningLevel;
+  progress: ProgressFact | null;
   attendanceStatus: AttendanceStatus;
   sessionSummary: string;
   sessionNumber?: number;
@@ -311,7 +332,8 @@ NGUYÊN TẮC BẮT BUỘC:
 8. VĂN PHONG VÀ ĐỐI TƯỢNG BÁO CÁO: Nhận xét gửi tới PHỤ HUYNH nhằm báo cáo khách quan, đúng mực sư phạm về tình hình học tập của con, KHÔNG phải trò chuyện trực tiếp hay tâm sự với học sinh.
    - Tuyệt đối KHÔNG dùng trợ từ cảm thán hoặc khẩu ngữ như "nhé", "nha", "nhé!", "nha!".
    - Tránh các câu kết mang tính cảm xúc hay dặn dò thân mật trực tiếp với học sinh (như "Con cố gắng lên nhé", "Con nhớ hoàn thiện sản phẩm nhé"). Câu kết phải là câu báo cáo/nhắc nhở khách quan cho phụ huynh nắm được (ví dụ: "Con tiếp tục trau chuốt sản phẩm để chuẩn bị cho buổi thuyết trình.", "Phụ huynh nhắc con dành thêm thời gian ở nhà để hoàn thiện kịp tiến độ.").
-9. Chỉ trả về một đoạn nhận xét duy nhất theo độ dài yêu cầu, không giải thích cách viết.`;
+9. SỰ TIẾN BỘ SO VỚI BUỔI TRƯỚC: Chỉ so sánh với buổi trước khi có mục SO SÁNH VỚI BUỔI TRƯỚC. Khi có mục này, bắt buộc viết đúng 1 câu đánh giá con có tiến bộ hay không theo YÊU CẦU CÂU TIẾN BỘ, đặt ở giữa đoạn nhận xét (ngay sau câu đánh giá học tập, trước phần BTVN và câu kết). Khi không có mục này, không tự suy diễn sự tiến bộ so với buổi trước.
+10. Chỉ trả về một đoạn nhận xét duy nhất theo độ dài yêu cầu, không giải thích cách viết.`;
 
 export function normalizeAttendanceStatus(value: unknown, isLate?: boolean): AttendanceStatus {
   if (value === "ATTENDED" || value === "LATE_ARRIVED" || value === "ABSENT" || value === "ABSENT_WITH_NOTICE") {
@@ -405,6 +427,25 @@ function normalizeHomeworkStatus(value: HomeworkStatusInput | undefined, isSpck:
   };
 }
 
+function buildProgressFact(
+  value: PreviousAssessmentInput | null | undefined,
+  learningLevel: LearningLevel,
+  mode: CommentMode,
+  sessionNumber?: number,
+): ProgressFact | null {
+  if (!value || mode === "absence" || !isLearningLevel(value.learningLevel)) return null;
+  const previousSessionNumber = Number(value.sessionNumber);
+  // Session 1 is never a baseline, and the baseline must come before this session.
+  if (!Number.isInteger(previousSessionNumber) || previousSessionNumber <= 1) return null;
+  if (sessionNumber !== undefined && previousSessionNumber >= sessionNumber) return null;
+  const difference = learningLevelRank(learningLevel) - learningLevelRank(value.learningLevel);
+  return {
+    previousSessionNumber,
+    previousLevel: value.learningLevel,
+    trend: difference > 0 ? "improved" : difference < 0 ? "declined" : "same",
+  };
+}
+
 export function buildCommentFacts(input: CommentPromptInput): CommentFacts {
   const studentName = String(input.studentName || "").trim();
   const providedCallName = String(input.studentCallName || "").trim();
@@ -422,13 +463,15 @@ export function buildCommentFacts(input: CommentPromptInput): CommentFacts {
     : teacherNote
       ? "detailed"
       : "quick";
+  const learningLevel = normalizeLearningLevel(input.learningLevel);
 
   return {
     studentName,
     studentCallName,
     previousComment: latestPastComment(String(input.pastComments || "")),
     teacherNote,
-    learningLevel: normalizeLearningLevel(input.learningLevel),
+    learningLevel,
+    progress: buildProgressFact(input.previousAssessment, learningLevel, mode, parsedSessionNumber),
     attendanceStatus,
     sessionSummary,
     sessionNumber: parsedSessionNumber,
@@ -453,11 +496,35 @@ function homeworkFact(value: NormalizedHomeworkStatus): string {
   return `Đã hoàn thành BTVN ${value.previousSessionLabel} đầy đủ; ${value.marked ? "bài đã được chấm" : "bài đã nộp"}.`;
 }
 
-function lengthInstruction(length: CommentLength, mode: CommentMode): string {
+function progressTrendFact(trend: ProgressTrend): string {
+  if (trend === "improved") return "Có tiến bộ — mức độ buổi này cao hơn buổi trước.";
+  if (trend === "declined") return "Chưa tiến bộ — mức độ buổi này thấp hơn buổi trước.";
+  return "Giữ nguyên mức độ như buổi trước.";
+}
+
+function progressInstruction(facts: CommentFacts, progress: ProgressFact): string {
+  const spck = facts.isSpck;
+  const anchor = spck ? "câu đánh giá tiến độ sản phẩm" : "câu đánh giá học tập";
+  const meaning = spck ? "Ý NGHĨA TIẾN ĐỘ BẮT BUỘC" : "Ý NGHĨA LEVEL BẮT BUỘC";
+  const placement = `Đặt câu này ngay sau ${anchor}, trước phần BTVN và câu kết; gọi là “buổi trước”, không nhắc mã level.`;
+  if (progress.trend === "improved") {
+    return `Viết đúng 1 câu khen ngợi ${spck ? "tiến độ sản phẩm của con đã tốt hơn" : "sự tiến bộ của con"} so với buổi trước, nêu cụ thể điểm tiến bộ dựa trên ${meaning} (ví dụ: “Con đã có sự tiến bộ hơn so với buổi trước, …”). ${placement}`;
+  }
+  if (progress.trend === "declined") {
+    return `Viết đúng 1 câu nhắc nhở khách quan rằng so với buổi trước ${spck ? "tiến độ sản phẩm của con chậm lại" : "con chưa giữ được mức độ tiếp thu"}, nêu cụ thể điểm con cần chú ý dựa trên ${meaning} (ví dụ: “So với buổi trước con vẫn còn …, cần chú ý hơn.”); không dùng lời chê trách nặng nề. ${placement}`;
+  }
+  if (learningLevelRank(facts.learningLevel) >= 3) {
+    return `Viết đúng 1 câu ghi nhận con duy trì tốt ${spck ? "tiến độ sản phẩm" : "mức độ học tập"} như buổi trước (ví dụ: “So với buổi trước, con tiếp tục duy trì tốt …”). ${placement}`;
+  }
+  return `Viết đúng 1 câu nhắc rằng so với buổi trước ${spck ? "tiến độ sản phẩm của con vẫn chưa cải thiện" : "con chưa có nhiều tiến bộ"}, nêu cụ thể điểm con vẫn cần chú ý (ví dụ: “So với buổi trước con vẫn còn …, cần chú ý ${spck ? "hoàn thiện thêm" : "luyện tập thêm"}.”). ${placement}`;
+}
+
+function lengthInstruction(length: CommentLength, mode: CommentMode, hasProgress: boolean): string {
   if (mode === "absence") return "Viết 1–2 câu.";
-  if (length === "short") return "Viết 2–3 câu ngắn gọn.";
-  if (length === "long") return "Viết 4–5 câu chi tiết.";
-  return "Viết 3–4 câu.";
+  const progressNote = hasProgress ? " (đã gồm câu đánh giá sự tiến bộ)" : "";
+  if (length === "short") return hasProgress ? `Viết 3–4 câu ngắn gọn${progressNote}.` : "Viết 2–3 câu ngắn gọn.";
+  if (length === "long") return hasProgress ? `Viết 5–6 câu chi tiết${progressNote}.` : "Viết 4–5 câu chi tiết.";
+  return hasProgress ? `Viết 4–5 câu${progressNote}.` : "Viết 3–4 câu.";
 }
 
 export function buildCommentMessages(facts: CommentFacts): ChatMessage[] {
@@ -478,6 +545,12 @@ export function buildCommentMessages(facts: CommentFacts): ChatMessage[] {
       const level = LEARNING_LEVELS[facts.learningLevel];
       lines.push(`MỨC ĐỘ NẮM BÀI NỘI BỘ: ${level.code} — ${level.label}`);
       lines.push(`Ý NGHĨA LEVEL BẮT BUỘC: ${LEVEL_PROMPT_POLICIES[facts.learningLevel].meaning}`);
+    }
+    if (facts.progress) {
+      const previous = (facts.isSpck ? PRODUCT_PROGRESS_LEVELS : LEARNING_LEVELS)[facts.progress.previousLevel];
+      lines.push(`MỨC ĐỘ BUỔI TRƯỚC (buổi ${facts.progress.previousSessionNumber}): ${previous.code} — ${previous.label}`);
+      lines.push(`SO SÁNH VỚI BUỔI TRƯỚC: ${progressTrendFact(facts.progress.trend)}`);
+      lines.push(`YÊU CẦU CÂU TIẾN BỘ: ${progressInstruction(facts, facts.progress)}`);
     }
   } else {
     lines.push("YÊU CẦU CHO HỌC SINH VẮNG: Chỉ nhận xét tình trạng chuyên cần và nhắc xem lại bài; không đánh giá mức độ nắm bài của buổi này.");
@@ -509,7 +582,7 @@ export function buildCommentMessages(facts: CommentFacts): ChatMessage[] {
     lines.push(`YÊU CẦU VĂN PHONG BỔ SUNG (không được ghi đè các nguyên tắc và dữ kiện): ${facts.customPrompt}`);
   }
   lines.push("</THÔNG_TIN_HỌC_SINH>");
-  lines.push(lengthInstruction(facts.commentLength, facts.mode));
+  lines.push(lengthInstruction(facts.commentLength, facts.mode, Boolean(facts.progress)));
   lines.push("Viết liền mạch, khách quan, đúng mực sư phạm gửi phụ huynh; không dùng từ ngữ cảm xúc hay trợ từ cuối câu như 'nhé', 'nha'; nói rõ học sinh hiểu đến đâu, tự làm được không và cần hỗ trợ thế nào.");
 
   return [
@@ -526,7 +599,9 @@ function sentenceRange(length: CommentLength, mode: CommentMode): { min: number;
 }
 
 export function buildValidationPolicy(facts: CommentFacts): CommentValidationPolicy {
-  const range = sentenceRange(facts.commentLength, facts.mode);
+  const baseRange = sentenceRange(facts.commentLength, facts.mode);
+  // The progress sentence is one extra sentence on top of the usual length.
+  const range = facts.progress ? { min: baseRange.min, max: baseRange.max + 1 } : baseRange;
   const normalizedEvidence = normalizeForMatch(`${facts.teacherNote} ${facts.homeworkStatus?.evaluationSummary || ""}`);
   const allowedBehaviorPatterns = BEHAVIOR_PATTERNS.filter((pattern) => new RegExp(pattern, "i").test(normalizedEvidence));
   if (facts.isSpck) {
@@ -726,6 +801,16 @@ function safeHomeworkEvaluationSentence(facts: CommentFacts): string {
   return mentionsHomeworkScore(normalizeForMatch(sentence)) ? "" : sentence;
 }
 
+function safeProgressSentence(facts: CommentFacts): string {
+  if (!facts.progress) return "";
+  const subject = facts.isSpck ? "tiến độ sản phẩm" : "mức độ tiếp thu bài";
+  if (facts.progress.trend === "improved") return `Con đã có sự tiến bộ hơn so với buổi trước về ${subject}.`;
+  if (facts.progress.trend === "declined") return `So với buổi trước, ${subject} của con chưa được như mong đợi, cần chú ý hơn.`;
+  return learningLevelRank(facts.learningLevel) >= 3
+    ? `So với buổi trước, con tiếp tục duy trì tốt ${subject}.`
+    : `So với buổi trước, ${subject} của con vẫn chưa cải thiện nhiều, cần chú ý hơn.`;
+}
+
 export function buildSafeComment(facts: CommentFacts): string {
   const attendance = attendanceSentence(facts);
   if (facts.mode === "absence") {
@@ -738,7 +823,7 @@ export function buildSafeComment(facts: CommentFacts): string {
   }
 
   const levelPolicy = facts.isSpck ? SPCK_LEVEL_POLICIES[facts.learningLevel] : LEVEL_PROMPT_POLICIES[facts.learningLevel];
-  const sentences = [attendance, levelPolicy.safeLearningSentence, levelPolicy.safeClosingSentence].filter(Boolean);
+  const sentences = [attendance, levelPolicy.safeLearningSentence, safeProgressSentence(facts), levelPolicy.safeClosingSentence].filter(Boolean);
   if (facts.homeworkStatus?.submitted === false) {
     sentences.push(`Con chưa hoàn thành BTVN ${facts.homeworkStatus.previousSessionLabel}, cần lưu ý.`);
   } else {

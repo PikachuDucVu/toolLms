@@ -7,9 +7,10 @@ import {
 } from '@tool-lms/contracts';
 import { apiRequest } from '../../lib/apiClient';
 
-export function getAssessments(slotId: string, classId: string, previousSlotIds: string[], signal?: AbortSignal) {
+export function getAssessments(slotId: string, classId: string, previousSlotIds: string[], historySlotIds: string[] = [], signal?: AbortSignal) {
   const params = new URLSearchParams({ classId });
   previousSlotIds.forEach((previousSlotId) => params.append('previousSlotId', previousSlotId));
+  historySlotIds.forEach((historySlotId) => params.append('historySlotId', historySlotId));
   return apiRequest(`/api/v2/slots/${encodeURIComponent(slotId)}/assessments?${params}`, {
     schema: AssessmentLoadResponseSchema,
     signal,

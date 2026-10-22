@@ -80,3 +80,8 @@ export function normalizeLearningLevel(value: unknown): LearningLevel {
   return isLearningLevel(value) ? value : DEFAULT_LEARNING_LEVEL;
 }
 
+/** 1 (L1) to 4 (L4), so two sessions' levels can be compared. */
+export function learningLevelRank(level: LearningLevel): number {
+  return Number(LEARNING_LEVELS[level].code.slice(1));
+}
+

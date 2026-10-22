@@ -9,3 +9,4 @@ export {
   levelCatalog,
   normalizedAssessmentDraft,
 } from '../selectors';
+export { previousSessionLevel, progressTrend, type PreviousSessionLevel, type ProgressTrend } from '../progress';

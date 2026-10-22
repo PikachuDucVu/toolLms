@@ -1,4 +1,4 @@
-import type { Assessment, LearningLevel } from '@tool-lms/contracts';
+import type { Assessment, AssessmentHistoryEntry, LearningLevel } from '@tool-lms/contracts';
 import { create } from 'zustand';
 import { registerWorkflowReset } from '../../lib/operationContext';
 import { DEFAULT_LEARNING_LEVEL, sameAssessment } from './selectors';
@@ -6,6 +6,8 @@ import { DEFAULT_LEARNING_LEVEL, sameAssessment } from './selectors';
 export type AssessmentDraft = { learningLevel: LearningLevel; note: string };
 export type SyncedAssessment = AssessmentDraft;
 export type InheritedAssessment = { learningLevel: LearningLevel; sourceSlotId: string };
+/** Saved levels of earlier sessions: studentId -> slotId -> level. */
+export type AssessmentHistory = Record<string, Record<string, LearningLevel>>;
 export type AssessmentContext = { classId: string; slotId: string; epoch: number };
 export type LoadState = { loading: boolean; error: string | null };
 
@@ -14,6 +16,7 @@ export interface AssessmentState {
   drafts: Record<string, AssessmentDraft>;
   synced: Record<string, SyncedAssessment>;
   inherited: Record<string, InheritedAssessment>;
+  history: AssessmentHistory;
   touched: Set<string>;
   autosaveBusy: Set<string>;
   explicitSaveBusy: Set<string>;
@@ -24,7 +27,7 @@ export interface AssessmentState {
   operationError: string | null;
   activate: (context: AssessmentContext) => void;
   setLoadPending: (context: AssessmentContext) => void;
-  hydrate: (context: AssessmentContext, assessments: Assessment[]) => void;
+  hydrate: (context: AssessmentContext, assessments: Assessment[], history?: AssessmentHistoryEntry[]) => void;
   setLoadError: (context: AssessmentContext, error: string) => void;
   setLearningLevelDraft: (studentId: string, learningLevel: LearningLevel) => void;
   setNoteDraft: (studentId: string, note: string) => void;
@@ -51,6 +54,7 @@ const freshState = () => ({
   drafts: {} as Record<string, AssessmentDraft>,
   synced: {} as Record<string, SyncedAssessment>,
   inherited: {} as Record<string, InheritedAssessment>,
+  history: {} as AssessmentHistory,
   touched: new Set<string>(),
   autosaveBusy: new Set<string>(),
   explicitSaveBusy: new Set<string>(),
@@ -65,11 +69,15 @@ export const useAssessmentStore = create<AssessmentState>((set) => ({
   ...freshState(),
   activate: (context) => set({ ...freshState(), context, load: { loading: true, error: null } }),
   setLoadPending: (context) => set((state) => isContext(state.context, context) ? { load: { loading: true, error: null } } : state),
-  hydrate: (context, assessments) => set((state) => {
+  hydrate: (context, assessments, historyEntries = []) => set((state) => {
     if (!isContext(state.context, context)) return state;
     const drafts = { ...state.drafts };
     const synced = { ...state.synced };
     const inherited = { ...state.inherited };
+    const history: AssessmentHistory = {};
+    for (const entry of historyEntries) {
+      history[entry.studentId] = { ...history[entry.studentId], [entry.slotId]: entry.learningLevel };
+    }
     for (const assessment of assessments) {
       const normalized: AssessmentDraft = {
         learningLevel: assessment.learningLevel,
@@ -83,7 +91,7 @@ export const useAssessmentStore = create<AssessmentState>((set) => ({
       }
       if (!Object.prototype.hasOwnProperty.call(drafts, assessment.studentId)) drafts[assessment.studentId] = normalized;
     }
-    return { drafts, synced, inherited, load: { loading: false, error: null } };
+    return { drafts, synced, inherited, history, load: { loading: false, error: null } };
   }),
   setLoadError: (context, error) => set((state) => isContext(state.context, context) ? { load: { loading: false, error } } : state),
   setLearningLevelDraft: (studentId, learningLevel) => set((state) => ({

@@ -5,6 +5,7 @@ import { App } from './app/App';
 import { safeClientErrorEvent } from './lib/clientErrorReporting';
 import './styles/app.css';
 import './styles/workspace-layout.css';
+import './styles/student-drawer.css';
 import './styles/homework-layout.css';
 
 const root = document.getElementById('root');

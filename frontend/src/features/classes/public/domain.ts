@@ -6,10 +6,12 @@ export {
 } from '../classCache';
 export {
   attendancePresentation,
+  currentSessionNumber,
   existingContentComment,
   hasModeSubmission,
   isPresent,
   normalizeVietnameseText,
+  sessionMode,
   stripHtml,
   studentInitials,
 } from '../selectors';

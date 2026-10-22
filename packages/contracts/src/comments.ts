@@ -53,6 +53,13 @@ export type PastCommentSlot = z.infer<typeof PastCommentSlotSchema>;
 export const SessionCommentModeSchema = z.enum(['auto', 'regular', 'spck']);
 export type SessionCommentMode = z.infer<typeof SessionCommentModeSchema>;
 
+// Level of the student's last comparable session; the comment then says whether they progressed.
+export const CommentPreviousAssessmentSchema = z.object({
+  sessionNumber: z.number().int().positive().max(500),
+  learningLevel: LearningLevelSchema,
+});
+export type CommentPreviousAssessment = z.infer<typeof CommentPreviousAssessmentSchema>;
+
 export const GenerateCommentRequestSchema = z.object({
   classId: EntityIdSchema,
   slotId: EntityIdSchema,
@@ -63,6 +70,7 @@ export const GenerateCommentRequestSchema = z.object({
   sessionSummary: z.string().max(3_000),
   teacherNote: z.string().max(NOTE_MAX_LENGTH),
   learningLevel: LearningLevelSchema,
+  previousAssessment: CommentPreviousAssessmentSchema.nullable().optional(),
   attendanceStatus: CommentAttendanceStatusSchema,
   isLate: z.boolean().optional(),
   homeworkStatus: CommentHomeworkStatusSchema.nullable().optional(),

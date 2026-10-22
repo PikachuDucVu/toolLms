@@ -11,6 +11,7 @@ import type { AttendanceFilter, ProgressFilter } from '../classes/public/domain'
 import { activateAssessmentContext, deactivateAssessmentContext, saveBulkLearningLevel } from './autosaveController';
 import { useAssessmentStore, type AssessmentContext } from './assessmentStore';
 import { useAssessmentsQuery } from './queries';
+import { progressHistorySlots } from './progress';
 import { assessmentDraft, LEARNING_LEVEL_ORDER, levelCatalog, presentStudentIds, previousRegularSlotIds } from './selectors';
 import { StudentAssessmentList } from './StudentAssessmentList';
 
@@ -51,7 +52,8 @@ export function AssessmentWorkspace({
   const toast = useToast();
   const levels = levelCatalog(sessionNumber, useSessionCommentMode());
   const previousSlotIds = useMemo(() => previousRegularSlotIds(detail.slots, slot.id), [detail.slots, slot.id]);
-  const query = useAssessmentsQuery(context, previousSlotIds);
+  const historySlotIds = useMemo(() => progressHistorySlots(detail, slot).map((item) => item.slot.id), [detail, slot]);
+  const query = useAssessmentsQuery(context, previousSlotIds, historySlotIds);
   const bulkBusy = useAssessmentStore((state) => state.bulkBusy);
   const load = useAssessmentStore((state) => state.load);
 
@@ -63,7 +65,7 @@ export function AssessmentWorkspace({
 
   useEffect(() => {
     if (!context || !query.data) return;
-    useAssessmentStore.getState().hydrate(context, query.data.data.assessments);
+    useAssessmentStore.getState().hydrate(context, query.data.data.assessments, query.data.data.history);
   }, [context, query.data, query.dataUpdatedAt]);
 
   useEffect(() => {

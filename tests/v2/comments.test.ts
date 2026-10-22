@@ -225,6 +225,37 @@ describe("v2 regular comments routes", () => {
     expect(prompt).toContain("Vượt tiến độ");
   });
 
+  it.each([
+    { previousSession: 3, included: true },
+    { previousSession: 4, included: false },
+  ])("compares with previous session $previousSession only when it precedes the authoritative session 4", async ({ previousSession, included }) => {
+    const detail = rawDetail({
+      slots: Array.from({ length: 4 }, (_, index) => ({
+        _id: `slot-${index + 1}`,
+        index,
+        date: "2026-07-01",
+        summary: "",
+        studentAttendance: [
+          { _id: "attendance-present", student: { id: "student-present", fullName: "Nguyễn Văn An" }, status: "ATTENDED", commentByAreas: [] },
+        ],
+      })),
+    });
+    const calls = generationMock(detail, [Response.json({ choices: [{ message: { content: "Nhận xét có so sánh." } }] })]);
+    const response = await request("/api/v2/comments/generate", {
+      method: "POST",
+      body: JSON.stringify({
+        classId: "class-1", slotId: "slot-4", studentId: "student-present", studentName: "Nguyễn Văn An",
+        pastSlots: [], sessionSummary: "", teacherNote: "", learningLevel: "understands_and_asks",
+        previousAssessment: { sessionNumber: previousSession, learningLevel: "needs_prompting" },
+        attendanceStatus: "ATTENDED", modelId: "claude-sonnet-4-6", thinkingLevel: "off", apiKey: "test-key",
+      }),
+    });
+    expect(response.status).toBe(200);
+    const prompt = calls.aiCalls[0].messages[1].content as string;
+    expect(prompt.includes(`MỨC ĐỘ BUỔI TRƯỚC (buổi ${previousSession}): L2`)).toBe(included);
+    expect(prompt.includes("SO SÁNH VỚI BUỔI TRƯỚC: Có tiến bộ")).toBe(included);
+  });
+
   it("uses a server Antigravity key without a request key or server OpenRouter key", async () => {
     const safe = buildSafeComment(buildCommentFacts({
       studentName: "Nguyễn Văn An", learningLevel: "independent", attendanceStatus: "ATTENDED", commentLength: "medium",

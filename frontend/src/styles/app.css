@@ -3132,6 +3132,13 @@ html[data-theme="dark"] body::before {
   border-color: var(--border-color);
 }
 
+/* The light drawer surface is !important, so its dark override must be too. */
+[data-theme="dark"] .regular-review-drawer,
+[data-theme="dark"] .regular-review-drawer-header {
+  background: var(--surface-card) !important;
+  border-color: var(--border-color) !important;
+}
+
 [data-theme="dark"] .regular-review-table-header {
   background: var(--surface-subtle);
   border-color: var(--border-color);

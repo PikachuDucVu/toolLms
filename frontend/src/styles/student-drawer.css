@@ -1,0 +1,439 @@
+/* ============================================================
+   Student detail drawer (regular comment sessions)
+   ------------------------------------------------------------
+   A modal side sheet: the header with the student's name, status,
+   previous/next and close stays pinned, only the body scrolls.
+   Sits above the settings FAB (1040) and below dialogs opened
+   from inside it (1050+) and toasts (2000).
+   ============================================================ */
+
+.student-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1044;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(2px);
+}
+
+.student-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1045;
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 100vw);
+  background: var(--surface-subtle);
+  border-left: 1px solid var(--border-color);
+  box-shadow: -24px 0 48px -12px rgba(15, 23, 42, 0.28);
+  outline: none;
+}
+
+.student-drawer-header {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 14px;
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.student-drawer-heading {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.student-drawer-eyebrow {
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.student-drawer-title {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.student-drawer-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.student-drawer-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.student-drawer-icon-button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.student-drawer-icon-button:hover:not(:disabled) {
+  border-color: var(--gray-300);
+  background: var(--gray-100);
+  color: var(--text-heading);
+}
+
+.student-drawer-icon-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.student-drawer-icon-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.student-drawer-close {
+  margin-left: 4px;
+}
+
+.student-drawer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 20px 28px;
+}
+
+@keyframes student-drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes student-drawer-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+@keyframes student-drawer-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes student-drawer-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.student-drawer[data-state="open"] { animation: student-drawer-in 240ms cubic-bezier(0.22, 1, 0.36, 1); }
+.student-drawer[data-state="closed"] { animation: student-drawer-out 160ms ease-in; }
+.student-drawer-overlay[data-state="open"] { animation: student-drawer-fade-in 200ms ease; }
+.student-drawer-overlay[data-state="closed"] { animation: student-drawer-fade-out 160ms ease-in; }
+
+@media (prefers-reduced-motion: reduce) {
+  .student-drawer,
+  .student-drawer-overlay {
+    animation: none !important;
+  }
+}
+
+[data-theme="dark"] .student-drawer-overlay {
+  background: rgba(2, 6, 23, 0.62);
+}
+
+[data-theme="dark"] .student-drawer {
+  background: var(--surface-body);
+  box-shadow: -24px 0 48px -12px rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 640px) {
+  .student-drawer {
+    border-left: 0;
+  }
+
+  .student-drawer-header {
+    gap: 10px;
+    padding: 14px 14px 12px;
+  }
+
+  .student-drawer-title {
+    font-size: 17px;
+  }
+
+  .student-drawer-body {
+    padding: 12px 12px 24px;
+  }
+}
+
+/* ============================================================
+   Student detail body (also embedded in the review drawer)
+   ============================================================ */
+
+.student-detail {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+/* Narrow hosts (the review drawer, phones): one level per row. */
+@container (max-width: 460px) {
+  .student-detail .learning-level-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-detail .learning-level-option {
+    min-height: 0;
+  }
+
+  .student-detail .learning-level-legend {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .student-detail .progress-trend-pill {
+    margin-left: 0;
+  }
+}
+
+.student-detail > .student-detail-section {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.student-detail > .regular-absent-note {
+  margin: 0;
+}
+
+.student-detail > .regular-existing-comment {
+  padding: 0;
+}
+
+.student-detail > .regular-existing-comment > summary {
+  padding: 12px 16px;
+}
+
+.student-detail > .regular-existing-comment > .regular-existing-comment-body {
+  padding: 0 16px 14px;
+}
+
+.student-detail .student-detail-section-title,
+.student-detail .comment-editor > .student-detail-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--gray-600);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.student-detail .student-detail-section-title .badge,
+.student-detail .comment-editor > .student-detail-title .badge {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.student-detail .student-detail-section-title .btn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.student-detail .assessment-editor {
+  display: grid;
+  gap: 14px;
+}
+
+.student-detail .assessment-editor > .student-detail-section-title {
+  margin: 0;
+}
+
+.student-detail .regular-note-label-row {
+  align-items: baseline;
+  gap: 12px;
+}
+
+.student-detail .regular-note-label {
+  width: auto;
+  margin-bottom: 0;
+}
+
+.student-detail .regular-note-label-row > small {
+  white-space: nowrap;
+}
+
+.student-detail .assessment-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.student-detail .comment-editor .comment-edit {
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.student-detail .comment-editor .student-detail-actions {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-color);
+}
+
+/* ---------- Previous-session level compared with this session ---------- */
+
+.progress-compare {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
+}
+
+.progress-compare-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.progress-compare-caption {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-heading);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.progress-compare-levels {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.progress-compare-arrow {
+  color: var(--gray-400);
+}
+
+.progress-trend-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--gray-100);
+  color: var(--gray-700);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.progress-compare-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.progress-compare.is-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-style: dashed;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.progress-compare.tone-improved {
+  border-color: color-mix(in srgb, var(--success) 35%, var(--border-color));
+  background: color-mix(in srgb, var(--success-light) 45%, var(--surface-card));
+}
+
+.progress-compare.tone-improved .progress-trend-pill {
+  background: var(--success-light);
+  color: var(--success-dark);
+}
+
+.progress-compare.tone-declined {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border-color));
+  background: color-mix(in srgb, var(--danger-light) 45%, var(--surface-card));
+}
+
+.progress-compare.tone-declined .progress-trend-pill {
+  background: var(--danger-light);
+  color: var(--danger-dark);
+}
+
+.progress-compare.tone-steady {
+  border-color: color-mix(in srgb, var(--info) 30%, var(--border-color));
+  background: color-mix(in srgb, var(--info-light) 40%, var(--surface-card));
+}
+
+.progress-compare.tone-steady .progress-trend-pill {
+  background: var(--info-light);
+  color: var(--info-dark);
+}
+
+.progress-compare.tone-stalled {
+  border-color: color-mix(in srgb, var(--warning) 40%, var(--border-color));
+  background: color-mix(in srgb, var(--warning-light) 45%, var(--surface-card));
+}
+
+.progress-compare.tone-stalled .progress-trend-pill {
+  background: var(--warning-light);
+  color: var(--warning-dark);
+}
+
+/* Compact hint under the level badge in the student table. */
+.student-list-item .cell-level {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+}
+
+.progress-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.progress-hint.tone-improved { color: var(--success-dark); }
+.progress-hint.tone-declined { color: var(--danger-dark); }
+.progress-hint.tone-steady { color: var(--info-dark); }
+.progress-hint.tone-stalled { color: var(--warning-dark); }

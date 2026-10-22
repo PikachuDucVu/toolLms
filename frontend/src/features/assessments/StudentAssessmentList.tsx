@@ -7,7 +7,7 @@ import { storageProductsQuery, studentWorksQuery } from '../studentWorks/public/
 import { buildStorageStudentWork, latestStudentWork } from '../studentWorks/public/storageSubmission';
 import emptyStudentsUrl from '../../assets/empty-students.jpg';
 import { AssessmentCompactRow } from './AssessmentCompactRow';
-import { StudentAssessmentDetail } from './StudentAssessmentDetail';
+import { StudentDetailDrawer } from './StudentDetailDrawer';
 import { showsStorageProductColumn, isProductProgressSession } from './selectors';
 import { useSessionCommentMode } from '../comments/public/sessionMode';
 
@@ -172,35 +172,21 @@ export function StudentAssessmentList({
               onRetryStorage={retryStorage}
               onSubmitProducts={submitStorageFiles}
             />
-            {student.studentId === selected.studentId && drawerOpen && (
-              <div className="mobile-student-detail">
-                <StudentAssessmentDetail
-                  detail={detail}
-                  slot={slot}
-                  sessionNumber={sessionNumber}
-                  student={student}
-                  selectedStudentId={selected.studentId}
-                  locked={locked}
-                  onClose={() => setDrawerOpen(false)}
-                />
-              </div>
-            )}
           </div>
         ))}
       </div>
 
-      <div className={`desktop-student-detail ${drawerOpen ? 'open' : ''}`}>
-        <StudentAssessmentDetail
-          isOpen={drawerOpen}
-          detail={detail}
-          slot={slot}
-          sessionNumber={sessionNumber}
-          student={selected}
-          selectedStudentId={selected.studentId}
-          locked={locked}
-          onClose={() => setDrawerOpen(false)}
-        />
-      </div>
+      <StudentDetailDrawer
+        open={drawerOpen}
+        detail={detail}
+        slot={slot}
+        sessionNumber={sessionNumber}
+        student={selected}
+        students={students}
+        locked={locked}
+        onSelect={onSelect}
+        onClose={() => setDrawerOpen(false)}
+      />
     </div>
     </div>
   );

@@ -38,9 +38,8 @@ describe('regular assessment workspace', () => {
     expect(within(desktop).getAllByText('Kế thừa L1 từ buổi trước')).toHaveLength(2);
     expect(within(desktop).getByRole('button', { name: /Chọn L1/ })).toHaveAttribute('aria-pressed', 'true');
     expect(within(desktop).getByLabelText(/Ghi chú bổ sung/)).toHaveValue('');
-    await userEvent.setup().click(screen.getAllByRole('button', { name: /^Trần Bình/ })[0]);
-    await screen.findAllByRole('heading', { name: 'Trần Bình' });
-    expect((document.querySelector('.desktop-student-detail') as HTMLElement).textContent).toContain('Mặc định L3 · chưa lưu buổi này');
+    await userEvent.setup().click(within(desktop).getByRole('button', { name: 'Học sinh tiếp theo' }));
+    expect(await screen.findByRole('dialog', { name: 'Trần Bình' })).toHaveTextContent('Mặc định L3 · chưa lưu buổi này');
   });
 
   it('changes level immediately, shows saving, and sends only PATCH without AI calls', async () => {
@@ -171,8 +170,8 @@ function renderWorkspace() {
 }
 
 async function desktopDetail() {
-  await screen.findAllByRole('heading', { name: 'Nguyễn Văn An' });
-  return document.querySelector('.desktop-student-detail') as HTMLElement;
+  await userEvent.setup().click(await screen.findByRole('button', { name: 'Nguyễn Văn An' }));
+  return screen.findByRole('dialog', { name: 'Nguyễn Văn An' });
 }
 
 function WorkspaceHarness() {

@@ -41,11 +41,12 @@ afterEach(cleanup);
 describe('compact student row render isolation', () => {
   it('does not rerender unrelated rows while typing the selected note', async () => {
     render(<ToastProvider><ConfirmProvider><StudentAssessmentList detail={detail} slot={detail.slots[0]} students={students} total={3} selectedId="student-1" onSelect={() => undefined} onResetFilters={() => undefined} /></ConfirmProvider></ToastProvider>);
-    const desktop = document.querySelector('.desktop-student-detail') as HTMLElement;
-    await screen.findAllByRole('heading', { name: 'Nguyễn An' });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Nguyễn An' }));
+    const drawer = await screen.findByRole('dialog', { name: 'Nguyễn An' });
     renderCounts.clear();
 
-    await userEvent.setup().type(within(desktop).getByLabelText('Ghi chú bổ sung cho Nguyễn An'), 'abc');
+    await user.type(within(drawer).getByLabelText('Ghi chú bổ sung cho Nguyễn An'), 'abc');
 
     expect(renderCounts.get('student-1')).toBeGreaterThan(0);
     expect(renderCounts.get('student-2') || 0).toBe(0);

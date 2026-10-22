@@ -164,6 +164,32 @@ describe("v2 assessment routes", () => {
     expect(parsed.data.assessments[1]).toMatchObject({ inherited: true, sourceSlotId: "slot-near", note: "" });
   });
 
+  it("returns every saved level of the requested history slots, even when the current slot has its own", async () => {
+    const currentEnv = env([
+      row({ id: "current", student_id: "student-1", learning_level: "independent" }),
+      row({ id: "near-1", slot_id: "slot-near", student_id: "student-1", learning_level: "needs_prompting" }),
+      row({ id: "near-2", slot_id: "slot-near", student_id: "student-2", learning_level: "needs_support" }),
+      row({ id: "old-1", slot_id: "slot-old", student_id: "student-1", learning_level: "understands_and_asks" }),
+      row({ id: "other-class", slot_id: "slot-near", student_id: "student-3", class_id: "class-other" }),
+    ]);
+    const response = await request(
+      "/api/v2/slots/slot-current/assessments?classId=class-1&historySlotId=slot-near&historySlotId=slot-current",
+      {},
+      currentEnv,
+    );
+
+    expect(response.status).toBe(200);
+    const parsed = AssessmentLoadResponseSchema.parse(await response.json());
+    expect(parsed.data.assessments).toEqual([expect.objectContaining({ studentId: "student-1", inherited: false, learningLevel: "independent" })]);
+    expect(parsed.data.history).toEqual([
+      { studentId: "student-1", slotId: "slot-near", learningLevel: "needs_prompting" },
+      { studentId: "student-2", slotId: "slot-near", learningLevel: "needs_support" },
+    ]);
+
+    const withoutHistory = await request("/api/v2/slots/slot-current/assessments?classId=class-1", {}, currentEnv);
+    expect(AssessmentLoadResponseSchema.parse(await withoutHistory.json()).data.history).toEqual([]);
+  });
+
   it("requires auth and returns request-correlated validation errors for bounded IDs, history, levels, and notes", async () => {
     const unauthenticated = await request(
       "/api/v2/slots/slot-current/assessments?classId=class-1",
@@ -179,6 +205,10 @@ describe("v2 assessment routes", () => {
     const tooMany = new URLSearchParams({ classId: "class-1" });
     for (let index = 0; index < 101; index += 1) tooMany.append("previousSlotId", `slot-${index}`);
     expect((await request(`/api/v2/slots/slot-current/assessments?${tooMany}`)).status).toBe(422);
+
+    const tooManyHistory = new URLSearchParams({ classId: "class-1" });
+    for (let index = 0; index < 11; index += 1) tooManyHistory.append("historySlotId", `slot-${index}`);
+    expect((await request(`/api/v2/slots/slot-current/assessments?${tooManyHistory}`)).status).toBe(422);
 
     const invalidLevel = await request("/api/v2/slots/slot-current/assessments/student-1", {
       method: "PUT",

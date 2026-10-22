@@ -226,6 +226,82 @@ describe("comment prompt facts and messages", () => {
   });
 });
 
+describe("progress compared with the previous session", () => {
+  const withPrevious = (learningLevel: LearningLevel, previousLevel: LearningLevel, overrides: Partial<Parameters<typeof buildCommentFacts>[0]> = {}) =>
+    factsFor(learningLevel, {
+      studentName: "Minh Anh",
+      sessionNumber: 4,
+      previousAssessment: { sessionNumber: 3, learningLevel: previousLevel },
+      ...overrides,
+    });
+
+  it("asks for one praise sentence in the middle when the level went up", () => {
+    const facts = withPrevious("understands_and_asks", "needs_prompting");
+    const [system, user] = buildCommentMessages(facts);
+
+    expect(facts.progress).toEqual({ previousSessionNumber: 3, previousLevel: "needs_prompting", trend: "improved" });
+    expect(user.content).toContain("MỨC ĐỘ BUỔI TRƯỚC (buổi 3): L2 — Đang củng cố, cần gợi ý");
+    expect(user.content).toContain("SO SÁNH VỚI BUỔI TRƯỚC: Có tiến bộ");
+    expect(user.content).toContain("Con đã có sự tiến bộ hơn so với buổi trước");
+    expect(user.content).toContain("Đặt câu này ngay sau câu đánh giá học tập, trước phần BTVN và câu kết");
+    expect(user.content).toContain("Viết 4–5 câu (đã gồm câu đánh giá sự tiến bộ).");
+    expect(system.content).toContain("Chỉ so sánh với buổi trước khi có mục SO SÁNH VỚI BUỔI TRƯỚC");
+  });
+
+  it("asks for an objective reminder when the level went down", () => {
+    const user = buildCommentMessages(withPrevious("needs_prompting", "independent"))[1].content;
+
+    expect(user).toContain("SO SÁNH VỚI BUỔI TRƯỚC: Chưa tiến bộ");
+    expect(user).toContain("So với buổi trước con vẫn còn …, cần chú ý hơn.");
+    expect(user).toContain("không dùng lời chê trách nặng nề");
+  });
+
+  it("praises a steady good level and flags a steady weak one", () => {
+    const steadyGood = buildCommentMessages(withPrevious("independent", "independent"))[1].content;
+    const steadyWeak = buildCommentMessages(withPrevious("needs_support", "needs_support"))[1].content;
+
+    expect(steadyGood).toContain("SO SÁNH VỚI BUỔI TRƯỚC: Giữ nguyên");
+    expect(steadyGood).toContain("con tiếp tục duy trì tốt");
+    expect(steadyWeak).toContain("con chưa có nhiều tiến bộ");
+    expect(steadyWeak).toContain("cần chú ý luyện tập thêm");
+  });
+
+  it("talks about product progress in an SPCK session", () => {
+    const facts = withPrevious("understands_and_asks", "needs_support", { sessionNumber: 11, previousAssessment: { sessionNumber: 10, learningLevel: "needs_support" } });
+    const user = buildCommentMessages(facts)[1].content;
+
+    expect(facts.isSpck).toBe(true);
+    expect(user).toContain("MỨC ĐỘ BUỔI TRƯỚC (buổi 10): L1 — Chậm tiến độ, cần kèm sát");
+    expect(user).toContain("tiến độ sản phẩm của con đã tốt hơn");
+    expect(user).toContain("ngay sau câu đánh giá tiến độ sản phẩm");
+  });
+
+  it.each([
+    ["session 1 as the baseline", { previousAssessment: { sessionNumber: 1, learningLevel: "needs_support" as const } }],
+    ["a baseline that is not earlier", { previousAssessment: { sessionNumber: 4, learningLevel: "needs_support" as const } }],
+    ["an absent student", { attendanceStatus: "ABSENT" }],
+    ["no baseline", { previousAssessment: null }],
+  ])("leaves progress out for %s", (_label, overrides) => {
+    const facts = withPrevious("independent", "needs_support", overrides);
+    const user = buildCommentMessages(facts)[1].content;
+
+    expect(facts.progress).toBeNull();
+    expect(user).not.toContain("SO SÁNH VỚI BUỔI TRƯỚC");
+    expect(user).not.toContain("đã gồm câu đánh giá sự tiến bộ");
+  });
+
+  it.each(LEVELS.flatMap((current) => LEVELS.map((previous) => [current, previous] as const)))(
+    "keeps the safe copy valid with one extra sentence for %s after %s",
+    (current, previous) => {
+      const facts = withPrevious(current, previous);
+      const safeComment = buildSafeComment(facts);
+
+      expect(safeComment).toMatch(/so với buổi trước/i);
+      expect(validateComment(safeComment, buildValidationPolicy(facts))).toEqual({ valid: true, issues: [] });
+    },
+  );
+});
+
 describe("comment validator and cleanup", () => {
   it("rejects vague wording", () => {
     const facts = factsFor();

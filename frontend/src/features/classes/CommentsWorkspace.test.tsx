@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -32,6 +32,11 @@ function detail(id: string, name: string, studentName: string) {
 }
 
 function envelope(data: unknown) { return { success: true, data, requestId: 'comments-workspace-test' }; }
+function studentRow(name: string) { return screen.findByRole('button', { name }); }
+async function openStudentDrawer(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(await studentRow(name));
+  return screen.findByRole('dialog', { name });
+}
 function json(data: unknown) { return new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json' } }); }
 
 beforeEach(() => {
@@ -73,14 +78,15 @@ describe('comments workspace context safety', () => {
     const user = userEvent.setup();
     render(<MemoryRouter><AppProviders><CommentsWorkspace /></AppProviders></MemoryRouter>);
     await user.click(await screen.findByRole('option', { name: /Lớp A/ }));
-    await screen.findAllByRole('heading', { name: 'Học sinh A' });
+    await studentRow('Học sinh A');
     await waitFor(() => expect(useAssessmentStore.getState().load.loading).toBe(false));
     const select = screen.getByLabelText('Loại nhận xét');
     expect(screen.queryByText('Chỉ buổi này · lưu trên trình duyệt này')).not.toBeInTheDocument();
     expect(select).toHaveValue('auto');
     await user.selectOptions(select, 'spck');
     expect(select).toHaveValue('spck');
-    expect(screen.getAllByText('Đánh giá tiến độ sản phẩm').length).toBeGreaterThan(0);
+    expect(within(await openStudentDrawer(user, 'Học sinh A')).getByText('Đánh giá tiến độ sản phẩm')).toBeVisible();
+    await user.keyboard('{Escape}');
     expect(screen.getByLabelText('Level cả lớp')).toHaveTextContent('Vượt tiến độ');
     expect(sessionCommentModeFor('class-a', 'class-a-slot-1')).toBe('spck');
     await user.selectOptions(screen.getByLabelText('Buổi học'), '1');
@@ -89,7 +95,7 @@ describe('comments workspace context safety', () => {
     await user.selectOptions(screen.getByLabelText('Buổi học'), '0');
     expect(screen.getByLabelText('Loại nhận xét')).toHaveValue('spck');
     await user.click(screen.getByRole('option', { name: /Lớp B/ }));
-    await screen.findAllByRole('heading', { name: 'Học sinh B' });
+    await studentRow('Học sinh B');
     expect(screen.getByLabelText('Loại nhận xét')).toHaveValue('auto');
   });
 
@@ -97,7 +103,7 @@ describe('comments workspace context safety', () => {
     const user = userEvent.setup();
     render(<MemoryRouter><AppProviders><CommentsWorkspace /></AppProviders></MemoryRouter>);
     await user.click(await screen.findByRole('option', { name: /Lớp A/ }));
-    await screen.findAllByRole('heading', { name: 'Học sinh A' });
+    await studentRow('Học sinh A');
     act(() => useCommentStore.getState().editDraft('class-a-student-1', 'Bản nháp giữ nguyên'));
     await user.selectOptions(screen.getByLabelText('Loại nhận xét'), 'spck');
     expect(screen.getByRole('alertdialog')).toHaveTextContent('Bản nháp và nhận xét đã gửi được giữ nguyên');
@@ -114,7 +120,7 @@ describe('comments workspace context safety', () => {
     render(<MemoryRouter><AppProviders><CommentsWorkspace /></AppProviders></MemoryRouter>);
 
     await user.click(await screen.findByRole('option', { name: /Lớp A/ }));
-    expect((await screen.findAllByRole('heading', { name: 'Học sinh A' })).length).toBeGreaterThan(0);
+    expect(await studentRow('Học sinh A')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByRole('option', { name: /Lớp A/ })).toHaveTextContent('Chưa nhận xét');
       expect(screen.getByRole('option', { name: /Lớp A/ })).toHaveTextContent('Buổi 1: còn 1/1 học sinh chưa nhận xét');
@@ -129,11 +135,11 @@ describe('comments workspace context safety', () => {
     await waitFor(() => expect(classACalls).toBe(2));
     expect(screen.getByRole('option', { name: /Lớp B/ })).toBeDisabled();
     useClassWorkspaceStore.getState().setClassId('class-b');
-    expect((await screen.findAllByRole('heading', { name: 'Học sinh B' }, { timeout: 6000 })).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('button', { name: 'Học sinh B' }, { timeout: 6000 })).toBeInTheDocument();
 
     resolveRefresh(json(envelope({ class: detail('class-a', 'Lớp A stale', 'Học sinh A stale') })));
     await waitFor(() => expect(useClassWorkspaceStore.getState()).toMatchObject({ classId: 'class-b', slotIndex: '0', activeSlotIndex: '0' }));
-    expect(screen.getAllByRole('heading', { name: 'Học sinh B' })[0]).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Học sinh B' })).toBeVisible();
     expect(screen.queryByText('Đã refresh dữ liệu!')).not.toBeInTheDocument();
   });
 
@@ -141,12 +147,8 @@ describe('comments workspace context safety', () => {
     const user = userEvent.setup();
     render(<MemoryRouter><AppProviders><CommentsWorkspace /></AppProviders></MemoryRouter>);
     await user.click(await screen.findByRole('option', { name: /Lớp A/ }));
-    await screen.findAllByRole('heading', { name: 'Học sinh A' });
+    await studentRow('Học sinh A');
     await waitFor(() => expect(useAssessmentStore.getState().load).toEqual({ loading: false, error: null }));
-    const detailPanel = document.querySelector('.desktop-student-detail') as HTMLElement;
-    const note = detailPanel.querySelector('textarea[id^="student-note-"]') as HTMLTextAreaElement;
-    const level = detailPanel.querySelector('button[aria-label^="Chọn L4"]') as HTMLButtonElement;
-    const save = Array.from(detailPanel.querySelectorAll('button')).find((button) => button.textContent === 'Lưu đánh giá') as HTMLButtonElement;
 
     await user.click(screen.getByRole('button', { name: 'Refresh dữ liệu lớp' }));
     await waitFor(() => expect(classACalls).toBe(2));
@@ -155,6 +157,11 @@ describe('comments workspace context safety', () => {
     expect(screen.getByLabelText('Buổi học')).toBeDisabled();
     expect(screen.getByLabelText('Loại nhận xét')).toBeDisabled();
     expect(screen.getByLabelText('Level cả lớp')).toBeDisabled();
+    // The student sheet can still be opened mid-refresh, but everything in it is locked.
+    const detailPanel = await openStudentDrawer(user, 'Học sinh A');
+    const note = within(detailPanel).getByLabelText('Ghi chú bổ sung cho Học sinh A') as HTMLTextAreaElement;
+    const level = within(detailPanel).getByRole('button', { name: /^Chọn L4/ });
+    const save = within(detailPanel).getByRole('button', { name: 'Lưu đánh giá' });
     expect(note).toBeDisabled();
     expect(level).toBeDisabled();
     expect(save).toBeDisabled();
@@ -178,11 +185,12 @@ describe('comments workspace context safety', () => {
     const user = userEvent.setup();
     render(<MemoryRouter><AppProviders><CommentsWorkspace /></AppProviders></MemoryRouter>);
     await user.click(await screen.findByRole('option', { name: /Lớp A/ }));
-    await screen.findAllByRole('heading', { name: 'Học sinh A' });
-    const note = document.querySelector('.desktop-student-detail textarea[id^="student-note-"]') as HTMLTextAreaElement;
+    await studentRow('Học sinh A');
     await waitFor(() => expect(useAssessmentStore.getState().load).toEqual({ loading: false, error: null }));
+    const note = within(await openStudentDrawer(user, 'Học sinh A')).getByLabelText('Ghi chú bổ sung cho Học sinh A');
     await waitFor(() => expect(note).toBeEnabled());
     await user.type(note, 'Chưa lưu');
+    await user.keyboard('{Escape}');
 
     const beforeUnload = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(beforeUnload);
@@ -196,9 +204,11 @@ describe('comments workspace context safety', () => {
     await user.click(screen.getByRole('button', { name: 'Bỏ thay đổi' }));
     await waitFor(() => expect(screen.getByLabelText('Buổi học')).toHaveValue('1'));
 
-    const nextNote = document.querySelector('.desktop-student-detail textarea[id^="student-note-"]') as HTMLTextAreaElement;
+    await waitFor(() => expect(useAssessmentStore.getState().load).toEqual({ loading: false, error: null }));
+    const nextNote = within(await openStudentDrawer(user, 'Học sinh A')).getByLabelText('Ghi chú bổ sung cho Học sinh A');
     await waitFor(() => expect(nextNote).toBeEnabled());
     await user.type(nextNote, 'Lại chưa lưu');
+    await user.keyboard('{Escape}');
     await user.click(screen.getByRole('option', { name: /Lớp B/ }));
     expect(screen.getByRole('alertdialog')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Hủy' }));

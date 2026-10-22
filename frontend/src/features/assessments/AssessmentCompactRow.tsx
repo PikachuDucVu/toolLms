@@ -11,6 +11,7 @@ import { useCommentStore } from '../comments/public/store';
 import { useSessionCommentMode } from '../comments/public/sessionMode';
 import { generateSingleComment, type RegularCommentScope } from '../comments/public/controller';
 import { useAssessmentStore } from './assessmentStore';
+import { PreviousLevelHint } from './PreviousLevelCompare';
 import { assessmentDraft, assessmentStatus, levelCatalog, pastStudentComments } from './selectors';
 
 export const AssessmentCompactRow = memo(function AssessmentCompactRow({
@@ -117,6 +118,7 @@ export const AssessmentCompactRow = memo(function AssessmentCompactRow({
   return (
     <div
       className={`student-list-item ${active ? 'active' : ''} ${studentBusy ? 'is-generating' : ''}`}
+      data-student-row={student.studentId}
       role="button"
       tabIndex={0}
       aria-label={student.displayName}
@@ -176,16 +178,21 @@ export const AssessmentCompactRow = memo(function AssessmentCompactRow({
 
       <span className="cell-level">
         {isPresent(student) ? (
-          <span className={`badge-level level-${level.code.toLowerCase()} status-${status.kind}`} title={`${level.label}: ${level.help}`}>
-            <span className="level-code-tag">{level.code}</span>
-            <span className="level-label">
-              {status.kind === 'loading'
-                ? 'Đang tải'
-                : status.kind === 'load-error'
-                  ? 'Lỗi tải'
-                  : level.shortLabel}
+          <>
+            <span className={`badge-level level-${level.code.toLowerCase()} status-${status.kind}`} title={`${level.label}: ${level.help}`}>
+              <span className="level-code-tag">{level.code}</span>
+              <span className="level-label">
+                {status.kind === 'loading'
+                  ? 'Đang tải'
+                  : status.kind === 'load-error'
+                    ? 'Lỗi tải'
+                    : level.shortLabel}
+              </span>
             </span>
-          </span>
+            {detail && slot && status.kind !== 'loading' && status.kind !== 'load-error' && (
+              <PreviousLevelHint detail={detail} slot={slot} sessionNumber={sessionNumber} studentId={student.studentId} current={draft.learningLevel} />
+            )}
+          </>
         ) : (
           <span className="badge-level level-absent" style={{ opacity: 0.7 }}>
             <span className="level-code-tag" style={{ background: "#94a3b8", color: "#ffffff" }}>--</span>

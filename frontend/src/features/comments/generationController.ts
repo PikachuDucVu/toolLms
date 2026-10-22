@@ -2,6 +2,7 @@ import type {
   ClassDetail,
   CommentGenerationMeta,
   CommentHomeworkStatus,
+  CommentPreviousAssessment,
   GenerateCommentRequest,
   LearningLevel,
   SessionCommentMode,
@@ -12,7 +13,7 @@ import { appQueryClient } from '../../app/providers';
 import { ApiError } from '../../lib/apiError';
 import { currentAuthEpoch, createOperationController, isCurrentAuthEpoch, registerWorkflowReset, releaseOperationController } from '../../lib/operationContext';
 import { readAiApiKey } from '../../lib/persistence';
-import { isProductProgressSession, normalizedAssessmentDraft } from '../assessments/public/selectors';
+import { isProductProgressSession, normalizedAssessmentDraft, previousSessionLevel } from '../assessments/public/selectors';
 import { sessionCommentModeFor } from './sessionMode';
 import { captureAssessmentContext, isCurrentAssessmentContext, saveFullAssessment, waitForAssessmentSaves } from '../assessments/public/controller';
 import { useAssessmentStore } from '../assessments/public/store';
@@ -43,6 +44,7 @@ type StudentSnapshot = {
   attendanceStatus: ReturnType<typeof commentAttendanceStatus>;
   isLate: boolean;
   learningLevel: LearningLevel;
+  previousAssessment: CommentPreviousAssessment | null;
   teacherNote: string;
   pastSlots: ReturnType<typeof pastCommentSlots>;
   homeworkStatus: CommentHomeworkStatus | null;
@@ -361,7 +363,9 @@ async function loadHomeworkFacts(scope: RegularCommentScope, signal: AbortSignal
 }
 
 function snapshotStudent(scope: RegularCommentScope, student: StudentAttendance, homeworkStatus: CommentHomeworkStatus | null): StudentSnapshot {
-  const assessment = normalizedAssessmentDraft(useAssessmentStore.getState(), student.studentId);
+  const assessmentState = useAssessmentStore.getState();
+  const assessment = normalizedAssessmentDraft(assessmentState, student.studentId);
+  const previous = previousSessionLevel(assessmentState.history, scope.detail, scope.slot, scope.sessionNumber, student.studentId);
   return {
     attendanceId: student.id,
     studentId: student.studentId,
@@ -370,6 +374,7 @@ function snapshotStudent(scope: RegularCommentScope, student: StudentAttendance,
     attendanceStatus: commentAttendanceStatus(student.status),
     isLate: student.status === 'LATE_ARRIVED',
     learningLevel: assessment.learningLevel,
+    previousAssessment: previous ? { sessionNumber: previous.sessionNumber, learningLevel: previous.learningLevel } : null,
     teacherNote: assessment.note,
     pastSlots: pastCommentSlots(scope.detail, scope.slot, student.studentId),
     homeworkStatus,
@@ -389,6 +394,7 @@ function buildGenerationRequest(context: ContextSnapshot, snapshot: StudentSnaps
     sessionSummary: summary,
     teacherNote: snapshot.teacherNote,
     learningLevel: snapshot.learningLevel,
+    previousAssessment: snapshot.previousAssessment,
     attendanceStatus: snapshot.attendanceStatus,
     isLate: snapshot.isLate,
     homeworkStatus: snapshot.homeworkStatus,

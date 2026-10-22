@@ -3,7 +3,9 @@ import { EntityIdSchema, successEnvelope } from './common';
 
 export const ASSESSMENT_NOTE_MAX_LENGTH = 4_000;
 export const ASSESSMENT_PREVIOUS_SLOT_IDS_MAX_ITEMS = 100;
+export const ASSESSMENT_HISTORY_SLOT_IDS_MAX_ITEMS = 10;
 export const ASSESSMENTS_MAX_ITEMS = 500;
+export const ASSESSMENT_HISTORY_MAX_ITEMS = ASSESSMENT_HISTORY_SLOT_IDS_MAX_ITEMS * ASSESSMENTS_MAX_ITEMS;
 
 export const LearningLevelSchema = z.enum([
   'independent',
@@ -46,14 +48,24 @@ export const AssessmentSchema = z.discriminatedUnion('inherited', [
 ]);
 export type Assessment = z.infer<typeof AssessmentSchema>;
 
+// The saved level of one earlier session, used to compare a student's progress.
+export const AssessmentHistoryEntrySchema = z.object({
+  studentId: EntityIdSchema,
+  slotId: EntityIdSchema,
+  learningLevel: LearningLevelSchema,
+});
+export type AssessmentHistoryEntry = z.infer<typeof AssessmentHistoryEntrySchema>;
+
 export const AssessmentLoadQuerySchema = z.object({
   classId: EntityIdSchema,
   previousSlotIds: z.array(EntityIdSchema).max(ASSESSMENT_PREVIOUS_SLOT_IDS_MAX_ITEMS).default([]),
+  historySlotIds: z.array(EntityIdSchema).max(ASSESSMENT_HISTORY_SLOT_IDS_MAX_ITEMS).default([]),
 });
 export type AssessmentLoadQuery = z.infer<typeof AssessmentLoadQuerySchema>;
 
 export const AssessmentLoadResponseSchema = successEnvelope(z.object({
   assessments: z.array(AssessmentSchema).max(ASSESSMENTS_MAX_ITEMS),
+  history: z.array(AssessmentHistoryEntrySchema).max(ASSESSMENT_HISTORY_MAX_ITEMS).default([]),
 }));
 export type AssessmentLoadResponse = z.infer<typeof AssessmentLoadResponseSchema>;
 

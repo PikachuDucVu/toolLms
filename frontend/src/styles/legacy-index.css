@@ -23,7 +23,8 @@
 
 @media (max-width: 1024px) {
 .main-grid {
-    grid-template-columns: 1fr
+    /* minmax(0, …) lets wide content (tables, the session carousel) scroll inside instead of widening the page. */
+    grid-template-columns: minmax(0, 1fr)
     }
 }
 

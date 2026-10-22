@@ -10,6 +10,7 @@ import type { Env } from "../../types";
 import type { RequestContextVariables } from "../../middleware/requestContext";
 import {
   AssessmentClassConflictError,
+  getAssessmentHistory,
   getSlotAssessments,
   upsertStudentLearningLevel,
   upsertStudentSessionAssessment,
@@ -33,19 +34,18 @@ v2AssessmentsRoutes.get("/:slotId/assessments", async (c) => {
   const query = AssessmentLoadQuerySchema.safeParse({
     classId: search.get("classId"),
     previousSlotIds: search.getAll("previousSlotId"),
+    historySlotIds: search.getAll("historySlotId"),
   });
   if (!query.success) {
     return v2Error(c, "VALIDATION_ERROR", "Thông tin tải đánh giá không hợp lệ.", 422, query.error.flatten());
   }
 
-  const assessments = await getSlotAssessments(
-    c.env,
-    teacherEmail(session.email),
-    slotId,
-    query.data.classId,
-    query.data.previousSlotIds,
-  );
-  return v2Success(c, { assessments: Object.values(assessments).map(effectiveAssessmentDto) });
+  const owner = teacherEmail(session.email);
+  const [assessments, history] = await Promise.all([
+    getSlotAssessments(c.env, owner, slotId, query.data.classId, query.data.previousSlotIds),
+    getAssessmentHistory(c.env, owner, slotId, query.data.classId, query.data.historySlotIds),
+  ]);
+  return v2Success(c, { assessments: Object.values(assessments).map(effectiveAssessmentDto), history });
 });
 
 v2AssessmentsRoutes.put("/:slotId/assessments/:studentId", async (c) => {

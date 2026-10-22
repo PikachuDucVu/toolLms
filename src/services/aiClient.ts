@@ -30,6 +30,7 @@ import {
   type ChatMessage,
   type CommentValidationPolicy,
   type HomeworkStatusInput,
+  type PreviousAssessmentInput,
 } from "./commentPrompt";
 
 export interface ChatResult {
@@ -182,6 +183,7 @@ export async function generateCommentWithAi(
     pastComments: string;
     notes: string;
     learningLevel?: LearningLevel;
+    previousAssessment?: PreviousAssessmentInput | null;
     attendanceStatus?: AttendanceStatus | string;
     isLate?: boolean;
     sessionSummary?: string;

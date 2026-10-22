@@ -17,6 +17,12 @@ export interface EffectiveStudentSessionAssessment extends StudentSessionAssessm
   sourceSlotId: string;
 }
 
+export interface StudentAssessmentHistoryEntry {
+  studentId: string;
+  slotId: string;
+  learningLevel: LearningLevel;
+}
+
 interface AssessmentRow {
   id: string;
   class_id: string;
@@ -105,6 +111,33 @@ export async function getSlotAssessments(
     };
   }
   return assessments;
+}
+
+/** Every saved level in the given earlier slots, whether or not the current slot has one. */
+export async function getAssessmentHistory(
+  env: Env,
+  teacherEmail: string,
+  slotId: string,
+  classId: string,
+  historySlotIds: string[],
+): Promise<StudentAssessmentHistoryEntry[]> {
+  const uniqueSlotIds = Array.from(new Set(historySlotIds)).filter((id) => id !== slotId);
+  if (uniqueSlotIds.length === 0) return [];
+
+  const placeholders = uniqueSlotIds.map(() => "?").join(", ");
+  const result = await env.DB.prepare(
+    `SELECT slot_id, student_id, learning_level
+     FROM student_session_assessments
+     WHERE teacher_email = ? AND class_id = ? AND slot_id IN (${placeholders})`,
+  )
+    .bind(teacherEmail, classId, ...uniqueSlotIds)
+    .all<Pick<AssessmentRow, "slot_id" | "student_id" | "learning_level">>();
+
+  return (result.results ?? []).map((row) => ({
+    studentId: row.student_id,
+    slotId: row.slot_id,
+    learningLevel: normalizeLearningLevel(row.learning_level),
+  }));
 }
 
 export async function upsertStudentLearningLevel(
