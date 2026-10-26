@@ -63,7 +63,7 @@ export function CheckpointWorkspace({ detail, slot, sessionNumber, students, sea
         <div>
           <h3>Buổi {sessionNumber} — Checkpoint {checkpoint}</h3>
           <p>
-            AI chấm bài từ đề + bài nộp trên kiemtra (trắc nghiệm và tự luận, bỏ qua Scratch). Hoặc nhập điểm thủ công; để trống sẽ random 4–5. AI nhận xét dựa trên ghi chú.
+            AI chấm bài từ đề + bài nộp trên kiemtra (trắc nghiệm, tự luận và bài Scratch). Hoặc nhập điểm thủ công; để trống sẽ random 4–5. AI nhận xét dựa trên ghi chú.
           </p>
         </div>
       </div>

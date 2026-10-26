@@ -303,7 +303,7 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
                     </div>
                   </div>
                   <DerivedScore theory={draft.theoryInput} practice={draft.practiceInput} />
-                  <p className="checkpoint-inline-hint">Để trống = tự động random 4–5 điểm. AI chấm dựa trên đề + bài nộp (bỏ qua Scratch).</p>
+                  <p className="checkpoint-inline-hint">Để trống = tự động random 4–5 điểm. AI chấm dựa trên đề + bài nộp (trắc nghiệm, tự luận và bài Scratch).</p>
                 </div>
               </section>
 
@@ -313,6 +313,11 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
                   <div className="checkpoint-grade-result-scores">
                     <span>Lý thuyết <b>{gradeResult.theoryScore == null ? '—' : formatScore(gradeResult.theoryScore)}</b>{gradeResult.mc.total > 0 ? ` (${gradeResult.mc.correct}/${gradeResult.mc.total} đúng)` : ''}</span>
                     <span>Thực hành <b>{gradeResult.practiceScore == null ? '—' : formatScore(gradeResult.practiceScore)}</b></span>
+                    {gradeResult.scratch && (
+                      <span className={`badge ${gradeResult.scratch.submitted ? 'badge-primary' : 'badge-gray'}`}>
+                        {gradeResult.scratch.submitted ? `Scratch ${formatScore(gradeResult.scratch.score)}` : 'Không nộp Scratch'}
+                      </span>
+                    )}
                     {gradeResult.skippedScratch && <span className="badge badge-gray">Bỏ qua Scratch</span>}
                   </div>
                   {gradeResult.teacherNotes.trim() && <p>{gradeResult.teacherNotes}</p>}

@@ -295,7 +295,7 @@ describe('shared network contracts', () => {
     }).title).toBe('Project 1');
   });
 
-  it('accepts checkpoint AI grade requests and results without scratch payloads', () => {
+  it('accepts checkpoint AI grade requests and results with optional Scratch grades', () => {
     expect(GradeCheckpointRequestSchema.parse({
       classId: 'class-1', slotId: 'slot-5', studentId: 'student-1', checkpoint: 1, branch: 'original',
     }).checkpoint).toBe(1);
@@ -309,6 +309,12 @@ describe('shared network contracts', () => {
       essay: { notes: 'Tốt', items: [{ number: 1, score: 4, note: 'Đủ ý' }] },
     });
     expect(result.skippedScratch).toBe(true);
+    expect(result.scratch).toBeUndefined();
     expect(result).not.toHaveProperty('scratchProject');
+    const graded = CheckpointGradeResultSchema.parse({
+      ...result, skippedScratch: false, scratch: { score: 3.5, notes: 'Có vòng lặp.', submitted: true },
+    });
+    expect(graded.scratch).toEqual({ score: 3.5, notes: 'Có vòng lặp.', submitted: true });
+    expect(CheckpointGradeResultSchema.safeParse({ ...result, scratch: { score: 7, notes: '', submitted: true } }).success).toBe(false);
   });
 });

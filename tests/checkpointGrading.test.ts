@@ -3,6 +3,7 @@ import { extractJsonObject } from "../src/services/aiJson";
 import { resolveGradeBranch } from "../src/services/checkpointGradeClient";
 import {
   buildTeacherNotes,
+  combinePracticeScores,
   gradeMcAnswers,
   isScratchFileName,
   normalizeMcChoice,
@@ -48,8 +49,25 @@ describe("checkpoint grading pure helpers", () => {
         { number: 7, studentAnswer: "", correctAnswer: "B", correct: false },
       ] },
       essayNotes: "Bài làm đúng yêu cầu.",
+      scratch: null,
       skippedScratch: true,
     })).toContain("Đã bỏ qua phần Scratch.");
+  });
+
+  it("reports graded and missing Scratch work in teacher notes", () => {
+    const base = { theoryScore: null, practiceScore: 4, mc: { total: 0, correct: 0, items: [] }, essayNotes: "" };
+    const graded = buildTeacherNotes({ ...base, scratch: { score: 4, notes: "Có vòng lặp.", submitted: true } });
+    expect(graded).toBe("TH: 4/5. Scratch 4/5: Có vòng lặp.");
+    expect(graded).not.toContain("bỏ qua");
+    expect(buildTeacherNotes({ ...base, practiceScore: 0, scratch: { score: 0, notes: "", submitted: false } }))
+      .toBe("TH: 0/5. Học sinh không nộp bài Scratch.");
+  });
+
+  it("averages the practical parts that exist", () => {
+    expect(combinePracticeScores([null, null])).toBeNull();
+    expect(combinePracticeScores([null, 3.5])).toBe(3.5);
+    expect(combinePracticeScores([4, 3])).toBe(3.5);
+    expect(combinePracticeScores([5, 4])).toBe(4.5);
   });
 });
 

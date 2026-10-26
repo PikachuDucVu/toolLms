@@ -394,7 +394,7 @@ Hãy đọc đề và trích xuất:
 1. Đáp án trắc nghiệm: đề có ${input.mcQuestionCount} câu trắc nghiệm. Với mỗi câu, cho đáp án đúng (A/B/C/D hoặc giá trị tương ứng) và giải thích ngắn.
 2. Câu tự luận: đề có ${input.essayQuestionCount} câu tự luận. Với mỗi câu, nêu yêu cầu đề bài và tiêu chí chấm (bài đạt điểm tối đa cần có gì).
 
-BỎ QUA hoàn toàn phần Scratch nếu có trong đề.
+BỎ QUA phần Scratch (thực hành trên Scratch được chấm riêng) khi trích đáp án/tiêu chí.
 
 Trả về JSON đúng dạng:
 {"mc":[{"number":1,"correct":"A","explanation":"..."}],"essay":[{"number":1,"prompt":"...","rubric":"..."}]}
@@ -447,7 +447,7 @@ export async function gradeCheckpointEssayWithAi(
     : "";
 
   const prompt = `Bạn là giáo viên chấm phần TỰ LUẬN bài kiểm tra Checkpoint tại MindX Technology School.
-Thang điểm 0 đến 5, bước 0.5. BỎ QUA hoàn toàn Scratch.
+Thang điểm 0 đến 5, bước 0.5. KHÔNG chấm phần Scratch ở đây (đã có bước chấm Scratch riêng).
 
 Học sinh: ${input.studentName}
 
@@ -487,6 +487,63 @@ Chỉ trả về JSON.`;
     if (!practiceParsed.success && !items.length) return { success: false, error: "AI không trả về điểm tự luận hợp lệ" };
     const practiceScore = practiceParsed.success ? practiceParsed.data : roundCheckpointScore(items.reduce((sum, item) => sum + item.score, 0) / items.length);
     return { success: true, practiceScore, notes, items };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "AI không trả về JSON hợp lệ" };
+  }
+}
+
+export async function gradeCheckpointScratchWithAi(
+  env: Env,
+  config: AppConfig,
+  input: {
+    studentName: string;
+    pdfBytes?: Uint8Array;
+    scratchText: string;
+    modelId?: string;
+    customModelId?: string;
+    thinkingLevel?: string;
+    apiKey?: string;
+  },
+): Promise<{ success: true; score: number; notes: string } | { success: false; error: string }> {
+  const model = resolveModelId(input.modelId, input.customModelId, String(config.ai_model || DEFAULT_AI_MODEL));
+  const thinkingLevel = resolveThinkingLevel(model, input.thinkingLevel, String(config.thinking_level || ""));
+  const provider = getModelProvider(input.modelId || model);
+
+  const taskHint = input.pdfBytes?.byteLength
+    ? "Đề bài là file PDF đính kèm; hãy tìm phần thực hành Scratch (yêu cầu lập trình trên Scratch) trong đề và dùng làm tiêu chí chấm. Bỏ qua câu trắc nghiệm và tự luận."
+    : "Không có file đề; hãy chấm theo mức hoàn thiện và logic của chương trình.";
+  const prompt = `Bạn là giáo viên chấm phần THỰC HÀNH SCRATCH của bài kiểm tra Checkpoint tại MindX Technology School.
+Thang điểm 0 đến 5, bước 0.5.
+
+Học sinh: ${input.studentName}
+
+${taskHint}
+
+BÀI SCRATCH CỦA HỌC SINH:
+Dự án .sb3 đã được chuyển thành pseudo-code tiếng Việt theo từng nhân vật/sân khấu (thụt lề = khối nằm bên trong khối phía trên). Bạn không chạy được chương trình nên hãy suy luận từ khối lệnh.
+${input.scratchText}
+
+Tiêu chí:
+- Đáp ứng từng yêu cầu của đề Scratch (đủ nhân vật, hành vi, điều kiện thắng/thua, điểm số... theo đề)
+- Logic khối lệnh đúng: có khối sự kiện bắt đầu (script rời không có khối sự kiện sẽ không chạy), vòng lặp, điều kiện, biến, tin nhắn, bản sao dùng hợp lý
+- Mức hoàn thiện và sáng tạo
+Nếu dự án gần như trống hoặc chỉ là khối mặc định, cho điểm thấp (0 đến 1). Không trừ điểm vì tên nhân vật/biến hay lỗi trình bày.
+
+Trả về JSON:
+{"score": <0-5 bước 0.5>, "notes": "<2-4 câu tiếng Việt: điểm làm được, điểm còn thiếu>"}
+Chỉ trả về JSON.`;
+
+  const content: unknown[] = [{ type: "text", text: prompt }];
+  if (input.pdfBytes?.byteLength) content.push(pdfFilePart(input.pdfBytes));
+
+  const result = await callChatCompletion(env, provider, model, content, input.apiKey, String(config.openrouter_key || ""), thinkingLevel);
+  if (result.error) return { success: false, error: `AI lỗi: ${result.error}` };
+  try {
+    const raw = extractJsonObject(result.content || "") as Record<string, unknown>;
+    const score = CheckpointScoreSchema.safeParse(roundCheckpointScore(Number(raw.score)));
+    if (!score.success || raw.score == null) return { success: false, error: "AI không trả về điểm Scratch hợp lệ" };
+    const notes = typeof raw.notes === "string" ? raw.notes.slice(0, 2_000) : "";
+    return { success: true, score: score.data, notes };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "AI không trả về JSON hợp lệ" };
   }

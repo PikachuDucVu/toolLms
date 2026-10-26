@@ -90,7 +90,7 @@ describe('Checkpoint student and batch UI', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
-  it('grades a submitted checkpoint exam into theory/practice fields and skips scratch', async () => {
+  it('grades a submitted checkpoint exam into theory/practice fields including Scratch', async () => {
     const user = userEvent.setup();
     const context = useCheckpointStore.getState().context!;
     useCheckpointStore.getState().applyStatus(context, status('original'));
@@ -100,8 +100,9 @@ describe('Checkpoint student and batch UI', () => {
         const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
         expect(body).toMatchObject({ classId: 'class-1', studentId: 'student-1', checkpoint: 1, branch: 'original' });
         return json(ok({
-          studentId: 'student-1', examId: 'exam-original', branch: 'original', skippedScratch: true,
-          theoryScore: 4.5, practiceScore: null, teacherNotes: 'LT: 9/10 câu đúng (4.5/5). Đã bỏ qua phần Scratch.',
+          studentId: 'student-1', examId: 'exam-original', branch: 'original', skippedScratch: false,
+          scratch: { score: 4, notes: 'Có vòng lặp.', submitted: true },
+          theoryScore: 4.5, practiceScore: 4, teacherNotes: 'LT: 9/10 câu đúng (4.5/5). TH: 4/5. Scratch 4/5: Có vòng lặp.',
           mc: { total: 10, correct: 9, items: [] }, essay: { notes: '', items: [] },
         }));
       }
@@ -111,8 +112,9 @@ describe('Checkpoint student and batch UI', () => {
     await user.click(screen.getByRole('button', { name: 'AI chấm bài' }));
     await waitFor(() => expect(screen.getByLabelText('Kết quả AI chấm của Nguyễn An')).toHaveTextContent('9/10 đúng'));
     expect(screen.getByLabelText('Điểm lý thuyết Checkpoint của Nguyễn An')).toHaveValue(4.5);
+    expect(screen.getByLabelText('Điểm thực hành Checkpoint của Nguyễn An')).toHaveValue(4);
     expect(screen.getByLabelText(`Mô tả của giáo viên cho AI của Nguyễn An`)).toHaveValue('Mô tả An');
-    expect(screen.getByLabelText('Kết quả AI chấm của Nguyễn An')).toHaveTextContent('Đã bỏ qua phần Scratch');
+    expect(screen.getByLabelText('Kết quả AI chấm của Nguyễn An')).toHaveTextContent('Scratch 4/5: Có vòng lặp.');
   });
 
   it('prevalidates score batches before confirm and cancellation performs no generation/submission I/O', async () => {

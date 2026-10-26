@@ -30,7 +30,7 @@ export function CheckpointBatchActions({ scope, generationOptions, presentCount,
     try {
       assertGenerationOptions(generationOptions);
       const frozen = captureCheckpointGradeBatch(scope, generationOptions);
-      const accepted = await confirm({ title: 'AI chấm bài Checkpoint cả lớp', description: `AI sẽ đọc đề + bài nộp (trắc nghiệm và tự luận, bỏ qua Scratch) của ${frozen.students.length} học sinh có mặt đã nộp bài, rồi điền điểm lý thuyết/thực hành. Tiếp tục?`, confirmLabel: 'AI chấm' });
+      const accepted = await confirm({ title: 'AI chấm bài Checkpoint cả lớp', description: `AI sẽ đọc đề + bài nộp (trắc nghiệm, tự luận và bài Scratch) của ${frozen.students.length} học sinh có mặt đã nộp bài, rồi điền điểm lý thuyết/thực hành. Tiếp tục?`, confirmLabel: 'AI chấm' });
       if (!accepted) return;
       const outcome = await gradeCheckpointBatch(scope, frozen);
       const next: CheckpointBatchResultView = { kind: 'grade', attempted: outcome.attempted, successful: outcome.successful, generationAttempted: 0, generationSuccessful: 0, failures: outcome.failures };

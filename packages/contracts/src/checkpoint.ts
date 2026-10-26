@@ -228,11 +228,19 @@ export const CheckpointEssayGradeItemSchema = z.object({
 });
 export type CheckpointEssayGradeItem = z.infer<typeof CheckpointEssayGradeItemSchema>;
 
+export const CheckpointScratchGradeSchema = z.object({
+  score: CheckpointScoreSchema,
+  notes: z.string().max(5_000).default(''),
+  submitted: z.boolean(),
+});
+export type CheckpointScratchGrade = z.infer<typeof CheckpointScratchGradeSchema>;
+
 export const CheckpointGradeResultSchema = z.object({
   studentId: EntityIdSchema,
   examId: EntityIdSchema,
   branch: CheckpointBranchSchema,
-  skippedScratch: z.literal(true),
+  skippedScratch: z.boolean(),
+  scratch: CheckpointScratchGradeSchema.nullable().optional(),
   theoryScore: CheckpointScoreSchema.nullable(),
   practiceScore: CheckpointScoreSchema.nullable(),
   mc: z.object({

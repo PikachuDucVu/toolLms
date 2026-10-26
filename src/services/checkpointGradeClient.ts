@@ -14,6 +14,8 @@ export class CheckpointGradeNotFoundError extends Error {}
 
 const GRADE_PAYLOAD_TIMEOUT_MS = 12_000;
 const PDF_TIMEOUT_MS = 20_000;
+const SCRATCH_TIMEOUT_MS = 20_000;
+export const MAX_SCRATCH_PROJECT_BYTES = 30 * 1024 * 1024;
 
 export async function fetchCheckpointGradePayload(
   env: Env,
@@ -102,6 +104,41 @@ export async function fetchCheckpointExamPdf(
     if (!response.ok) throw new CheckpointGradeUpstreamError(`Không tải được đề bài kiểm tra (HTTP ${response.status}).`);
     const bytes = new Uint8Array(await response.arrayBuffer());
     await writeCachedPdf(env, path, bytes);
+    return bytes;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// kiemtra serves a student's submitted .sb3 (falling back to the latest draft); 404 means nothing was saved.
+export async function fetchCheckpointScratchProject(
+  env: Env,
+  input: { examId: string; studentId: string },
+  fetcher: typeof fetch = fetch,
+  timeoutMs = SCRATCH_TIMEOUT_MS,
+): Promise<Uint8Array | null> {
+  const params = new URLSearchParams({ examId: input.examId, studentId: input.studentId });
+  const url = `${kiemtraBaseUrl(env)}/api/public/scratch-project?${params.toString()}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    let response: Response;
+    try {
+      response = await fetcher(url, { headers: kiemtraAuthHeaders(env), signal: controller.signal });
+    } catch (error) {
+      if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
+        throw new CheckpointGradeTimeoutError("Không tải được bài Scratch (quá thời gian).");
+      }
+      throw new CheckpointGradeUpstreamError("Không tải được bài Scratch.");
+    }
+    if (response.status === 404) return null;
+    if (!response.ok) throw new CheckpointGradeUpstreamError(`Không tải được bài Scratch (HTTP ${response.status}).`);
+    const declared = Number(response.headers.get("content-length"));
+    if (Number.isFinite(declared) && declared > MAX_SCRATCH_PROJECT_BYTES) {
+      throw new CheckpointGradeUpstreamError("File Scratch quá lớn để chấm bằng AI.");
+    }
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > MAX_SCRATCH_PROJECT_BYTES) throw new CheckpointGradeUpstreamError("File Scratch quá lớn để chấm bằng AI.");
     return bytes;
   } finally {
     clearTimeout(timeout);

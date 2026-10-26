@@ -9,15 +9,17 @@ import {
   type GradeCheckpointRequest,
 } from "@tool-lms/contracts";
 import type { Env, SessionRecord } from "../types";
-import { extractCheckpointExamKeyWithAi, gradeCheckpointEssayWithAi } from "./aiClient";
+import { extractCheckpointExamKeyWithAi, gradeCheckpointEssayWithAi, gradeCheckpointScratchWithAi } from "./aiClient";
 import {
   CheckpointGradeNotFoundError,
   fetchCheckpointExamPdf,
   fetchCheckpointGradePayload,
+  fetchCheckpointScratchProject,
   resolveGradeBranch,
 } from "./checkpointGradeClient";
 import {
   buildTeacherNotes,
+  combinePracticeScores,
   emptyMcResult,
   gradeMcAnswers,
   isScratchFileName,
@@ -32,6 +34,7 @@ import { getConfig } from "./configService";
 import { resolveHomeworkAiKey } from "./homeworkService";
 import type { LmsClient } from "./lmsClient";
 import { classifyRemoteFile, loadRemoteFile, MAX_EXAM_PDF_BYTES } from "./remoteFileContent";
+import { scratchArchiveToText } from "./scratchProject";
 
 export class CheckpointGradeApiKeyRequiredError extends Error {
   readonly code = "API_KEY_REQUIRED";
@@ -114,16 +117,17 @@ async function gradeLoadedSubmission(
   const hasEssayText = Object.keys(input.submission.essayAnswers).length > 0;
   const hasEssayFiles = essayFiles.length > 0;
   const hasEssayWork = hasEssayQuestions || hasEssayText || hasEssayFiles;
+  const hasScratchWork = input.exam.practiceType === "SCRATCH";
 
-  if (!hasMc && !hasEssayWork) {
-    throw new CheckpointGradeUnavailableError("Không có bài trắc nghiệm hoặc tự luận để chấm (đã bỏ qua Scratch).");
+  if (!hasMc && !hasEssayWork && !hasScratchWork) {
+    throw new CheckpointGradeUnavailableError("Không có bài trắc nghiệm, tự luận hoặc Scratch để chấm.");
   }
 
   let pdfBytes: Uint8Array | undefined;
-  const needPdf = hasMc || hasEssayWork;
+  const needPdf = hasMc || hasEssayWork || hasScratchWork;
   if (needPdf) {
     const cachedKey = hasMc ? await loadCachedExamKey(env, input.exam.id) : null;
-    if (!cachedKey || hasEssayWork) {
+    if (!cachedKey || hasEssayWork || hasScratchWork) {
       const downloaded = await fetchCheckpointExamPdf(env, input.exam.pdfPath);
       if (downloaded.byteLength > MAX_EXAM_PDF_BYTES) {
         throw new CheckpointGradeUnavailableError("File đề bài quá lớn để chấm bằng AI.");
@@ -213,25 +217,83 @@ async function gradeLoadedSubmission(
     }
   }
 
+  let scratch: CheckpointGradeResult["scratch"] = null;
+  if (hasScratchWork) {
+    scratch = await gradeScratchProject(env, config, {
+      examId: input.exam.id,
+      studentId: input.submission.studentId,
+      studentName: input.studentName,
+      pdfBytes,
+      modelId: input.modelId,
+      customModelId: input.customModelId,
+      thinkingLevel: input.thinkingLevel,
+      apiKey: input.apiKey,
+    });
+    practiceScore = combinePracticeScores([practiceScore, scratch.score]);
+  }
+
+  const skippedScratch = !scratch;
   const teacherNotes = buildTeacherNotes({
     theoryScore,
     practiceScore,
     mc,
     essayNotes,
-    skippedScratch: true,
+    scratch,
+    skippedScratch: skippedScratch && input.submission.essayFiles.some((file) => isScratchFileName(file.fileName)),
   });
 
   return {
     studentId: input.submission.studentId,
     examId: input.exam.id,
     branch: input.branch,
-    skippedScratch: true,
+    skippedScratch,
+    scratch,
     theoryScore,
     practiceScore,
     mc,
     essay: { notes: essayNotes, items: essayItems },
     teacherNotes,
   };
+}
+
+async function gradeScratchProject(
+  env: Env,
+  config: Awaited<ReturnType<typeof getConfig>>,
+  input: {
+    examId: string;
+    studentId: string;
+    studentName: string;
+    pdfBytes?: Uint8Array;
+    modelId?: string;
+    customModelId?: string;
+    thinkingLevel?: string;
+    apiKey?: string;
+  },
+): Promise<NonNullable<CheckpointGradeResult["scratch"]>> {
+  const project = await fetchCheckpointScratchProject(env, { examId: input.examId, studentId: input.studentId });
+  if (!project) return { score: 0, notes: "Học sinh không nộp bài Scratch.", submitted: false };
+
+  let scratchText: string | null;
+  try {
+    scratchText = scratchArchiveToText(project);
+  } catch {
+    scratchText = null;
+  }
+  if (!scratchText) {
+    throw new CheckpointGradeUnavailableError("Không đọc được file Scratch (.sb3) của học sinh. Hãy xem bài trên kiemtra và nhập điểm thủ công.");
+  }
+
+  const graded = await gradeCheckpointScratchWithAi(env, config, {
+    studentName: input.studentName,
+    pdfBytes: input.pdfBytes,
+    scratchText,
+    modelId: input.modelId,
+    customModelId: input.customModelId,
+    thinkingLevel: input.thinkingLevel,
+    apiKey: input.apiKey,
+  });
+  if (!graded.success) throw new CheckpointGradeUnavailableError(graded.error);
+  return { score: roundCheckpointScore(graded.score), notes: graded.notes, submitted: true };
 }
 
 function isSafeFileUrl(value: string): boolean {

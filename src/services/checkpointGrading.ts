@@ -65,7 +65,8 @@ export function buildTeacherNotes(input: {
   practiceScore: number | null;
   mc: { total: number; correct: number; items: CheckpointMcGradeItem[] };
   essayNotes: string;
-  skippedScratch: boolean;
+  scratch: { score: number; notes: string; submitted: boolean } | null;
+  skippedScratch?: boolean;
 }): string {
   const parts: string[] = [];
   if (input.mc.total > 0) {
@@ -74,10 +75,18 @@ export function buildTeacherNotes(input: {
     const wrongText = wrong.length ? `; sai câu ${wrong.join(", ")}` : "";
     parts.push(`LT: ${input.mc.correct}/${input.mc.total} câu đúng (${theory}/5)${wrongText}.`);
   }
-  if (input.practiceScore != null || input.essayNotes.trim()) {
+  if (input.practiceScore != null || input.essayNotes.trim() || input.scratch) {
     const practice = input.practiceScore == null ? "?" : String(input.practiceScore);
+    const details: string[] = [];
+    if (input.scratch) {
+      const scratchNotes = input.scratch.notes.trim();
+      details.push(input.scratch.submitted
+        ? `Scratch ${input.scratch.score}/5${scratchNotes ? `: ${scratchNotes}` : "."}`
+        : "Học sinh không nộp bài Scratch.");
+    }
     const notes = input.essayNotes.trim();
-    parts.push(notes ? `TH: ${practice}/5. ${notes}` : `TH: ${practice}/5.`);
+    if (notes) details.push(notes);
+    parts.push([`TH: ${practice}/5.`, ...details].join(" "));
   }
   if (input.skippedScratch) parts.push("Đã bỏ qua phần Scratch.");
   return parts.join(" ").trim();
@@ -85,6 +94,13 @@ export function buildTeacherNotes(input: {
 
 export function emptyMcResult(): CheckpointGradeResult["mc"] {
   return { total: 0, correct: 0, items: [] };
+}
+
+// Practical score = mean of the parts that exist (written essay answers and the Scratch project).
+export function combinePracticeScores(scores: Array<number | null>): number | null {
+  const present = scores.filter((score): score is number => score != null);
+  if (!present.length) return null;
+  return roundCheckpointScore(present.reduce((sum, score) => sum + score, 0) / present.length);
 }
 
 export function averageEssayScore(items: CheckpointEssayGradeItem[]): number | null {
