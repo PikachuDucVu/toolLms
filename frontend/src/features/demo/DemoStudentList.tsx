@@ -1,7 +1,13 @@
-import type { DemoResolvedSchema, StudentAttendance } from '@tool-lms/contracts';
+import type { DemoResolvedSchema, StorageProductFile, StudentAttendance, StudentWork } from '@tool-lms/contracts';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Clock, Eye, Minus, X } from 'lucide-react';
-import { memo, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { useToast } from '../../components/ui/Toast';
+import { saveStudentWork } from '../studentWorks/public/api';
+import { ProductColumnCell } from '../studentWorks/public/ProductColumnCell';
+import { storageProductsQuery, studentWorksQuery } from '../studentWorks/public/queries';
+import { buildStorageStudentWork, latestStudentWork } from '../studentWorks/public/storageSubmission';
 import emptyStudentsUrl from '../../assets/empty-students.jpg';
 import { attendancePresentation, hasModeSubmission, isPresent, studentInitials } from '../classes/public/domain';
 import { DemoScoreEditor } from './DemoScoreEditor';
@@ -40,6 +46,49 @@ export function DemoStudentList({
 }) {
   const [gradingOpen, setGradingOpen] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
+  const [storageStudentId, setStorageStudentId] = useState<string | null>(null);
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const { detail, slot } = scope;
+  const sessionNumber = Number(slot.index) + 1;
+  const studentWorksRes = useQuery({ ...studentWorksQuery(detail.id, slot.id), enabled: Boolean(detail.id && slot.id) });
+  const storageQuery = useQuery({ ...storageProductsQuery(detail.id), enabled: Boolean(detail.id) });
+  const storageFiles = storageQuery.data?.data.files || [];
+  const studentWorksList = studentWorksRes.data?.data.studentWorks;
+  const worksByStudent = useMemo(() => {
+    const map = new Map<string, StudentWork[]>();
+    for (const work of studentWorksList || []) {
+      const list = map.get(work.studentId) || [];
+      list.push(work);
+      map.set(work.studentId, list);
+    }
+    return map;
+  }, [studentWorksList]);
+  const toggleStorage = useCallback((studentId: string) => {
+    setStorageStudentId((current) => current === studentId ? null : studentId);
+  }, []);
+  const closeStorage = useCallback(() => setStorageStudentId(null), []);
+  const retryStorage = useCallback(() => { void storageQuery.refetch(); }, [storageQuery]);
+  const submitStorageFiles = useCallback(async (studentId: string, files: StorageProductFile[], title: string, comment: string, workId?: string) => {
+    const works = worksByStudent.get(studentId) || [];
+    const current = latestStudentWork(works);
+    const id = workId || current?.id;
+    await saveStudentWork(slot.id, buildStorageStudentWork({
+      id,
+      classId: detail.id,
+      classSessionId: slot.id,
+      studentId,
+      sessionNumber,
+      title,
+      comment,
+      displayOrder: current?.displayOrder ?? works.length,
+      files,
+    }));
+    await queryClient.invalidateQueries({ queryKey: ['studentWorks', detail.id, slot.id] });
+    toast.show(id ? 'Đã cập nhật sản phẩm trên LMS' : 'Đã nộp sản phẩm lên LMS', 'success');
+    setStorageStudentId(null);
+  }, [detail.id, queryClient, sessionNumber, slot.id, toast, worksByStudent]);
+  const storageError = storageQuery.error ? 'Không tải được file từ kho sản phẩm.' : null;
   const selected = students.find((student) => student.studentId === selectedId) || students[0] || null;
   const visibleIds = useMemo(() => students.map((student) => student.studentId), [students]);
   const allChecked = visibleIds.length > 0 && visibleIds.every((id) => checkedIds.has(id));
@@ -109,6 +158,7 @@ export function DemoStudentList({
           <div className="th-col col-student">Học sinh</div>
           <div className="th-col col-attendance">Điểm danh</div>
           <div className="th-col col-demo-score">Tổng điểm</div>
+          <div className="th-col col-product">Sản phẩm</div>
           <div className="th-col col-status">Trạng thái</div>
           <div className="th-col col-actions">Thao tác</div>
         </div>
@@ -124,6 +174,15 @@ export function DemoStudentList({
               checked={checkedIds.has(student.studentId)}
               onChecked={(value) => toggleOne(student.studentId, value)}
               onSelect={openGrading}
+              works={worksByStudent.get(student.studentId) || []}
+              storageFiles={storageFiles}
+              storageLoading={storageQuery.isLoading}
+              storageError={storageError}
+              productMenuOpen={storageStudentId === student.studentId}
+              onToggleProductMenu={toggleStorage}
+              onCloseProductMenu={closeStorage}
+              onRetryStorage={retryStorage}
+              onSubmitProducts={submitStorageFiles}
             />
           </div>
         ))}
@@ -160,7 +219,25 @@ const DemoCompactRow = memo(function DemoCompactRow({
   checked,
   onChecked,
   onSelect,
+  works,
+  storageFiles,
+  storageLoading,
+  storageError,
+  productMenuOpen,
+  onToggleProductMenu,
+  onCloseProductMenu,
+  onRetryStorage,
+  onSubmitProducts,
 }: {
+  works: StudentWork[];
+  storageFiles: StorageProductFile[];
+  storageLoading: boolean;
+  storageError: string | null;
+  productMenuOpen: boolean;
+  onToggleProductMenu: (studentId: string) => void;
+  onCloseProductMenu: () => void;
+  onRetryStorage: () => void;
+  onSubmitProducts: (studentId: string, files: StorageProductFile[], title: string, comment: string, workId?: string) => Promise<void>;
   student: StudentAttendance;
   index: number;
   schema: DemoResolvedSchema;
@@ -258,6 +335,22 @@ const DemoCompactRow = memo(function DemoCompactRow({
         ) : (
           <span className="demo-score-pill is-empty">—</span>
         )}
+      </span>
+      <span className="cell-product" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+        <ProductColumnCell
+          studentId={student.studentId}
+          studentName={student.displayName}
+          files={storageFiles}
+          works={works}
+          loading={storageLoading}
+          error={storageError}
+          locked={locked}
+          menuOpen={productMenuOpen}
+          onToggle={onToggleProductMenu}
+          onClose={onCloseProductMenu}
+          onRetry={onRetryStorage}
+          onSubmit={onSubmitProducts}
+        />
       </span>
       <span className="cell-demo-status">
         <span className={`demo-status-pill ${submitted ? 'is-done' : 'is-pending'}`}>

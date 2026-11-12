@@ -41,7 +41,10 @@ describe('Demo workspace schema and UI', () => {
 
   it('renders recoverable schema errors and retries without activating a blocking Demo operation', async () => {
     let calls = 0;
-    vi.stubGlobal('fetch', vi.fn(async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.includes('/storage-products')) return json(ok({ files: [] }));
+      if (path.includes('/student-works')) return json(ok({ studentWorks: [] }));
       calls += 1;
       return calls === 1 ? json({ success: false, error: { code: 'UPSTREAM_ERROR', message: 'Schema tạm lỗi', requestId: 'schema-error' } }, 502) : json(ok({ schema }));
     }));
@@ -76,6 +79,23 @@ describe('Demo workspace schema and UI', () => {
     expect(absentDesktop.getByText('Học sinh vắng — không chấm Demo')).toBeVisible();
     expect(absentDesktop.queryByRole('button', { name: /Random/ })).not.toBeInTheDocument();
     expect(absentDesktop.queryByRole('button', { name: 'Submit Demo' })).not.toBeInTheDocument();
+  });
+
+  it('shows the storage product column so session 14 can submit products like sessions 10–13', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.includes('/storage-products')) return json(ok({ files: [
+        { id: 'file-1', lmsStudentId: 'student-1', studentName: 'Nguyễn An', originalName: 'game.sb3', fileSize: 1024, mimeType: 'application/octet-stream', downloadUrl: 'https://example.com/game.sb3', createdAt: '2026-11-01T00:00:00Z', kind: 'file', linkUrl: null },
+      ] }));
+      if (path.includes('/student-works')) return json(ok({ studentWorks: [] }));
+      return json(ok({ schema }));
+    }));
+    renderWorkspace();
+    await screen.findByRole('button', { name: 'Nguyễn An' });
+    expect(screen.getByRole('row')).toHaveTextContent('Sản phẩm');
+    const productButton = await screen.findByRole('button', { name: 'Sản phẩm của Nguyễn An' });
+    await waitFor(() => expect(productButton).toHaveTextContent('1 file'));
+    expect(screen.getByRole('button', { name: 'Sản phẩm của Lê Chi' })).toHaveTextContent('Chưa có');
   });
 });
 

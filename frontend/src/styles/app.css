@@ -651,8 +651,8 @@ html[data-theme="dark"] body::before {
 .student-grid.demo-mode .student-table-header,
 .student-grid.demo-mode .student-list-item {
   display: grid !important;
-  grid-template-columns: 44px 56px minmax(220px, 1.6fr) 130px 110px 130px 130px !important;
-  min-width: 860px !important;
+  grid-template-columns: 44px 56px minmax(200px, 1.6fr) 120px 110px 168px 120px 130px !important;
+  min-width: 1020px !important;
 }
 
 .student-grid.demo-mode .student-table-header {
