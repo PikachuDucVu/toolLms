@@ -90,7 +90,7 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
     } catch (cause) { fail(cause, 'submission'); }
   };
 
-  const statusDone = isPresent(student) ? hasCheckpoint : hasCheckpointComment;
+  const statusDone = isPresent(student) ? hasCheckpoint : hasCheckpoint || hasCheckpointComment;
 
   return (
     <article className={`student-card cp-accordion ${expanded ? '' : 'collapsed'} ${hasCheckpoint || hasCheckpointComment ? 'has-comment' : 'no-comment'}`}>
@@ -117,29 +117,25 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
               <span className={`badge badge-${attendance.tone}`}>{attendance.label}</span>
               {hasRateScore && <span className="badge badge-nl" title="Đã có điểm năng lực">NL</span>}
               {dirty && <span className="badge badge-warning">Bản nháp</span>}
-              <CheckpointStatus studentId={student.studentId} studentName={student.displayName} isPresent={isPresent(student)} />
+              <CheckpointStatus studentId={student.studentId} studentName={student.displayName} />
             </div>
           </div>
         </div>
 
         <div className="cp-head-right">
-          {isPresent(student) ? (
-            hasBoth ? (
-              <span className="cp-head-score">
-                <b>{averageText}</b>/5
-                {rank && <span className={`checkpoint-rank ${rank}`}>{rank}</span>}
-              </span>
-            ) : (
-              <span className="cp-head-score cp-head-score-empty">
-                <b>?</b>/5
-              </span>
-            )
+          {hasBoth ? (
+            <span className="cp-head-score">
+              <b>{averageText}</b>/5
+              {rank && <span className={`checkpoint-rank ${rank}`}>{rank}</span>}
+            </span>
           ) : (
-            <span className="badge badge-gray">Vắng — không chấm</span>
+            <span className="cp-head-score cp-head-score-empty">
+              <b>?</b>/5
+            </span>
           )}
 
           <span className={`badge ${statusDone ? 'badge-checkpoint-done' : 'badge-checkpoint'}`}>
-            {statusDone ? (isPresent(student) ? '✓ Đã chấm' : '✓ Đã nhận xét') : (isPresent(student) ? '○ Chưa' : '○ Chưa nhận xét')}
+            {statusDone ? (hasCheckpoint ? '✓ Đã chấm' : '✓ Đã nhận xét') : '○ Chưa'}
           </span>
 
           <svg className="cp-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -150,101 +146,6 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
 
       {expanded && (
         <div id={bodyId} className="cp-body">
-          {!isPresent(student) ? (
-            <>
-              <div className="checkpoint-score-card checkpoint-absence-card">
-                <div className="checkpoint-score-title">Không chấm điểm checkpoint</div>
-                <p>
-                  Học sinh vắng nên hệ thống sẽ không tạo hoặc gửi điểm. Nhận xét AI vẫn được tạo theo cùng mẫu với học sinh đi học, dựa trên ghi chú bạn nhập.
-                </p>
-              </div>
-
-              {existingContent.trim() && (
-                <details className="cp-existing-details">
-                  <summary>Xem nhận xét hiện tại</summary>
-                  <div className="checkpoint-existing-comment">{stripHtml(existingContent)}</div>
-                </details>
-              )}
-
-              <div className="cp-comment-stack">
-                <div className="checkpoint-comment-section cp-note-compact">
-                  <label className="checkpoint-label">
-                    <svg className="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" style={{ width: 14, height: 14 }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    Ghi chú cho AI
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="VD: Tư duy logic tốt; chủ động; cần luyện thêm phần thực hành..."
-                    value={draft.teacherDescription}
-                    disabled={locked || operationActive}
-                    onChange={(e) => useCheckpointStore.getState().setTeacherDescription(student.studentId, e.target.value)}
-                  />
-                </div>
-
-                {draft.generatedComment.trim() ? (
-                  <div className="checkpoint-ai-comment">
-                    <div className="comment-box-label">
-                      <span className="checkpoint-ai-title">
-                        <Sparkles size={14} />
-                        Nhận xét gửi phụ huynh (AI)
-                      </span>
-                      <button
-                        type="button"
-                        className="btn-icon"
-                        title="Xóa nhận xét"
-                        onClick={() => useCheckpointStore.getState().setCurrentComment(student.studentId, '')}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    <textarea
-                      className="comment-edit"
-                      value={stripHtml(draft.currentComment)}
-                      disabled={locked || operationActive}
-                      onChange={(e) => useCheckpointStore.getState().setCurrentComment(student.studentId, e.target.value)}
-                    />
-                  </div>
-                ) : (
-                  <div className="checkpoint-comment-section">
-                    <label className="checkpoint-label">
-                      <MessageSquareText size={14} />
-                      Nhận xét gửi phụ huynh
-                    </label>
-                    <textarea
-                      className="comment-edit"
-                      placeholder="Nhập nhận xét thủ công, hoặc bấm AI nhận xét để tạo tự động..."
-                      value={draft.currentComment}
-                      disabled={locked || operationActive}
-                      onChange={(e) => useCheckpointStore.getState().setCurrentComment(student.studentId, e.target.value)}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="student-actions checkpoint-actions">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary"
-                  disabled={locked || operationActive}
-                  onClick={() => void generate()}
-                >
-                  <Sparkles size={14} />
-                  {generationBusy ? 'Đang tạo…' : 'AI nhận xét'}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-checkpoint"
-                  disabled={locked || operationActive || !draft.currentComment.trim()}
-                  onClick={() => void full()}
-                >
-                  <Send size={14} />
-                  {submitBusy ? 'Đang gửi…' : 'Gửi nhận xét'}
-                </button>
-              </div>
-            </>
-          ) : (
             <>
               <section className="checkpoint-score-editor" aria-label={`Điểm Checkpoint của ${student.displayName}`}>
                 <div className={`checkpoint-score-card ${hasCheckpoint ? 'submitted' : ''}`}>
@@ -430,7 +331,6 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
                 </button>
               </div>
             </>
-          )}
         </div>
       )}
     </article>

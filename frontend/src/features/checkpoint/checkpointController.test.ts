@@ -227,6 +227,20 @@ describe('checkpoint score parsing and submission controllers', () => {
     expect(isCheckpointOperationActive()).toBe(false);
   });
 
+  it('batch capture skips absent students by default and includes them when includeAbsent is on', () => {
+    const absentStudents = students.map((student, index) => index === 4 ? { ...student, status: 'ABSENT_WITH_NOTICE' } : student);
+    const absentSlot: Slot = { ...slot, studentAttendance: absentStudents };
+    const absentScope = { detail: { ...detail, slots: [absentSlot] }, slot: absentSlot, checkpoint: 1 as const };
+    resetCheckpointController(); useCheckpointStore.getState().reset();
+    const context = activateCheckpointContext(detail.id, absentSlot.id, 1, absentSlot.summary);
+    hydrateCheckpointContext(context, absentSlot, {});
+    const ids = (batch: { students: Array<{ studentId: string }> }) => batch.students.map((student) => student.studentId);
+    expect(ids(captureCheckpointScoreOnlyBatch(absentScope, ''))).not.toContain('student-5');
+    expect(ids(captureCheckpointScoreOnlyBatch(absentScope, '', { includeAbsent: true }))).toContain('student-5');
+    expect(ids(captureCheckpointFullBatch(absentScope, {}, 'Tổng kết', { includeAbsent: true }))).toHaveLength(6);
+    expect(ids(captureCheckpointGenerationBatch(absentScope, {}, { includeAbsent: true }))).toContain('student-5');
+  });
+
   it('score-only batch prevalidates before confirmation capture, freezes scope, submits sequentially, and never shifts summary after first failure', async () => {
     useCheckpointStore.getState().setTheoryInput('student-3', '4.25');
     expect(() => captureCheckpointScoreOnlyBatch(scope, 'Tổng kết batch')).toThrow('bước 0.5');

@@ -2024,6 +2024,7 @@ html[data-theme="dark"] body::before {
 .action-bar.checkpoint-action-bar,
 .action-bar.demo-action-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding: 16px;
@@ -2033,9 +2034,76 @@ html[data-theme="dark"] body::before {
   margin-top: 16px;
 }
 
+.checkpoint-include-absent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.checkpoint-include-absent input[type="checkbox"] {
+  appearance: none;
+  position: relative;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--border-color);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.checkpoint-include-absent input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+  transition: transform 0.15s ease;
+}
+.checkpoint-include-absent input[type="checkbox"]:checked { background: var(--primary, #2563eb); }
+.checkpoint-include-absent input[type="checkbox"]:checked::after { transform: translateX(14px); }
+.checkpoint-include-absent input[type="checkbox"]:focus-visible { outline: 2px solid var(--primary, #2563eb); outline-offset: 2px; }
+.checkpoint-include-absent input[type="checkbox"]:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.checkpoint-batch-result {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--surface-card);
+  font-size: 13.5px;
+  color: var(--text-primary);
+}
+.checkpoint-batch-result.is-success { border-color: rgb(34 197 94 / 0.45); background: rgb(34 197 94 / 0.06); }
+.checkpoint-batch-result.has-errors { border-color: rgb(239 68 68 / 0.4); background: rgb(239 68 68 / 0.05); }
+.checkpoint-batch-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.checkpoint-batch-result-header strong { font-size: 14.5px; color: var(--text-heading); }
+.checkpoint-batch-result p { margin: 0 0 4px; color: var(--text-muted); }
+.checkpoint-batch-result details { margin-top: 6px; }
+.checkpoint-batch-result summary { cursor: pointer; font-weight: 600; color: #dc2626; }
+.checkpoint-batch-result ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+.checkpoint-batch-result li { line-height: 1.45; }
+
 .action-bar.checkpoint-action-bar .btn,
 .action-bar.demo-action-bar .btn {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: max-content;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   justify-content: center;

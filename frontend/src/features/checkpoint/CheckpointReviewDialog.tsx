@@ -19,6 +19,7 @@ import { CheckpointReviewRow } from './CheckpointReviewRow';
 import { formatScore } from './checkpointScore';
 import { useCheckpointStore } from './checkpointStore';
 import { useCheckpointBatchRunners } from './useCheckpointBatchRunners';
+import { useIncludeAbsent } from './includeAbsentPreference';
 
 export function CheckpointReviewDialog({ scope, generationOptions, sessionNumber, locked: externalLocked = false }: {
   scope: CheckpointScope; generationOptions: CheckpointGenerationOptions; sessionNumber: number; locked?: boolean;
@@ -44,7 +45,8 @@ export function CheckpointReviewDialog({ scope, generationOptions, sessionNumber
   const dialogRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
-  const { runGrade, runGenerate, runScoreOnly, runFull, result, dismissResult } = useCheckpointBatchRunners(scope, generationOptions);
+  const includeAbsent = useIncludeAbsent();
+  const { runGrade, runGenerate, runScoreOnly, runFull, result, dismissResult } = useCheckpointBatchRunners(scope, generationOptions, includeAbsent);
 
   const allRows = useMemo(
     () => buildCheckpointReviewRows(slot.studentAttendance, { drafts, results, rowErrors, generationBusy, submitBusy, gradeBusy }, analysis),
@@ -53,8 +55,9 @@ export function CheckpointReviewDialog({ scope, generationOptions, sessionNumber
   const filteredRows = useMemo(() => filterCheckpointReviewRows(allRows, { search, alertFilter, sort }), [alertFilter, allRows, search, sort]);
   const operationActive = generationBusy.size > 0 || submitBusy.size > 0 || gradeBusy.size > 0 || Boolean(batch);
   const locked = externalLocked || operationActive;
-  const presentCount = allRows.filter((row) => row.isPresent).length;
-  const draftCount = allRows.filter((row) => row.isPresent && row.isDraft).length;
+  const inScope = (row: { isPresent: boolean }) => includeAbsent || row.isPresent;
+  const presentCount = allRows.filter(inScope).length;
+  const draftCount = allRows.filter((row) => inScope(row) && row.isDraft).length;
   const warningCount = allRows.filter((row) => row.hasWarning).length;
   const studentNames = useMemo(() => Object.fromEntries(slot.studentAttendance.map((student) => [student.studentId, student.displayName])), [slot.studentAttendance]);
   const hasSummary = Boolean(summary.trim());

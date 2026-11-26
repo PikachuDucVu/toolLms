@@ -29,7 +29,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); useReviewStore.getState().reset(); });
 
 describe('CheckpointReviewDialog', () => {
-  it('renders nothing until review is opened, then lists every student with absent rows read-only', async () => {
+  it('renders nothing until review is opened, then lists every student with absent rows editable', async () => {
     renderDialog();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     act(() => useReviewStore.getState().openReview());
@@ -37,9 +37,8 @@ describe('CheckpointReviewDialog', () => {
     const rows = within(dialog).getAllByRole('listitem');
     expect(rows).toHaveLength(3);
     const absent = rows.find((row) => row.getAttribute('data-review-row') === 'student-3')!;
-    expect(within(absent).queryByRole('textbox')).not.toBeInTheDocument();
-    expect(within(absent).queryByRole('button')).not.toBeInTheDocument();
-    expect(within(absent).getByText(/Học sinh vắng, không nằm/)).toBeVisible();
+    expect(within(absent).getAllByRole('textbox').length).toBeGreaterThan(0);
+    expect(within(absent).getAllByRole('spinbutton')).toHaveLength(2);
     expect(within(dialog).getByLabelText('Ghi chú cho AI của Nguyễn An')).toHaveValue('Mô tả An');
   });
 

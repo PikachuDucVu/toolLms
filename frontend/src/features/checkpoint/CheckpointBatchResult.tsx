@@ -12,7 +12,7 @@ export type CheckpointBatchResultView = {
 export function CheckpointBatchResult({ result, studentNames, onDismiss }: { result: CheckpointBatchResultView; studentNames: Record<string, string>; onDismiss: () => void }) {
   const hasFailures = result.failures.length > 0;
   return <section className={`checkpoint-batch-result ${hasFailures ? 'has-errors' : 'is-success'}`} aria-live="polite" aria-label="Kết quả thao tác Checkpoint cả lớp">
-    <div><strong>{title(result.kind)}</strong><button type="button" className="btn btn-sm btn-outline" onClick={onDismiss}>Đóng kết quả</button></div>
+    <div className="checkpoint-batch-result-header"><strong>{title(result.kind)}</strong><button type="button" className="btn btn-sm btn-outline" onClick={onDismiss}>Đóng kết quả</button></div>
     <p>{summary(result)}</p>
     {result.kind === 'full' && <p>Giai đoạn AI: {result.generationSuccessful}/{result.generationAttempted} thành công.</p>}
     {hasFailures && <details open><summary>{result.failures.length} lỗi theo học sinh/giai đoạn</summary><ul>{result.failures.map((failure, index) => <li key={`${failure.studentId}:${failure.phase}:${index}`}><strong>{studentNames[failure.studentId] || failure.studentId}</strong> — {phaseName(failure.phase)}: {failure.message}</li>)}</ul></details>}

@@ -3,16 +3,12 @@ import { ExternalLink } from 'lucide-react';
 import { checkpointStudentStatusView } from './checkpointController';
 import { useCheckpointStore } from './checkpointStore';
 
-export function CheckpointStatus({ studentId, studentName, isPresent = true }: { studentId: string; studentName: string; isPresent?: boolean }) {
+export function CheckpointStatus({ studentId, studentName }: { studentId: string; studentName: string }) {
   useCheckpointStore((state) => state.status);
   useCheckpointStore((state) => state.statusResult);
   useCheckpointStore((state) => state.statusError);
   useCheckpointStore((state) => state.selectedBranches[studentId]);
   const view = checkpointStudentStatusView(studentId);
-
-  if (!isPresent) {
-    return <span className="badge badge-gray" role="status">Vắng — không chấm</span>;
-  }
 
   if (view.state === 'idle' || view.state === 'loading') {
     return <span className="badge badge-loading" role="status" aria-live="polite">Đang tải trạng thái nộp bài…</span>;

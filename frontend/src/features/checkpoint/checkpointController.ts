@@ -185,7 +185,7 @@ export function studentHasGradableSubmission(studentId: string): boolean {
 export async function gradeCheckpointStudent(scope: CheckpointScope, studentId: string, options: CheckpointGenerationOptions = {}): Promise<CheckpointGradeResult> {
   const context = requireScope(scope);
   assertNoActiveOperation();
-  const student = requirePresentStudent(scope, studentId);
+  const student = requireStudent(scope, studentId);
   if (!studentHasGradableSubmission(studentId)) throw new Error('Học sinh chưa nộp bài kiểm tra trên kiemtra.');
   const draft = requireDraft(studentId);
   const view = checkpointStudentStatusView(studentId);
@@ -218,12 +218,12 @@ export async function gradeCheckpointStudent(scope: CheckpointScope, studentId: 
   }
 }
 
-export function captureCheckpointGradeBatch(scope: CheckpointScope, options: CheckpointGenerationOptions = {}): FrozenCheckpointGradeBatch {
+export function captureCheckpointGradeBatch(scope: CheckpointScope, options: CheckpointGenerationOptions = {}, { includeAbsent = false }: { includeAbsent?: boolean } = {}): FrozenCheckpointGradeBatch {
   const context = requireScope(scope);
   assertNoActiveOperation();
   if (useCheckpointStore.getState().status !== 'success') throw new Error('Đang tải trạng thái nộp bài Checkpoint.');
-  const students = presentStudents(scope).filter((student) => studentHasGradableSubmission(student.studentId));
-  if (!students.length) throw new Error('Không có học sinh có mặt đã nộp bài Checkpoint');
+  const students = scopeStudents(scope, includeAbsent).filter((student) => studentHasGradableSubmission(student.studentId));
+  if (!students.length) throw new Error(includeAbsent ? 'Không có học sinh đã nộp bài Checkpoint' : 'Không có học sinh có mặt đã nộp bài Checkpoint');
   return {
     context: { ...context },
     options: freezeGenerationOptions(options),
@@ -294,7 +294,7 @@ export async function gradeCheckpointBatch(scope: CheckpointScope, frozen: Froze
 export async function generateCheckpointStudent(scope: CheckpointScope, studentId: string, options: CheckpointGenerationOptions = {}): Promise<boolean> {
   const context = requireScope(scope);
   assertNoActiveOperation();
-  const student = requirePresentStudent(scope, studentId);
+  const student = requireStudent(scope, studentId);
   const draft = requireDraft(studentId);
   const frozen = freezeGenerationStudent(student, draft);
   const frozenOptions = freezeGenerationOptions(options);
@@ -314,11 +314,11 @@ export async function generateCheckpointStudent(scope: CheckpointScope, studentI
   }
 }
 
-export function captureCheckpointGenerationBatch(scope: CheckpointScope, options: CheckpointGenerationOptions = {}): FrozenCheckpointGenerationBatch {
+export function captureCheckpointGenerationBatch(scope: CheckpointScope, options: CheckpointGenerationOptions = {}, { includeAbsent = false }: { includeAbsent?: boolean } = {}): FrozenCheckpointGenerationBatch {
   const context = requireScope(scope);
   assertNoActiveOperation();
-  const students = presentStudents(scope).filter((student) => !requireDraft(student.studentId).generatedComment.trim());
-  if (!students.length) throw new Error('Tất cả học sinh có mặt đã có nhận xét AI checkpoint');
+  const students = scopeStudents(scope, includeAbsent).filter((student) => !requireDraft(student.studentId).generatedComment.trim());
+  if (!students.length) throw new Error(includeAbsent ? 'Tất cả học sinh đã có nhận xét AI checkpoint' : 'Tất cả học sinh có mặt đã có nhận xét AI checkpoint');
   return {
     context: { ...context },
     options: freezeGenerationOptions(options),
@@ -375,7 +375,7 @@ export function parseCheckpointScoreInputs(theoryInput: string, practiceInput: s
 export async function submitCheckpointScoreOnlySingle(scope: CheckpointScope, studentId: string, summary = useCheckpointStore.getState().summaryDraft): Promise<CheckpointSingleOutcome> {
   const context = requireScope(scope);
   assertNoActiveOperation();
-  const student = requirePresentStudent(scope, studentId);
+  const student = requireStudent(scope, studentId);
   const draft = cloneCheckpointDraft(requireDraft(studentId));
   const scores = parseCheckpointScoreInputs(draft.theoryInput, draft.practiceInput);
   const comment = scoreOnlyComment(draft);
@@ -410,7 +410,7 @@ export async function submitCheckpointScoreOnlySingle(scope: CheckpointScope, st
 export async function submitCheckpointFullSingle(scope: CheckpointScope, studentId: string, summary = useCheckpointStore.getState().summaryDraft): Promise<CheckpointSingleOutcome> {
   const context = requireScope(scope);
   assertNoActiveOperation();
-  const student = requirePresentStudent(scope, studentId);
+  const student = requireStudent(scope, studentId);
   if (!summary.trim()) throw new Error('Vui lòng nhập tổng kết buổi học');
   const draft = cloneCheckpointDraft(requireDraft(studentId));
   const comment = effectiveCheckpointComment(draft);
@@ -444,11 +444,11 @@ export async function submitCheckpointFullSingle(scope: CheckpointScope, student
   }
 }
 
-export function captureCheckpointScoreOnlyBatch(scope: CheckpointScope, summary = useCheckpointStore.getState().summaryDraft): FrozenCheckpointScoreBatch {
+export function captureCheckpointScoreOnlyBatch(scope: CheckpointScope, summary = useCheckpointStore.getState().summaryDraft, { includeAbsent = false }: { includeAbsent?: boolean } = {}): FrozenCheckpointScoreBatch {
   const context = requireScope(scope);
   assertNoActiveOperation();
-  const students = presentStudents(scope);
-  if (!students.length) throw new Error('Không có học sinh có mặt!');
+  const students = scopeStudents(scope, includeAbsent);
+  if (!students.length) throw new Error(includeAbsent ? 'Không có học sinh nào!' : 'Không có học sinh có mặt!');
   return {
     context: { ...context },
     ...(summary.trim() ? { summary } : {}),
@@ -472,12 +472,12 @@ export async function submitCheckpointScoreOnlyBatch(scope: CheckpointScope, fro
   return submitFrozenBatch(scope, context, 'score_only', frozen.students, frozen.summary);
 }
 
-export function captureCheckpointFullBatch(scope: CheckpointScope, options: CheckpointGenerationOptions = {}, summary = useCheckpointStore.getState().summaryDraft): FrozenCheckpointFullBatch {
+export function captureCheckpointFullBatch(scope: CheckpointScope, options: CheckpointGenerationOptions = {}, summary = useCheckpointStore.getState().summaryDraft, { includeAbsent = false }: { includeAbsent?: boolean } = {}): FrozenCheckpointFullBatch {
   const context = requireScope(scope);
   assertNoActiveOperation();
   if (!summary.trim()) throw new Error('Vui lòng nhập tổng kết buổi học');
-  const students = presentStudents(scope);
-  if (!students.length) throw new Error('Không có học sinh có mặt!');
+  const students = scopeStudents(scope, includeAbsent);
+  if (!students.length) throw new Error(includeAbsent ? 'Không có học sinh nào!' : 'Không có học sinh có mặt!');
   return {
     context: { ...context },
     summary,
@@ -709,11 +709,10 @@ function parseScore(raw: string, label: string): number | null {
   if (Math.abs(score * 2 - Math.round(score * 2)) > 0.0001) throw new Error(`${label} phải nhập theo bước 0.5`);
   return score;
 }
-function presentStudents(scope: CheckpointScope): StudentAttendance[] { return scope.slot.studentAttendance.filter(isPresent); }
-function requirePresentStudent(scope: CheckpointScope, studentId: string): StudentAttendance {
+function scopeStudents(scope: CheckpointScope, includeAbsent = false): StudentAttendance[] { return includeAbsent ? scope.slot.studentAttendance : scope.slot.studentAttendance.filter(isPresent); }
+function requireStudent(scope: CheckpointScope, studentId: string): StudentAttendance {
   const student = scope.slot.studentAttendance.find((item) => item.studentId === studentId);
   if (!student) throw new Error('Không tìm thấy học sinh trong buổi Checkpoint hiện tại');
-  if (!isPresent(student)) throw new Error('Học sinh vắng — không chấm Checkpoint');
   return student;
 }
 function requireDraft(studentId: string): CheckpointStudentDraft {

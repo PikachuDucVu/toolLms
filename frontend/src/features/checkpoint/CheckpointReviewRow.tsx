@@ -29,7 +29,7 @@ export const CheckpointReviewRow = memo(function CheckpointReviewRow({ row, lock
 
   return (
     <article
-      className={`regular-review-row ${row.hasWarning ? 'has-warning' : ''} ${!row.isPresent ? 'is-absent' : ''}`}
+      className={`regular-review-row ${row.hasWarning ? 'has-warning' : ''}`}
       data-review-row={row.studentId}
       role="listitem"
     >
@@ -60,8 +60,7 @@ export const CheckpointReviewRow = memo(function CheckpointReviewRow({ row, lock
       </div>
 
       <div className="regular-review-level-cell checkpoint-review-score-cell">
-        {row.isPresent ? (
-          <>
+        <>
             <div className="checkpoint-review-score-inputs">
               <label>
                 <span>LT</span>
@@ -102,14 +101,10 @@ export const CheckpointReviewRow = memo(function CheckpointReviewRow({ row, lock
               ) : 'Để trống = random 4–5'}
             </small>
           </>
-        ) : (
-          <span className="regular-review-level-unavailable">Vắng — không chấm điểm</span>
-        )}
       </div>
 
       <div className="regular-review-comment-cell">
-        {row.isPresent ? (
-          <>
+        <>
             <label className="sr-only" htmlFor={`checkpoint-review-note-${id}`}>Ghi chú cho AI của {row.studentName}</label>
             <textarea
               id={`checkpoint-review-note-${id}`}
@@ -135,11 +130,6 @@ export const CheckpointReviewRow = memo(function CheckpointReviewRow({ row, lock
               onChange={(event) => store().setCurrentComment(row.studentId, event.target.value)}
             />
           </>
-        ) : (
-          <div className={`regular-review-comment-placeholder is-absent ${row.hasExistingComment ? 'has-existing' : ''}`}>
-            {row.hasExistingComment ? row.existingComment : 'Học sinh vắng, không nằm trong thao tác Checkpoint.'}
-          </div>
-        )}
         <div className="regular-review-comment-meta">
           <span className="regular-review-warning" role={row.operationError ? 'alert' : undefined}>
             {row.operationError ? `Cảnh báo: ${row.operationError}` : row.duplicateCount > 0 ? `Cảnh báo: Câu mở đầu tương tự ${row.duplicateCount - 1} nhận xét khác` : ''}
@@ -149,8 +139,7 @@ export const CheckpointReviewRow = memo(function CheckpointReviewRow({ row, lock
       </div>
 
       <div className="regular-review-actions-cell">
-        {row.isPresent && (
-          <>
+        <>
             <button type="button" className="btn btn-sm btn-outline regular-review-action-btn" disabled={locked || !canGrade} title={canGrade ? 'Chấm trắc nghiệm và tự luận từ bài nộp kiemtra' : 'Học sinh chưa nộp bài trên kiemtra'} aria-busy={row.gradeBusy} onClick={() => onGrade(row.studentId)}>
               {row.gradeBusy ? <Loader2 size={13} className="animate-spin" /> : <ClipboardCheck size={13} />}
               <span>{row.gradeBusy ? 'Đang chấm...' : 'AI chấm'}</span>
@@ -164,7 +153,6 @@ export const CheckpointReviewRow = memo(function CheckpointReviewRow({ row, lock
               <span>{row.submitBusy ? 'Đang gửi...' : row.hasCheckpoint ? 'Gửi lại' : 'Gửi'}</span>
             </button>
           </>
-        )}
       </div>
     </article>
   );
