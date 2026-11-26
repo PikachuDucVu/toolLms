@@ -95,7 +95,7 @@ describe('Demo workspace schema and UI', () => {
     expect(screen.getByRole('row')).toHaveTextContent('Sản phẩm');
     const productButton = await screen.findByRole('button', { name: 'Sản phẩm của Nguyễn An' });
     await waitFor(() => expect(productButton).toHaveTextContent('1 file'));
-    expect(screen.getByRole('button', { name: 'Sản phẩm của Lê Chi' })).toHaveTextContent('Chưa có');
+    expect(screen.getByRole('button', { name: 'Sản phẩm của Lê Chi' })).toHaveTextContent('Kho: 0 file');
   });
 });
 

@@ -29,7 +29,9 @@
     "cf-typegen": "wrangler types",
     "db:migrate:local": "wrangler d1 migrations apply lms_auto_comment --local",
     "db:migrate:remote": "wrangler d1 migrations apply lms_auto_comment --remote",
-    "db:migrate:verify": "node scripts/verify-d1-migrations.mjs"
+    "db:migrate:verify": "node scripts/verify-d1-migrations.mjs",
+    "mock:api": "node scripts/mock-api-server.mjs",
+    "dev:mock": "node scripts/mock-api-server.mjs & npm run dev:frontend; kill %1"
   },
   "dependencies": {
     "@anthropic-ai/claude-code": "^2.1.220",

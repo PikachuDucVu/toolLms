@@ -1,12 +1,12 @@
 import type { ClassDetail, Slot, StudentAttendance } from '@tool-lms/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Presentation } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { useToast } from '../../components/ui/Toast';
 import type { AttendanceFilter, ProgressFilter } from '../classes/public/domain';
-import { isPresent } from '../classes/public/domain';
+import { hasModeSubmission, isPresent } from '../classes/public/domain';
 import { StudentFilters } from '../classes/public/components';
 import { DemoBatchActions } from './DemoBatchActions';
 import { activateDemoContext, captureDemoBatch, currentDemoRandomRange, deactivateDemoContext, hydrateDemoContext, prepareDemoBatch, randomizePresentDemoStudents, setDemoSchemaError, submitDemoBatch } from './demoController';
@@ -29,6 +29,13 @@ export function DemoWorkspace({ detail, slot, sessionNumber, students, selectedI
   const scope = { detail, slot };
   const present = slot.studentAttendance.filter(isPresent);
   const studentNames = Object.fromEntries(slot.studentAttendance.map((student) => [student.studentId, student.displayName]));
+  const results = useDemoStore((state) => state.results);
+  const gradedCount = present.filter((student) => hasModeSubmission(student, 'demo') || Boolean(results[student.studentId])).length;
+  // Rows ticked in the table narrow the class-wide Random / Submit to those students.
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => { setCheckedIds(new Set()); }, [slot.id]);
+  const selectedPresentIds = present.filter((student) => checkedIds.has(student.studentId)).map((student) => student.studentId);
+  const selectionScope = selectedPresentIds.length ? new Set(selectedPresentIds) : undefined;
 
   useEffect(() => {
     const activated = activateDemoContext(detail.id, slot.id, cleanSummary(slot.summary));
@@ -45,17 +52,17 @@ export function DemoWorkspace({ detail, slot, sessionNumber, students, selectedI
 
   const runRandomAll = async () => {
     try {
-      const applied = await randomizePresentDemoStudents(scope);
-      toast.show(`Đã random điểm Demo cho ${applied} học sinh có mặt.`);
+      const applied = await randomizePresentDemoStudents(scope, undefined, selectionScope);
+      toast.show(`Đã random điểm Demo cho ${applied} học sinh${selectionScope ? ' đã chọn' : ' có mặt'}.`);
     } catch (cause) { if (!isAbort(cause)) toast.show(errorText(cause), 'error'); }
   };
 
   const runBatch = async () => {
     try {
-      const captured = captureDemoBatch(scope);
+      const captured = captureDemoBatch(scope, selectionScope);
       const count = captured.students.length;
       const range = currentDemoRandomRange();
-      const accepted = await confirm({ title: 'Submit Demo cả lớp', description: `Submit Demo cho ${count} học sinh có mặt (học sinh chưa có điểm sẽ random ${range.minScore}–${range.maxScore})?`, confirmLabel: `Submit ${count} học sinh` });
+      const accepted = await confirm({ title: 'Submit Demo cả lớp', description: `Submit Demo cho ${count} học sinh ${selectionScope ? 'đã chọn' : 'có mặt'} (học sinh chưa có điểm sẽ random ${range.minScore}–${range.maxScore})?`, confirmLabel: `Submit ${count} học sinh` });
       if (!accepted) return;
       const frozen = await prepareDemoBatch(scope, captured);
       const outcome = await submitDemoBatch(scope, frozen);
@@ -73,21 +80,6 @@ export function DemoWorkspace({ detail, slot, sessionNumber, students, selectedI
       onChange={(event) => useDemoStore.getState().setSummaryDraft(event.target.value)}
     />
 
-    {/* Legacy Parity Demo Banner */}
-    <div className="demo-banner">
-      <div className="demo-banner-icon" aria-hidden="true">
-        <svg className="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="9" strokeWidth="2" />
-          <circle cx="12" cy="12" r="4.5" strokeWidth="2" />
-          <circle cx="12" cy="12" r="1" fill="currentColor" />
-        </svg>
-      </div>
-      <div>
-        <h3>Buổi {sessionNumber} — Demo Sản phẩm cuối khóa</h3>
-        <p>Nếu học sinh chưa có điểm, Submit sẽ random theo khoảng đã chọn cho tổng điểm Demo. Nhấn Random để xem trước.</p>
-      </div>
-    </div>
-
     {/* Accessible banner for tests */}
     <section className="mode-banner demo demo-functional-banner sr-only" aria-hidden="true">
       <Presentation size={22} />
@@ -103,17 +95,26 @@ export function DemoWorkspace({ detail, slot, sessionNumber, students, selectedI
 
     {schema && (
       <section className="card demo-student-card">
-        <div className="student-card-header">
-          <div className="student-card-heading">
-            <h2>Học sinh buổi {sessionNumber}</h2>
-            <span className="student-count-badge">{students.length === slot.studentAttendance.length ? `${slot.studentAttendance.length} học sinh` : `${students.length}/${slot.studentAttendance.length} học sinh`}</span>
+        <div className="demo-banner" role="note">
+          <div className="demo-banner-icon" aria-hidden="true">
+            <Presentation size={20} />
           </div>
+          <div className="demo-banner-text">
+            <h3>Buổi {sessionNumber} — Demo sản phẩm cuối khóa</h3>
+            <p>{schema.questions.length} tiêu chí, tối đa {formatScore(schema.maxScore)} điểm. Học sinh chưa có điểm sẽ được random trong khoảng đã chọn khi Submit.</p>
+          </div>
+          <div className="demo-banner-stats" aria-label="Tiến độ chấm Demo">
+            <span><b>{gradedCount}</b>/{present.length} đã gửi điểm</span>
+          </div>
+        </div>
+
+        <div className="demo-toolbar">
           <StudentFilters search={search} attendance={attendance} progress={progress} mode="demo" disabled={Boolean(locked) || operationActive} onSearch={onSearch} onAttendance={onAttendance} onProgress={onProgress} onReset={onResetFilters} />
         </div>
 
-        <DemoStudentList scope={scope} schema={schema} students={students} total={slot.studentAttendance.length} selectedId={selectedId} disabled={Boolean(locked) || operationActive} onSelect={onStudent} onResetFilters={onResetFilters} />
+        <DemoStudentList scope={scope} schema={schema} students={students} total={slot.studentAttendance.length} selectedId={selectedId} disabled={Boolean(locked) || operationActive} checkedIds={checkedIds} onCheckedChange={setCheckedIds} onSelect={onStudent} onResetFilters={onResetFilters} />
 
-        <DemoBatchActions presentCount={present.length} visibleCount={students.length} totalCount={slot.studentAttendance.length} disabled={Boolean(locked) || operationActive} studentNames={studentNames} onRandom={() => void runRandomAll()} onSubmit={() => void runBatch()} />
+        <DemoBatchActions presentCount={present.length} selectedCount={selectedPresentIds.length} visibleCount={students.length} totalCount={slot.studentAttendance.length} disabled={Boolean(locked) || operationActive} studentNames={studentNames} onClearSelection={() => setCheckedIds(new Set())} onRandom={() => void runRandomAll()} onSubmit={() => void runBatch()} />
       </section>
     )}
   </>;

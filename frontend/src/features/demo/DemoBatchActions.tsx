@@ -4,21 +4,26 @@ import { useDemoStore } from "./demoStore";
 
 export function DemoBatchActions({
   presentCount,
+  selectedCount,
   visibleCount,
   totalCount,
   disabled,
   studentNames,
+  onClearSelection,
   onRandom,
   onSubmit,
 }: {
   presentCount: number;
+  selectedCount: number;
   visibleCount: number;
   totalCount: number;
   disabled: boolean;
   studentNames: Record<string, string>;
+  onClearSelection: () => void;
   onRandom: () => void;
   onSubmit: () => void;
 }) {
+  const targetCount = selectedCount || presentCount;
   const batch = useDemoStore((state) => state.batch);
   const minScore = useDemoStore((state) => state.randomMinScore);
   const maxScore = useDemoStore((state) => state.randomMaxScore);
@@ -27,11 +32,22 @@ export function DemoBatchActions({
   return (
     <div className="demo-batch-wrapper">
       <div className="demo-class-footer" id="demoActionBar">
-        <span className="demo-class-count">
-          Hiển thị {visibleCount}/{totalCount} học sinh
-        </span>
+        <div className="demo-class-count">
+          {selectedCount ? (
+            <>
+              <strong>Đã chọn {selectedCount} học sinh có mặt</strong>
+              <button type="button" className="btn-link" disabled={disabled} onClick={onClearSelection}>Bỏ chọn</button>
+            </>
+          ) : (
+            <>
+              <strong>Thao tác cả lớp</strong>
+              <span>Áp dụng cho {presentCount} học sinh có mặt · hiển thị {visibleCount}/{totalCount}</span>
+            </>
+          )}
+        </div>
         <div className="demo-class-footer-actions">
-          <div className="demo-random-range" aria-label="Khoảng random điểm">
+          <div className="demo-random-range" role="group" aria-label="Khoảng random điểm">
+            <span>Random từ</span>
             <label>
               <span className="sr-only">Random từ điểm</span>
               <input
@@ -48,9 +64,7 @@ export function DemoBatchActions({
                 }}
               />
             </label>
-            <span className="demo-random-range-gt">&gt;</span>
-            <span>điểm</span>
-            <span className="demo-random-range-gt">&gt;</span>
+            <span>đến</span>
             <label>
               <span className="sr-only">Random đến điểm</span>
               <input
@@ -71,21 +85,21 @@ export function DemoBatchActions({
           <button
             type="button"
             className="btn btn-outline demo-random-all-btn"
-            disabled={disabled || presentCount === 0}
+            disabled={disabled || targetCount === 0}
             onClick={onRandom}
           >
             <Shuffle size={16} />
-            Random
+            {selectedCount ? `Random (${selectedCount})` : 'Random'}
           </button>
           <button
             type="button"
             className="btn btn-demo"
             id="submitDemoAllBtn"
-            disabled={disabled || presentCount === 0}
+            disabled={disabled || targetCount === 0}
             onClick={onSubmit}
           >
             <Send size={16} />
-            Submit chấm điểm
+            Submit chấm điểm ({targetCount})
           </button>
         </div>
       </div>

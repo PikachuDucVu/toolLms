@@ -23,6 +23,24 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Demo controllers', () => {
+  it('limits the class-wide submit and random to the ticked students', async () => {
+    const captured = captureDemoBatch(scope, new Set(['student-2', 'student-3']));
+    // student-3 is absent, so only the present ticked student remains.
+    expect(captured.students.map((item) => item.studentId)).toEqual(['student-2']);
+    expect(() => captureDemoBatch(scope, new Set(['student-3']))).toThrow('đã chọn');
+
+    const previewed: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      previewed.push('preview');
+      return new Response(JSON.stringify({ success: true, requestId: 'demo-scope', data: { schema, questions: [{ ...schema.questions[0], score: 1.5 }, { ...schema.questions[1], score: 0.5 }], demoScore: 2 } }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }));
+    const applied = await randomizePresentDemoStudents(scope, undefined, new Set(['student-1']));
+    expect(applied).toBe(1);
+    expect(previewed).toHaveLength(1);
+    expect(useDemoStore.getState().drafts['student-1'].scores).toEqual({ 'q-1': 1.5, 'q-2': 0.5 });
+    expect(useDemoStore.getState().drafts['student-2'].scores).toEqual({ 'q-1': null, 'q-2': null });
+  });
+
   it('validates quarter-step bounded custom scores and a positive explicit score', () => {
     expect(() => validateDemoDraft(schema, { scores: { 'q-1': 2.25, 'q-2': 0 }, autoRate: true, version: 0 })).toThrow('0 đến 2');
     expect(() => validateDemoDraft(schema, { scores: { 'q-1': -0.25, 'q-2': 0 }, autoRate: true, version: 0 })).toThrow('0 đến 2');

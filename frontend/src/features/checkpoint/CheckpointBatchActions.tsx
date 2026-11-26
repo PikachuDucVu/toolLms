@@ -1,4 +1,4 @@
-import { CheckCircle, ClipboardCheck, Eye, Sparkles } from 'lucide-react';
+import { CheckCircle, ClipboardCheck, Eye, MoreVertical, Send, Sparkles } from 'lucide-react';
 import { useReviewStore } from '../review/public/store';
 import { CheckpointBatchProgress } from './CheckpointBatchProgress';
 import { CheckpointBatchResult } from './CheckpointBatchResult';
@@ -31,58 +31,75 @@ export function CheckpointBatchActions({ scope, generationOptions, presentCount,
             onChange={(event) => setIncludeAbsent(event.target.checked)}
             id="checkpointIncludeAbsentToggle"
           />
-          <span>Gồm cả HS vắng{absentCount ? ` (${absentCount})` : ''}</span>
+          <span>Gồm HS vắng{absentCount ? ` (${absentCount})` : ''}</span>
         </label>
-        <button
-          type="button"
-          className="btn btn-outline"
-          disabled={disabled}
-          onClick={() => useReviewStore.getState().openReview()}
-          id="reviewCheckpointBtn"
-        >
-          <Eye size={16} />
-          Review nhận xét
-        </button>
-        <button
-          type="button"
-          className="btn btn-outline"
-          disabled={blocked}
-          onClick={() => void runGrade()}
-          id="gradeCheckpointAllBtn"
-        >
-          <ClipboardCheck size={16} />
-          AI chấm tất cả đã nộp
-        </button>
-        <button
-          type="button"
-          className="btn btn-outline"
-          disabled={blocked}
-          onClick={() => void runScoreOnly()}
-          id="submitCheckpointScoresAllBtn"
-        >
-          <CheckCircle size={16} />
-          Submit điểm tất cả
-        </button>
-        <button
-          type="button"
-          className="btn btn-checkpoint"
-          disabled={blocked}
-          onClick={() => void runFull()}
-          id="submitCheckpointAllBtn"
-        >
-          <CheckCircle size={16} />
-          Submit đầy đủ (AI + điểm)
-        </button>
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={blocked}
-          onClick={() => void runGenerate()}
-          id="autoCheckpointCommentBtn"
-        >
-          <Sparkles size={16} />
-          {includeAbsent ? 'AI nhận xét toàn bộ' : 'AI nhận xét tất cả'}
-        </button>
+        <div className="checkpoint-action-buttons">
+          <button
+            type="button"
+            className="btn btn-outline"
+            disabled={blocked}
+            onClick={() => void runGrade()}
+            id="gradeCheckpointAllBtn"
+            aria-label="AI chấm tất cả đã nộp"
+            title="AI chấm tất cả học sinh đã nộp bài trên kiemtra"
+          >
+            <ClipboardCheck size={15} />
+            AI chấm tất cả
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={blocked}
+            onClick={() => void runGenerate()}
+            id="autoCheckpointCommentBtn"
+          >
+            <Sparkles size={15} />
+            {includeAbsent ? 'AI nhận xét toàn bộ' : 'AI nhận xét tất cả'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline"
+            disabled={disabled}
+            onClick={() => useReviewStore.getState().openReview()}
+            id="reviewCheckpointBtn"
+          >
+            <Eye size={15} />
+            Review nhận xét
+          </button>
+          <button
+            type="button"
+            className="btn btn-checkpoint"
+            disabled={blocked}
+            onClick={() => void runFull()}
+            id="submitCheckpointAllBtn"
+            aria-label="Submit đầy đủ (AI + điểm)"
+            title="Gửi điểm và nhận xét AI của cả lớp lên LMS"
+          >
+            <Send size={15} />
+            Submit đầy đủ
+          </button>
+          <details className="batch-overflow">
+            <summary className="btn btn-outline" aria-label="Mở thêm thao tác Checkpoint" title="Thêm thao tác">
+              <MoreVertical size={15} />
+            </summary>
+            <div className="detail-menu-popover">
+              <button
+                type="button"
+                className="menu-action"
+                disabled={blocked}
+                onClick={(event) => {
+                  (event.currentTarget as HTMLElement).closest('details')?.removeAttribute('open');
+                  void runScoreOnly();
+                }}
+                id="submitCheckpointScoresAllBtn"
+                aria-label="Submit điểm tất cả"
+              >
+                <CheckCircle size={14} />
+                <span>Submit điểm tất cả (không kèm nhận xét)</span>
+              </button>
+            </div>
+          </details>
+        </div>
       </div>
     </section>
   );

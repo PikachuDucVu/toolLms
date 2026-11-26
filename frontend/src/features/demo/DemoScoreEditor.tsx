@@ -207,7 +207,7 @@ export function DemoScoreEditor({
                       ? completion >= 75
                         ? 'Học sinh đã đạt kết quả tốt!'
                         : 'Cần random hoặc nhập thêm điểm.'
-                      : 'Nhấn Random >75% hoặc nhập điểm từng tiêu chí.'}
+                      : `Nhấn Random (${formatScore(randomMinScore)}–${formatScore(randomMaxScore)} điểm) hoặc nhập điểm từng tiêu chí.`}
                   </span>
                 </div>
               </div>

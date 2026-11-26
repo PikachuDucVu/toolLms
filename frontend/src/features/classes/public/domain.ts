@@ -8,6 +8,7 @@ export {
   attendancePresentation,
   currentSessionNumber,
   existingContentComment,
+  hasAreaType,
   hasModeSubmission,
   isPresent,
   normalizeVietnameseText,

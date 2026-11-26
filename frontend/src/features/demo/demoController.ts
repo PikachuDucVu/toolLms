@@ -131,12 +131,12 @@ export async function submitSingleDemo(scope: DemoScope, studentId: string): Pro
   }
 }
 
-export async function randomizePresentDemoStudents(scope: DemoScope, range = currentDemoRandomRange()): Promise<number> {
+export async function randomizePresentDemoStudents(scope: DemoScope, range = currentDemoRandomRange(), onlyIds?: ReadonlySet<string>): Promise<number> {
   const context = requireScope(scope);
   if (isDemoOperationActive()) throw new Error('Vui lòng đợi thao tác đang chạy hoàn tất');
   const schema = requireSchema();
-  const students = scope.slot.studentAttendance.filter((student) => isPresent(student) && !hasPositiveScore(schema, requireDraft(student.studentId)));
-  if (!students.length) throw new Error('Tất cả học sinh có mặt đã có điểm. Random all không ghi đè điểm đã nhập.');
+  const students = scope.slot.studentAttendance.filter((student) => isPresent(student) && (!onlyIds || onlyIds.has(student.studentId)) && !hasPositiveScore(schema, requireDraft(student.studentId)));
+  if (!students.length) throw new Error(onlyIds ? 'Các học sinh đã chọn đều đã có điểm. Random không ghi đè điểm đã nhập.' : 'Tất cả học sinh có mặt đã có điểm. Random all không ghi đè điểm đã nhập.');
   const scopeIds = students.map((student) => student.studentId);
   useDemoStore.getState().startBatch({ phase: 'previewing', scopeIds, total: scopeIds.length, attempted: 0, successful: 0, currentStudentId: null, failures: {} });
   const controller = createDemoController();
@@ -168,14 +168,14 @@ export async function randomizePresentDemoStudents(scope: DemoScope, range = cur
   }
 }
 
-export function captureDemoBatch(scope: DemoScope): DemoBatchConfirmation {
+export function captureDemoBatch(scope: DemoScope, onlyIds?: ReadonlySet<string>): DemoBatchConfirmation {
   const context = requireScope(scope);
   if (isDemoOperationActive()) throw new Error('Vui lòng đợi thao tác đang chạy hoàn tất');
   const state = useDemoStore.getState();
   const summary = state.summaryDraft;
   if (!summary.trim()) throw new Error('Vui lòng nhập tổng kết buổi học');
-  const students = scope.slot.studentAttendance.filter(isPresent);
-  if (!students.length) throw new Error('Không có học sinh có mặt!');
+  const students = scope.slot.studentAttendance.filter((student) => isPresent(student) && (!onlyIds || onlyIds.has(student.studentId)));
+  if (!students.length) throw new Error(onlyIds ? 'Không có học sinh có mặt trong danh sách đã chọn!' : 'Không có học sinh có mặt!');
   requireSchema();
   return {
     context: { ...context },

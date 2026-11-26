@@ -2,7 +2,7 @@ import type { CheckpointSubmitResult, StudentAttendance } from '@tool-lms/contra
 import { ClipboardCheck, MessageSquareText, Send, Sparkles, Trash2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useToast } from '../../components/ui/Toast';
-import { attendancePresentation, existingContentComment, hasModeSubmission, isPresent, stripHtml, studentInitials } from '../classes/public/domain';
+import { attendancePresentation, existingContentComment, hasAreaType, hasModeSubmission, isPresent, stripHtml, studentInitials } from '../classes/public/domain';
 import {
   generateCheckpointStudent,
   gradeCheckpointStudent,
@@ -39,6 +39,8 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
   const existingContent = existingContentComment(student);
 
   const hasCheckpoint = hasModeSubmission(student, 'checkpoint') || Boolean(result);
+  // hasModeSubmission also counts a plain comment; only a CHECKPOINT area (or a fresh submit) carries scores.
+  const hasScore = hasAreaType(student, 'CHECKPOINT') || Boolean(result);
   const hasCheckpointComment = Boolean(existingContent.trim() || draft?.generatedComment?.trim() || draft?.currentComment?.trim());
   const hasRateScore = student.commentByAreas?.some((a) => a.type === 'RATE');
 
@@ -93,7 +95,7 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
   const statusDone = isPresent(student) ? hasCheckpoint : hasCheckpoint || hasCheckpointComment;
 
   return (
-    <article className={`student-card cp-accordion ${expanded ? '' : 'collapsed'} ${hasCheckpoint || hasCheckpointComment ? 'has-comment' : 'no-comment'}`}>
+    <article className={`student-card cp-accordion ${expanded ? '' : 'collapsed'} ${hasScore ? 'has-comment' : 'no-comment'}`}>
       <div
         className="cp-head"
         role="button"
@@ -134,9 +136,13 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
             </span>
           )}
 
-          <span className={`badge ${statusDone ? 'badge-checkpoint-done' : 'badge-checkpoint'}`}>
-            {statusDone ? (hasCheckpoint ? '✓ Đã chấm' : '✓ Đã nhận xét') : '○ Chưa'}
-          </span>
+          {hasScore ? (
+            <span className="badge badge-checkpoint-done">✓ Đã chấm</span>
+          ) : statusDone ? (
+            <span className="badge badge-checkpoint-comment" title="Đã có nhận xét trên LMS nhưng chưa có điểm Checkpoint">✓ Có nhận xét · chưa có điểm</span>
+          ) : (
+            <span className="badge badge-checkpoint" title={hasBoth ? "Đã có điểm nháp, chưa gửi lên LMS" : undefined}>{hasBoth ? "○ Chưa gửi" : "○ Chưa chấm"}</span>
+          )}
 
           <svg className="cp-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />

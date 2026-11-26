@@ -36,7 +36,7 @@ export function ProductColumnCell({
   const studentFiles = filesForStudent(files, studentId, studentName);
   const submitted = submittedProductItems(works);
   const current = latestStudentWork(works);
-  const fileCountLabel = loading ? "Đang tải" : error ? "Lỗi file" : studentFiles.length ? `${studentFiles.length} file` : "Chưa có";
+  const fileCountLabel = loading ? "Đang tải" : error ? "Lỗi file" : `Kho: ${studentFiles.length} file`;
 
   return (
     <div className="product-column-stack">

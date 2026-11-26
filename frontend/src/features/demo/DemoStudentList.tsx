@@ -1,7 +1,7 @@
 import type { DemoResolvedSchema, StorageProductFile, StudentAttendance, StudentWork } from '@tool-lms/contracts';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Clock, Eye, Minus, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Clock, Eye, Minus, X } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
 import { useToast } from '../../components/ui/Toast';
 import { saveStudentWork } from '../studentWorks/public/api';
@@ -32,6 +32,8 @@ export function DemoStudentList({
   total,
   selectedId,
   disabled,
+  checkedIds,
+  onCheckedChange,
   onSelect,
   onResetFilters,
 }: {
@@ -41,11 +43,12 @@ export function DemoStudentList({
   total: number;
   selectedId: string | null;
   disabled: boolean;
+  checkedIds: ReadonlySet<string>;
+  onCheckedChange: (next: Set<string>) => void;
   onSelect: (studentId: string) => void;
   onResetFilters: () => void;
 }) {
   const [gradingOpen, setGradingOpen] = useState(false);
-  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [storageStudentId, setStorageStudentId] = useState<string | null>(null);
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -100,17 +103,20 @@ export function DemoStudentList({
   };
 
   const toggleAll = (checked: boolean) => {
-    setCheckedIds(checked ? new Set(visibleIds) : new Set());
+    onCheckedChange(checked ? new Set(visibleIds) : new Set());
   };
 
   const toggleOne = (studentId: string, checked: boolean) => {
-    setCheckedIds((current) => {
-      const next = new Set(current);
-      if (checked) next.add(studentId);
-      else next.delete(studentId);
-      return next;
-    });
+    const next = new Set(checkedIds);
+    if (checked) next.add(studentId);
+    else next.delete(studentId);
+    onCheckedChange(next);
   };
+
+  // Step through the visible students without closing the grading dialog.
+  const selectedIndex = selected ? students.findIndex((student) => student.studentId === selected.studentId) : -1;
+  const previousStudent = selectedIndex > 0 ? students[selectedIndex - 1] : null;
+  const nextStudent = selectedIndex >= 0 && selectedIndex < students.length - 1 ? students[selectedIndex + 1] : null;
 
   if (!students.length) {
     return (
@@ -195,6 +201,17 @@ export function DemoStudentList({
             <DialogPrimitive.Title className="sr-only">
               Chấm điểm Demo {selected?.displayName || ''}
             </DialogPrimitive.Title>
+            <div className="demo-dialog-nav" role="group" aria-label="Chuyển học sinh">
+              <button type="button" className="btn btn-sm btn-outline" disabled={!previousStudent} onClick={() => previousStudent && onSelect(previousStudent.studentId)}>
+                <ChevronLeft size={15} />
+                Học sinh trước
+              </button>
+              <span className="demo-dialog-nav-count">{selectedIndex + 1}/{students.length}</span>
+              <button type="button" className="btn btn-sm btn-outline" disabled={!nextStudent} onClick={() => nextStudent && onSelect(nextStudent.studentId)}>
+                Học sinh sau
+                <ChevronRight size={15} />
+              </button>
+            </div>
             <DialogPrimitive.Close className="dialog-close" aria-label="Đóng">
               <X size={18} />
             </DialogPrimitive.Close>

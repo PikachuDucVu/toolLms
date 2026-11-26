@@ -56,6 +56,20 @@ describe('CheckpointStatus', () => {
 });
 
 describe('Checkpoint student and batch UI', () => {
+  it('labels a student who only has a comment as not yet scored, not as graded', () => {
+    const area = { grade: null, commentAreaId: null, checkpoint: null, courseProcessDemoId: null, courseProcessFinalEvaluationTitle: null, courseProcessFinalEvaluationId: null, demoQuestions: [] };
+    const commentOnly = { ...slot.studentAttendance[0], commentByAreas: [{ ...area, type: 'CONTENT', content: 'Đã nhận xét trên LMS' }] };
+    const scored = { ...slot.studentAttendance[1], commentByAreas: [{ ...area, type: 'CHECKPOINT', content: '', checkpoint: { practiceScore: 4, checkpointScore: 4.5, checkpointQuestions: [] } }] };
+    render(<ToastProvider><ConfirmProvider>
+      <CheckpointStudentCard scope={scope} student={commentOnly} generationOptions={{ modelId: 'gpt-fixture' }} />
+      <CheckpointStudentCard scope={scope} student={scored} generationOptions={{ modelId: 'gpt-fixture' }} />
+    </ConfirmProvider></ToastProvider>);
+    const anHead = screen.getByRole('button', { name: /Nguyễn An/ });
+    expect(anHead).toHaveTextContent('Có nhận xét · chưa có điểm');
+    expect(anHead).not.toHaveTextContent('Đã chấm');
+    expect(screen.getByRole('button', { name: /Trần Bình/ })).toHaveTextContent('Đã chấm');
+  });
+
   it('supports accessible expansion, score hints/one-sided input, single AI, score-only and full submit with no confirmation', async () => {
     const user = userEvent.setup(); const bodies: Array<Record<string, unknown>> = [];
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

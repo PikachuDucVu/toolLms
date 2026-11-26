@@ -1,10 +1,10 @@
 import type { CheckpointNumber, ClassDetail, Slot, StudentAttendance } from '@tool-lms/contracts';
-import { FileText, UserRound } from 'lucide-react';
+import { ClipboardCheck, UserRound } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 import { readAiApiKey, readStudentNotes } from '../../lib/persistence';
 import type { AttendanceFilter, ProgressFilter } from '../classes/public/domain';
-import { isPresent, stripHtml } from '../classes/public/domain';
+import { hasAreaType, isPresent, stripHtml } from '../classes/public/domain';
 import { StudentFilters } from '../classes/public/components';
 import { useCommentStore } from '../comments/public/store';
 import { configQuery } from '../configuration/public/api';
@@ -30,6 +30,8 @@ export function CheckpointWorkspace({ detail, slot, sessionNumber, students, sea
   const generationOptions = model.options;
   const scope: CheckpointScope = useMemo(() => ({ detail, slot, checkpoint }), [checkpoint, detail, slot]);
   const present = slot.studentAttendance.filter(isPresent);
+  const results = useCheckpointStore((state) => state.results);
+  const scoredCount = present.filter((student) => hasAreaType(student, 'CHECKPOINT') || Boolean(results[student.studentId])).length;
   const names = Object.fromEntries(slot.studentAttendance.map((student) => [student.studentId, student.displayName]));
 
   useEffect(() => {
@@ -54,31 +56,23 @@ export function CheckpointWorkspace({ detail, slot, sessionNumber, students, sea
         onChange={(event) => useCheckpointStore.getState().setSummaryDraft(event.target.value)}
       />
 
-      {/* Legacy parity Checkpoint Banner */}
-      <div className="checkpoint-banner">
-        <div className="checkpoint-banner-icon" aria-hidden="true">
-          <svg className="icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-          </svg>
-        </div>
-        <div>
-          <h3>Buổi {sessionNumber} — Checkpoint {checkpoint}</h3>
-          <p>
-            AI chấm bài từ đề + bài nộp trên kiemtra (trắc nghiệm, tự luận và bài Scratch). Hoặc nhập điểm thủ công; để trống sẽ random 4–5. AI nhận xét dựa trên ghi chú.
-          </p>
-        </div>
-      </div>
-
       <section className="card checkpoint-workspace">
-        <div className="student-card-header">
-          <div>
-            <h2>Học sinh buổi {sessionNumber}</h2>
-            <span>
-              {students.length === slot.studentAttendance.length
-                ? `${slot.studentAttendance.length} học sinh`
-                : `${students.length}/${slot.studentAttendance.length} học sinh`}
-            </span>
+        <div className="checkpoint-banner" role="note">
+          <div className="checkpoint-banner-icon" aria-hidden="true">
+            <ClipboardCheck size={20} />
           </div>
+          <div className="checkpoint-banner-text">
+            <h3>Buổi {sessionNumber} — Checkpoint {checkpoint}</h3>
+            <p>
+              AI chấm bài nộp trên kiemtra hoặc nhập điểm tay (để trống = random 4–5). AI nhận xét dựa trên điểm và ghi chú.
+            </p>
+          </div>
+          <div className="checkpoint-banner-stats" aria-label="Tiến độ Checkpoint">
+            <span><b>{scoredCount}</b>/{present.length} đã gửi điểm</span>
+          </div>
+        </div>
+
+        <div className="checkpoint-toolbar">
           <StudentFilters
             search={search}
             attendance={attendance}
