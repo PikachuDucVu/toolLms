@@ -5,7 +5,7 @@ import { useSessionCommentMode } from '../comments/public/sessionMode';
 import { LEARNING_LEVEL_ORDER, levelCatalog } from '../assessments/public/selectors';
 import { useReviewStore, type ReviewAlertFilter, type ReviewLevelFilter, type ReviewSort } from './reviewStore';
 
-export function ReviewFilters({ sessionNumber }: { sessionNumber: number }) {
+export function ReviewFilters({ sessionNumber, showLevel = true }: { sessionNumber: number; showLevel?: boolean }) {
   const commentMode = useSessionCommentMode();
   const searchInput = useReviewStore((state) => state.searchInput);
   const search = useReviewStore((state) => state.search);
@@ -60,28 +60,30 @@ export function ReviewFilters({ sessionNumber }: { sessionNumber: number }) {
         </div>
       </label>
 
-      <label className="regular-review-filter-item">
-        <span className="regular-review-filter-label">
-          <BarChart2 size={13} />
-          <span>Mức</span>
-        </span>
-        <div className="regular-review-select-wrap">
-          <select
-            className="form-select regular-review-filter-select"
-            aria-label="Lọc mức review"
-            value={levelFilter}
-            onChange={(event) => useReviewStore.getState().setLevelFilter(event.target.value as ReviewLevelFilter)}
-          >
-            <option value="all">Tất cả</option>
-            {LEARNING_LEVEL_ORDER.map((level: LearningLevel) => (
-              <option key={level} value={level}>
-                {levelCatalog(sessionNumber, commentMode)[level].code}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={13} className="regular-review-select-chevron" />
-        </div>
-      </label>
+      {showLevel && (
+        <label className="regular-review-filter-item">
+          <span className="regular-review-filter-label">
+            <BarChart2 size={13} />
+            <span>Mức</span>
+          </span>
+          <div className="regular-review-select-wrap">
+            <select
+              className="form-select regular-review-filter-select"
+              aria-label="Lọc mức review"
+              value={levelFilter}
+              onChange={(event) => useReviewStore.getState().setLevelFilter(event.target.value as ReviewLevelFilter)}
+            >
+              <option value="all">Tất cả</option>
+              {LEARNING_LEVEL_ORDER.map((level: LearningLevel) => (
+                <option key={level} value={level}>
+                  {levelCatalog(sessionNumber, commentMode)[level].code}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={13} className="regular-review-select-chevron" />
+          </div>
+        </label>
+      )}
 
       <label className="regular-review-filter-item">
         <span className="regular-review-filter-label">
@@ -97,7 +99,7 @@ export function ReviewFilters({ sessionNumber }: { sessionNumber: number }) {
           >
             <option value="name">Tên học sinh</option>
             <option value="warning">Cần chú ý trước</option>
-            <option value="level">Mức L1 → L4</option>
+            {showLevel && <option value="level">Mức L1 → L4</option>}
             <option value="attendance">Có mặt trước</option>
           </select>
           <ChevronDown size={13} className="regular-review-select-chevron" />

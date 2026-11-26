@@ -2,6 +2,7 @@ import { LegacyGradingQueueMessageSchema } from "@tool-lms/contracts";
 import type { Env, GradingQueueMessage } from "../types";
 import { getConfig } from "../services/configService";
 import { aiGradeHomework, firstGraphqlError, markHomework, submissionAttachments } from "../services/homeworkService";
+import { recordHomeworkScores } from "../services/homeworkScoreLogService";
 import { LmsAuthenticationError, LmsClient } from "../services/lmsClient";
 import { destroySessionById, getSessionById, saveSession } from "../services/sessionService";
 import { structuredLog } from "../observability/structuredLogger";
@@ -57,7 +58,7 @@ async function refreshJobCounters(env: Env, jobId: string, fromStatus = "running
 }
 
 export async function processGradingMessage(env: Env, message: GradingQueueMessage): Promise<void> {
-  const job = await env.DB.prepare("SELECT status, cancelled_at FROM grading_jobs WHERE id = ?").bind(message.jobId).first<{ status: string; cancelled_at?: string }>();
+  const job = await env.DB.prepare("SELECT status, cancelled_at, kind, owner_email FROM grading_jobs WHERE id = ?").bind(message.jobId).first<{ status: string; cancelled_at?: string; kind?: string; owner_email?: string | null }>();
   if (!job || job.cancelled_at || job.status === "cancelled") {
     await setItemStatus(env, message.jobId, message.itemId, "queued", "cancelled", { error: "Job cancelled" });
     await refreshJobCounters(env, message.jobId, job?.status || "unknown");
@@ -94,6 +95,13 @@ export async function processGradingMessage(env: Env, message: GradingQueueMessa
     return;
   }
 
+  // A per-row AI click only proposes a score; the teacher reviews it before sending.
+  if (job.kind === "single") {
+    await setItemStatus(env, message.jobId, message.itemId, "processing", "completed", { score: grade.score, note: grade.note });
+    await refreshJobCounters(env, message.jobId);
+    return;
+  }
+
   let mark: Awaited<ReturnType<typeof markHomework>>;
   try {
     mark = await markHomework(new LmsClient(env), session, {
@@ -122,6 +130,27 @@ export async function processGradingMessage(env: Env, message: GradingQueueMessa
 
   await setItemStatus(env, message.jobId, message.itemId, "processing", "completed", { score: grade.score, note: grade.note, result: marked });
   await refreshJobCounters(env, message.jobId);
+  if (job.owner_email) {
+    await recordHomeworkScores(env, job.owner_email, [{
+      classId: message.classId,
+      submissionId: message.submission.id,
+      studentUid: message.submission.studentUid || "",
+      studentName: message.studentName,
+      lessonId: message.submission.lessonId || "",
+      lessonName: message.lessonName,
+      score: grade.score,
+      previousScore: previousScore(message.submission),
+      note: grade.note,
+      source: "ai_job",
+      jobId: message.jobId,
+    }]);
+  }
+}
+
+function previousScore(submission: GradingQueueMessage["submission"]): number | null {
+  if (submission.status !== "MARKED" || submission.score == null || submission.score === "") return null;
+  const score = Number(submission.score);
+  return Number.isFinite(score) ? score : null;
 }
 
 export function decodeGradingQueueMessage(value: unknown): GradingQueueMessage {

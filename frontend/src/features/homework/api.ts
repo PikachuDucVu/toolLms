@@ -3,6 +3,7 @@ import {
   GradingJobCancelResponseSchema,
   GradingJobCreateRequestSchema,
   GradingJobCreateResponseSchema,
+  GradingJobListResponseSchema,
   GradingJobResponseSchema,
   GradingJobRetryRequestSchema,
   GradingJobRetryResponseSchema,
@@ -14,6 +15,7 @@ import {
   HomeworkLoadResponseSchema,
   HomeworkMarkRequestSchema,
   HomeworkMarkResponseSchema,
+  HomeworkScoreLogResponseSchema,
   type GradingJobCreateRequest,
   type GradingJobRetryRequest,
   type HomeworkAiGradeRequest,
@@ -49,6 +51,14 @@ export function aiGradeHomework(request: HomeworkAiGradeRequest, signal?: AbortS
 
 export function createGradingJob(request: GradingJobCreateRequest, signal?: AbortSignal) {
   return apiRequest('/api/v2/homework/jobs', { method: 'POST', body: GradingJobCreateRequestSchema.parse(request), schema: GradingJobCreateResponseSchema, signal });
+}
+
+export function listGradingJobs(classId: string, signal?: AbortSignal) {
+  return apiRequest(`/api/v2/homework/jobs?${new URLSearchParams({ classId })}`, { schema: GradingJobListResponseSchema, signal });
+}
+
+export function getScoreLog(classId: string, signal?: AbortSignal) {
+  return apiRequest(`/api/v2/homework/score-log?${new URLSearchParams({ classId })}`, { schema: HomeworkScoreLogResponseSchema, signal });
 }
 
 export function getGradingJob(jobId: string, signal?: AbortSignal) {

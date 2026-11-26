@@ -187,7 +187,7 @@ function useDebouncedAnalysis<TDrafts, TErrors>(drafts: TDrafts, errors: TErrors
   return value;
 }
 
-function trapFocus(container: HTMLElement, event: KeyboardEvent) {
+export function trapFocus(container: HTMLElement, event: KeyboardEvent) {
   const focusable = Array.from(container.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary:not([aria-disabled="true"]), [href], [tabindex]:not([tabindex="-1"])')).filter((element) => !element.hidden && element.getAttribute('aria-hidden') !== 'true');
   if (!focusable.length) return;
   const first = focusable[0]; const last = focusable[focusable.length - 1];

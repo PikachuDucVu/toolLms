@@ -1,17 +1,23 @@
 /* ============================================================
    Homework ("Chấm BTVN") page
    ------------------------------------------------------------
-   Filters card, optional AI job progress, then one submissions card:
-   header (title + stats) → table → batch action bar.
-   On desktop the page fits the viewport like the comments workspace:
-   only the table scrolls (sticky header) and the action bar stays
-   visible. Loaded after app.css so it wins over legacy rules.
+   Main column: filters card, then one submissions card
+   (header + stats → table → batch action bar).
+   Right sidebar: AI queue (with the tracked job's controls) and the
+   score history table.
+   On wide desktops the page fits the viewport like the comments
+   workspace: only the table and the sidebar panels scroll and the
+   action bar stays visible. Loaded after app.css so it wins over
+   legacy rules.
    ============================================================ */
 
-.homework-page {
+.homework-page,
+.homework-main,
+.homework-sidebar {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 /* ---------- Filters ---------- */
@@ -54,12 +60,11 @@
   white-space: nowrap;
 }
 
-/* ---------- AI job progress ---------- */
+/* ---------- AI job progress (tracked job, inside the queue panel) ---------- */
 .job-progress {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px 18px;
 }
 
 .job-progress-head {
@@ -80,7 +85,7 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-color, var(--gray-800));
 }
@@ -425,6 +430,353 @@
   white-space: nowrap;
 }
 
+/* ---------- Sidebar: AI queue + score history ---------- */
+.homework-side-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.homework-side-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 52px;
+  padding: 10px 14px 10px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.homework-side-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-color, var(--gray-800));
+}
+
+.homework-side-header h2 svg {
+  color: var(--primary);
+}
+
+.homework-side-badge {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--gray-100);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.homework-side-badge.is-live {
+  background: var(--primary-bg);
+  color: var(--primary);
+}
+
+.homework-side-refresh {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.homework-side-refresh:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.homework-side-refresh:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.homework-side-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.homework-side-empty {
+  margin: 0;
+  padding: 18px 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.homework-side-empty.is-error {
+  color: var(--danger);
+}
+
+.homework-side-skeleton {
+  height: 64px;
+  border-radius: 8px;
+}
+
+.homework-history-card .homework-side-skeleton {
+  margin: 12px 14px;
+}
+
+/* Queue groups */
+.queue-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.queue-batch {
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface-card);
+}
+
+.queue-batch.is-active {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px var(--primary-bg);
+}
+
+details.queue-batch {
+  gap: 0;
+}
+
+details.queue-batch[open] > summary {
+  margin-bottom: 8px;
+}
+
+.queue-batch > summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.queue-batch > summary::-webkit-details-marker {
+  display: none;
+}
+
+.queue-batch-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.queue-batch-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.queue-batch-title strong {
+  font-size: 13px;
+  color: var(--text-color, var(--gray-800));
+}
+
+.queue-batch-title span,
+.queue-group-title {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.queue-group-title {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.queue-batch .progress-track > span {
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+}
+
+.queue-items {
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  overscroll-behavior: contain;
+}
+
+.queue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 2px;
+  border-top: 1px solid var(--border-color);
+  font-size: 12.5px;
+}
+
+.queue-item:first-child {
+  border-top: 0;
+}
+
+.queue-item-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.queue-item-main strong {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-item-main span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--gray-100);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.queue-chip.is-processing,
+.queue-chip.source-ai_job { background: var(--primary-bg); color: var(--primary); }
+.queue-chip.is-completed,
+.queue-chip.source-manual { background: var(--success-light); color: var(--success-dark); }
+.queue-chip.is-failed { background: var(--danger-light); color: var(--danger-dark); }
+.queue-chip.source-batch { background: var(--warning-light); color: var(--warning-dark); }
+
+.queue-spinner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .queue-spinner { animation: none; }
+}
+
+/* Score history table */
+.homework-history-scroll {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.score-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.score-history-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--gray-50);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.score-history-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.score-history-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.score-history-table .is-time,
+.score-history-table .is-score,
+.score-history-table .is-source {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.score-history-table td.is-time {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.score-history-date {
+  display: block;
+  font-size: 10.5px;
+  opacity: 0.8;
+}
+
+.score-history-table .is-score {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.score-history-table .is-score strong {
+  font-size: 13.5px;
+}
+
+.score-history-prev {
+  margin-right: 2px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.score-history-student {
+  display: block;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.score-history-lesson {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+
+/* Below the two-column breakpoint the sidebar sits under the table. */
+.homework-history-card .homework-history-scroll {
+  max-height: 420px;
+}
+
 /* ---------- Desktop: fit to viewport ---------- */
 @media (min-width: 1025px) {
   .app-container.app-container--homework {
@@ -449,11 +801,17 @@
     overscroll-behavior: contain;
   }
 
-  .app-container--homework .homework-page > * {
+  /* The table fills the window; the stacked sidebar is reached by scrolling. */
+  .app-container--homework .homework-main {
+    flex: 1 0 auto;
+    min-height: 100%;
+  }
+
+  .app-container--homework .homework-main > * {
     flex: none;
   }
 
-  .app-container--homework .homework-page > .homework-table-card {
+  .app-container--homework .homework-main > .homework-table-card {
     flex: 1 0 auto;
     overflow: clip;
   }
@@ -474,6 +832,63 @@
     bottom: 0;
     z-index: 3;
     padding-right: 76px;
+  }
+}
+
+/* ---------- Wide desktop: table + right sidebar ---------- */
+@media (min-width: 1280px) {
+  .app-container--homework > .homework-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(300px, 22vw, 360px);
+    grid-template-rows: minmax(100%, auto);
+    align-items: stretch;
+  }
+
+  .app-container--homework .homework-main {
+    min-height: 0;
+  }
+
+  .app-container--homework .homework-main > .homework-table-card {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .app-container--homework .homework-table-card > .table-container {
+    flex: 1 1 0;
+    min-height: 200px;
+  }
+
+  .app-container--homework .homework-table {
+    min-width: 1040px;
+  }
+
+  /* The sidebar's panels scroll on their own; the page itself stays put. */
+  .app-container--homework .homework-sidebar {
+    min-height: 0;
+  }
+
+  .app-container--homework .homework-queue-card {
+    flex: 0 1 auto;
+    max-height: 55%;
+  }
+
+  .app-container--homework .homework-history-card {
+    flex: 1 1 0;
+    min-height: 200px;
+  }
+
+  .app-container--homework .homework-history-card .homework-history-scroll {
+    flex: 1 1 auto;
+    max-height: none;
+  }
+
+  /* With the sidebar beside it, the action bar only needs room for the FAB on the sidebar. */
+  .app-container--homework .homework-action-bar {
+    padding-right: 18px;
+  }
+
+  .app-container--homework .homework-history-card {
+    padding-bottom: 60px;
   }
 }
 

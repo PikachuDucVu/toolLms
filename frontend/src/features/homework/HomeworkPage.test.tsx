@@ -34,6 +34,8 @@ let submissions = [
 ];
 let captured: Array<{ path: string; body: any }> = [];
 let gradingJobPolls = 0;
+let serverJobs: Array<{ job: Record<string, unknown>; items: Array<Record<string, unknown>> }> = [];
+let scoreLog: Array<Record<string, unknown>> = [];
 let delayedResponses = new Map<string, { promise: Promise<Response>; resolve: (response: Response) => void; signal?: AbortSignal }>();
 
 function delayResponse(path: string) {
@@ -72,7 +74,23 @@ function installFetch() {
       return json(envelope({ total: results.length, successCount: 1, failureCount: Math.max(0, results.length - 1), results }));
     }
     if (path === '/api/v2/homework/ai-grade') return json(envelope({ score: 77, note: 'AI đề xuất sửa vòng lặp.' }));
-    if (path === '/api/v2/homework/jobs' && init?.method === 'POST') return json(envelope({ job: gradingJob('queued', 0, 0) }), 201);
+    if (path === '/api/v2/homework/jobs' && init?.method === 'POST') {
+      if (body.kind === 'single') {
+        const submission = body.submissions[0];
+        const job = { ...gradingJob('queued', 0, 0), id: `single-${serverJobs.length + 1}`, kind: 'single', totalItems: 1 };
+        serverJobs.unshift({ job, items: [{ id: `item-${serverJobs.length + 1}`, submissionId: submission.id, studentUid: submission.studentUid, lessonId: submission.lessonId, status: 'queued', score: null, note: null, error: null, result: null, createdAt: 'now', updatedAt: 'now' }] });
+        return json(envelope({ job }), 201);
+      }
+      return json(envelope({ job: gradingJob('queued', 0, 0) }), 201);
+    }
+    if (path === '/api/v2/homework/jobs?classId=class-1') {
+      // The queue consumer finishes each suggestion before the next poll.
+      const jobs = serverJobs;
+      serverJobs = serverJobs.map((entry) => entry.job.kind !== 'single' ? entry : ({ job: { ...entry.job, status: 'completed', completedItems: 1 }, items: entry.items.map((item) => ({ ...item, status: 'completed', score: 77, note: 'AI đề xuất sửa vòng lặp.', updatedAt: 'later' })) }));
+      return json(envelope({ jobs }));
+    }
+    if (path.startsWith('/api/v2/homework/jobs?classId=')) return json(envelope({ jobs: [] }));
+    if (path.startsWith('/api/v2/homework/score-log?classId=')) return json(envelope({ entries: scoreLog }));
     if (path === '/api/v2/homework/jobs/job-1') {
       gradingJobPolls += 1;
       submissions = submissions.map((item) => item.id === 'submission-1'
@@ -80,6 +98,8 @@ function installFetch() {
         : item);
       return json(envelope({ job: gradingJob('completed', 1, 1), items: [] }));
     }
+    const listed = serverJobs.find((entry) => path === `/api/v2/homework/jobs/${entry.job.id}`);
+    if (listed) return json(envelope(listed));
     if (path.startsWith('/api/v2/homework/download-url')) return json(envelope({ url: 'https://download.test/file.zip' }));
     throw new Error(`Unhandled request: ${path}`);
   }));
@@ -97,6 +117,8 @@ beforeEach(() => {
   useHomeworkStore.getState().reset();
   captured = [];
   gradingJobPolls = 0;
+  serverJobs = [];
+  scoreLog = [];
   delayedResponses = new Map();
   submissions = [makeSubmission('submission-1', 'student-1', 'lesson-1', 'SUBMITTED'), makeSubmission('submission-2', 'student-2', 'lesson-2', 'SUBMITTED'), makeSubmission('submission-3', 'student-3', 'lesson-1', 'MARKED'), makeSubmission('quiz-1', 'student-3', 'lesson-1', 'SUBMITTED', 'QUIZ')];
   installFetch();
@@ -230,7 +252,8 @@ describe('React homework page parity', () => {
     const user = userEvent.setup(); renderPage(); await chooseClass(user);
     const row = screen.getByRole('row', { name: /An/ });
     await user.click(within(row).getByRole('button', { name: 'AI chấm bài của An' }));
-    expect(await within(row).findByLabelText('Điểm của An')).toHaveValue(77);
+    expect(captured.find((item) => item.path === '/api/v2/homework/jobs')?.body).toMatchObject({ classId: 'class-1', kind: 'single', submissions: [{ id: 'submission-1' }] });
+    await waitFor(() => expect(within(row).getByLabelText('Điểm của An')).toHaveValue(77));
     expect(within(row).getByLabelText('Nhận xét cho An')).toHaveValue('AI đề xuất sửa vòng lặp.');
     expect(screen.getByLabelText('Trạng thái')).toHaveValue('SUBMITTED');
     expect(captured.some((item) => item.path === '/api/v2/homework/mark')).toBe(false);
@@ -254,17 +277,17 @@ describe('React homework page parity', () => {
     expect(useHomeworkStore.getState().drafts['submission-1']).toBeUndefined();
   });
 
-  it('aborts and ignores a delayed individual AI result after switching classes', async () => {
-    const delayed = delayResponse('/api/v2/homework/ai-grade');
+  it('aborts and ignores a delayed individual AI enqueue after switching classes', async () => {
+    const delayed = delayResponse('/api/v2/homework/jobs');
     const user = userEvent.setup(); renderPage(); await chooseClass(user);
     await user.click(within(screen.getByRole('row', { name: /An/ })).getByRole('button', { name: 'AI chấm bài của An' }));
-    await waitFor(() => expect(captured.some((item) => item.path === '/api/v2/homework/ai-grade')).toBe(true));
+    await waitFor(() => expect(captured.some((item) => item.path === '/api/v2/homework/jobs')).toBe(true));
     await user.selectOptions(screen.getByLabelText('Lớp'), 'class-2');
     expect(delayed.signal?.aborted).toBe(true);
-    delayed.resolve(json(envelope({ score: 12, note: 'Kết quả cũ' })));
+    delayed.resolve(json(envelope({ job: { ...gradingJob('queued', 0, 0), kind: 'single' } }), 201));
     await screen.findByText('Không tìm thấy bài nộp');
     expect(useHomeworkStore.getState().drafts['submission-1']).toBeUndefined();
-    expect(screen.queryByText(/AI đề xuất 12 điểm/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/vào hàng đợi AI/)).not.toBeInTheDocument();
   });
 
   it('aborts and ignores delayed job creation after switching classes', async () => {
@@ -279,5 +302,43 @@ describe('React homework page parity', () => {
     await screen.findByText('Không tìm thấy bài nộp');
     expect(useHomeworkStore.getState().activeJobId).toBeNull();
     expect(screen.queryByText('AI đang chấm bài')).not.toBeInTheDocument();
+  });
+
+  it('restores the running AI-all queue, its controls, and the score history after a reload', async () => {
+    localStorage.setItem('lms_homework_class:teacher@example.com', 'class-1');
+    const item = (id: string, submissionId: string, studentUid: string, lessonId: string, status: string) => ({ id, submissionId, studentUid, lessonId, status, score: null, note: null, error: null, result: null, createdAt: 'now', updatedAt: 'now' });
+    serverJobs = [{
+      job: { ...gradingJob('queued', 0, 0), id: 'job-run', status: 'running', kind: 'all' },
+      items: [item('item-a', 'submission-1', 'student-1', 'lesson-1', 'processing'), item('item-b', 'submission-2', 'student-2', 'lesson-2', 'queued')],
+    }];
+    scoreLog = [{ id: 'log-1', classId: 'class-1', submissionId: 'submission-3', studentUid: 'student-3', studentName: 'Chi', lessonId: 'lesson-1', lessonName: 'Bài 1', score: 90, previousScore: 70, note: 'Tốt', source: 'manual', jobId: null, createdAt: new Date().toISOString() }];
+    renderPage();
+    await screen.findByRole('cell', { name: 'An' });
+    expect(screen.getByLabelText('Lớp')).toHaveValue('class-1');
+    const queue = screen.getByRole('region', { name: 'Hàng đợi AI chấm' });
+    await waitFor(() => expect(useHomeworkStore.getState().activeJobId).toBe('job-run'));
+    expect(within(queue).getByText('2 đang chờ')).toBeInTheDocument();
+    expect(within(queue).getByText('Đang chấm')).toBeInTheDocument();
+    expect(within(queue).getByText('Chờ')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'AI Chấm tất cả' })).toBeDisabled();
+    expect(within(screen.getByRole('row', { name: /An/ })).getByRole('button', { name: 'AI chấm bài của An' })).toBeDisabled();
+    const history = screen.getByRole('region', { name: 'Lịch sử điểm' });
+    expect(within(history).getByText('Chi')).toBeInTheDocument();
+    expect(within(history).getByText('70→')).toBeInTheDocument();
+    expect(within(history).getByText('Tay')).toBeInTheDocument();
+  });
+
+  it('restores a finished per-row AI suggestion into the draft after a reload without sending it', async () => {
+    localStorage.setItem('lms_homework_class:teacher@example.com', 'class-1');
+    serverJobs = [{
+      job: { ...gradingJob('completed', 1, 0), id: 'single-old', kind: 'single', totalItems: 1 },
+      items: [{ id: 'item-old', submissionId: 'submission-2', studentUid: 'student-2', lessonId: 'lesson-2', status: 'completed', score: 64, note: 'Thiếu phần kiểm tra', error: null, result: null, createdAt: 'now', updatedAt: 'now' }],
+    }];
+    renderPage();
+    const row = await screen.findByRole('row', { name: /Bình/ });
+    await waitFor(() => expect(within(row).getByLabelText('Điểm của Bình')).toHaveValue(64));
+    expect(within(row).getByLabelText('Nhận xét cho Bình')).toHaveValue('Thiếu phần kiểm tra');
+    expect(await screen.findByText('Đã khôi phục 1 đề xuất AI chưa gửi.')).toBeInTheDocument();
+    expect(captured.some((call) => call.path === '/api/v2/homework/mark')).toBe(false);
   });
 });

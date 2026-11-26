@@ -1,6 +1,6 @@
 import type { GradingJobResponse, HomeworkLoadResponse, HomeworkSubmission } from '@tool-lms/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../app/providers';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -8,17 +8,20 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import { useToast } from '../../components/ui/Toast';
 import { ApiError } from '../../lib/apiError';
 import { captureHomeworkContext, createHomeworkOperationController, isCurrentHomeworkContext, releaseHomeworkOperationController, type HomeworkContextSnapshot } from './homeworkContext';
+import { readHomeworkClassId, writeHomeworkClassId } from '../../lib/persistence';
 import { runtimeRoutes } from '../../lib/runtimeRoutes';
-import { aiGradeHomework, batchMarkHomework, cancelGradingJob, createGradingJob, getDownloadUrl, markHomework, retryGradingJob } from './api';
+import { batchMarkHomework, cancelGradingJob, createGradingJob, getDownloadUrl, markHomework, retryGradingJob } from './api';
 import { BatchActions } from './BatchActions';
 import { GradingJobProgress } from './GradingJobProgress';
 import { effectiveApiKey, HomeworkConfig, initialHomeworkAiOptions, type HomeworkAiOptions } from './HomeworkConfig';
 import { HomeworkFilters } from './HomeworkFilters';
-import { gradingJobQuery, homeworkClassesQuery, homeworkQuery } from './queries';
+import { HomeworkSidebar } from './HomeworkSidebar';
+import { gradingJobQuery, homeworkClassesQuery, homeworkJobsQuery, homeworkQuery, homeworkScoreLogQuery } from './queries';
 import { filterHomeworkSubmissions, homeworkStats, lessonById, pendingSubmissions, selectedVisibleSubmissions, studentById, uploadSubmissions } from './selectors';
 import { SubmissionTable } from './SubmissionTable';
 import { useHomeworkStore, type FrozenGradingScope } from './store';
 import { useGradingJob } from './useGradingJob';
+import { isActiveJob, QUEUE_POLL_INTERVAL_MS, useHomeworkQueue } from './useHomeworkQueue';
 
 export function HomeworkPage() {
   const auth = useAuth();
@@ -28,6 +31,7 @@ export function HomeworkPage() {
   const queryClient = useQueryClient();
   const [aiOptions, setAiOptions] = useState<HomeworkAiOptions>(initialHomeworkAiOptions);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [queueingIds, setQueueingIds] = useState<ReadonlySet<string>>(() => new Set());
   const [jobActionError, setJobActionError] = useState<unknown>(null);
   const classId = useHomeworkStore((state) => state.classId);
   const lessonId = useHomeworkStore((state) => state.lessonId);
@@ -42,13 +46,41 @@ export function HomeworkPage() {
     if (!auth.loading && !auth.session && auth.error instanceof ApiError && auth.error.code === 'AUTH_REQUIRED') navigate(runtimeRoutes().loginForHomework, { replace: true });
   }, [auth.error, auth.loading, auth.session, navigate]);
 
+  // Reopen the class this teacher last graded, so a reload lands on the same queue and history.
+  const email = auth.session?.email || '';
+  const restoredFor = useRef('');
+  useEffect(() => {
+    if (!email || restoredFor.current === email) return;
+    restoredFor.current = email;
+    const saved = readHomeworkClassId(email);
+    if (saved && !useHomeworkStore.getState().classId) useHomeworkStore.getState().setClassId(saved);
+  }, [email]);
+  useEffect(() => {
+    if (email && restoredFor.current === email) writeHomeworkClassId(email, useHomeworkStore.getState().classId);
+  }, [classId, email]);
+
   const classes = useQuery({ ...homeworkClassesQuery(), enabled: Boolean(auth.session) });
   const homework = useQuery({ ...homeworkQuery(classId), enabled: Boolean(auth.session && classId) });
   const allSubmissions = useMemo(() => uploadSubmissions(homework.data?.data.submissions), [homework.data]);
   const filtered = useMemo(() => filterHomeworkSubmissions(allSubmissions, lessonId, status), [allSubmissions, lessonId, status]);
   const stats = useMemo(() => homeworkStats(allSubmissions), [allSubmissions]);
-  const students = homework.data?.data.students || [];
-  const lessons = homework.data?.data.lessons || [];
+  const students = useMemo(() => homework.data?.data.students || [], [homework.data]);
+  const lessons = useMemo(() => homework.data?.data.lessons || [], [homework.data]);
+  const homeworkReady = homework.data?.data.classId === classId;
+
+  useEffect(() => {
+    const list = classes.data?.data.classes;
+    if (list && classId && !list.some((item) => item.id === classId)) useHomeworkStore.getState().setClassId('');
+  }, [classId, classes.data]);
+
+  const queue = useHomeworkQueue({ enabled: Boolean(auth.session), classId, submissions: allSubmissions, students, homeworkReady });
+  const markJobRunning = queue.jobs.some((entry) => entry.job.kind !== 'single' && isActiveJob(entry));
+  const scoreLog = useQuery({ ...homeworkScoreLogQuery(classId), enabled: Boolean(auth.session && classId), refetchInterval: markJobRunning ? QUEUE_POLL_INTERVAL_MS : false });
+  const busyIds = useMemo(() => {
+    const ids = new Set([...queue.busyIds, ...queueingIds]);
+    if (busyId) ids.add(busyId);
+    return ids;
+  }, [busyId, queue.busyIds, queueingIds]);
 
   useEffect(() => {
     if (homework.data?.data.classId === classId) useHomeworkStore.getState().hydrateDrafts(uploadSubmissions(homework.data.data.submissions));
@@ -56,19 +88,36 @@ export function HomeworkPage() {
 
   useEffect(() => {
     setBusyId(null);
+    setQueueingIds(new Set());
     setJobActionError(null);
   }, [classId]);
+
+  // After a reload or a class switch, pick the running batch job back up so its controls return.
+  useEffect(() => {
+    if (activeJobId || !homeworkReady) return;
+    const running = queue.jobs.find((entry) => entry.job.kind !== 'single' && isActiveJob(entry));
+    if (!running) return;
+    const ids = new Set(running.items.map((item) => item.submissionId));
+    const scopeSubmissions = allSubmissions.filter((submission) => ids.has(submission.id));
+    if (!scopeSubmissions.length) return;
+    useHomeworkStore.getState().startJob(running.job.id, { classId, kind: running.job.kind, submissions: scopeSubmissions, students, lessons, modelId: aiOptions.aiModel, customModelId: aiOptions.customModelId, thinkingLevel: aiOptions.thinkingLevel });
+  }, [activeJobId, aiOptions, allSubmissions, classId, homeworkReady, lessons, queue.jobs, students]);
+
+  const refreshQueue = useCallback((jobClassId: string) => {
+    void queryClient.invalidateQueries({ queryKey: homeworkJobsQuery(jobClassId).queryKey, exact: true });
+    void queryClient.invalidateQueries({ queryKey: homeworkScoreLogQuery(jobClassId).queryKey, exact: true });
+  }, [queryClient]);
 
   const terminalJob = useCallback((jobClassId: string, jobStatus: 'completed' | 'cancelled') => {
     if (useHomeworkStore.getState().classId !== jobClassId) return;
     void queryClient.invalidateQueries({ queryKey: homeworkQuery(jobClassId).queryKey, exact: true });
+    refreshQueue(jobClassId);
     toast.show(jobStatus === 'cancelled' ? 'Đã ghi nhận yêu cầu hủy job AI.' : 'AI đã hoàn tất chấm bài.', jobStatus === 'cancelled' ? 'info' : 'success');
-  }, [queryClient, toast]);
+  }, [queryClient, refreshQueue, toast]);
   const jobQuery = useGradingJob(terminalJob);
 
   const markMutation = useMutation({ mutationFn: ({ requestClassId, submission, score, note, signal }: { requestClassId: string; submission: HomeworkSubmission; score: number; note: string; signal: AbortSignal }) => markHomework({ classId: requestClassId, id: submission.id, score, note }, signal), retry: false });
   const batchMutation = useMutation({ mutationFn: ({ requestClassId, submissions, signal }: { requestClassId: string; submissions: Array<{ id: string; score: number; note: string }>; signal: AbortSignal }) => batchMarkHomework({ classId: requestClassId, submissions }, signal), retry: false });
-  const aiMutation = useMutation({ mutationFn: ({ requestClassId, submission, studentName, lessonName, options, signal }: { requestClassId: string; submission: HomeworkSubmission; studentName: string; lessonName: string; options: HomeworkAiOptions; signal: AbortSignal }) => aiGradeHomework({ classId: requestClassId, submissionId: submission.id, lessonName, studentName, attachments: submission.content?.attachments || [], modelId: options.aiModel, customModelId: options.customModelId, thinkingLevel: options.thinkingLevel, ...apiKeyField(options.apiKey) }, signal), retry: false });
   const createJobMutation = useMutation({ mutationFn: ({ scope, apiKey, signal }: { scope: FrozenGradingScope; apiKey: string; signal: AbortSignal }) => createGradingJob({ ...scope, ...apiKeyField(apiKey) }, signal), retry: false });
   const cancelMutation = useMutation({ mutationFn: ({ jobId, signal }: { jobId: string; signal: AbortSignal }) => cancelGradingJob(jobId, signal), retry: false });
   const retryMutation = useMutation({ mutationFn: ({ jobId, scope, apiKey, signal }: { jobId: string; scope: FrozenGradingScope; apiKey: string; signal: AbortSignal }) => {
@@ -78,7 +127,7 @@ export function HomeworkPage() {
 
   const refresh = async () => {
     await classes.refetch();
-    if (classId) await homework.refetch();
+    if (classId) await Promise.all([homework.refetch(), queue.refetch(), scoreLog.refetch()]);
   };
 
   const markSingle = async (submission: HomeworkSubmission) => {
@@ -96,6 +145,7 @@ export function HomeworkPage() {
       const persisted = { id: submission.id, score: response.data.submission.score, note };
       updateHomeworkCache(queryClient, context.classId, (item) => item.id === submission.id ? { ...item, status: 'MARKED', score: persisted.score, note: persisted.note, markedAt: response.data.submission.markedAt, markedBy: response.data.submission.markedBy } : item);
       useHomeworkStore.getState().reconcilePersistedDrafts([persisted]);
+      refreshQueue(context.classId);
       toast.show(`Đã chấm ${score} điểm!`);
     } catch (error) {
       if (isCurrentHomeworkContext(context) && !controller.signal.aborted) toast.show(error instanceof Error ? `Lỗi: ${error.message}` : 'Lỗi chấm điểm', 'error');
@@ -143,6 +193,7 @@ export function HomeworkPage() {
         return result?.success && submitted ? { ...item, status: 'MARKED', score: result.submission.score, note: submitted.note, markedAt: result.submission.markedAt, markedBy: result.submission.markedBy } : item;
       });
       useHomeworkStore.getState().reconcilePersistedDrafts(persisted);
+      refreshQueue(context.classId);
       toast.show(`Đã chấm ${response.data.successCount}/${response.data.total} bài!`, response.data.failureCount ? 'info' : 'success');
       if (reload) await queryClient.refetchQueries({ queryKey: homeworkQuery(context.classId).queryKey, exact: true });
     } catch (error) {
@@ -150,32 +201,34 @@ export function HomeworkPage() {
     } finally { releaseHomeworkOperationController(controller); }
   };
 
+  // A per-row AI click is queued on the server as a one-item suggestion job, so it keeps
+  // running and shows up again after a reload; the result fills the draft for review.
   const aiGradeSingle = async (submission: HomeworkSubmission) => {
     const context = captureHomeworkContext(classId);
     if (!isCurrentHomeworkContext(context)) return;
-    const studentName = studentById(students, submission.studentUid)?.displayName || '';
-    const lessonName = lessonById(lessons, submission.lessonId)?.name || '';
-    const options = { ...aiOptions };
+    const scope: FrozenGradingScope = { classId: context.classId, kind: 'single', submissions: [submission], students, lessons, modelId: aiOptions.aiModel, customModelId: aiOptions.customModelId, thinkingLevel: aiOptions.thinkingLevel };
+    const studentName = studentById(students, submission.studentUid)?.displayName || 'học sinh';
     const controller = createHomeworkOperationController();
-    setBusyId(submission.id);
+    setQueueingIds((current) => new Set(current).add(submission.id));
     try {
-      const response = await aiMutation.mutateAsync({ requestClassId: context.classId, submission, studentName, lessonName, options, signal: controller.signal });
+      await createJobMutation.mutateAsync({ scope, apiKey: aiOptions.apiKey, signal: controller.signal });
       if (!isCurrentHomeworkContext(context)) return;
-      useHomeworkStore.getState().setScoreDraft(submission.id, String(response.data.score));
-      useHomeworkStore.getState().setNoteDraft(submission.id, response.data.note);
-      toast.show(`AI đề xuất ${response.data.score} điểm. Kiểm tra rồi bấm "Gửi".`, 'info');
+      toast.show(`Đã đưa bài của ${studentName} vào hàng đợi AI.`, 'info');
+      await queryClient.invalidateQueries({ queryKey: homeworkJobsQuery(context.classId).queryKey, exact: true });
     } catch (error) {
-      if (isCurrentHomeworkContext(context) && !controller.signal.aborted) toast.show(error instanceof Error ? error.message : 'AI lỗi', 'error');
+      if (!isCurrentHomeworkContext(context) || controller.signal.aborted) return;
+      if (enqueueFailureJobId(error)) void queryClient.invalidateQueries({ queryKey: homeworkJobsQuery(context.classId).queryKey, exact: true });
+      toast.show(error instanceof ApiError && error.code === 'API_KEY_REQUIRED' ? 'Cần API key để dùng model đã chọn.' : error instanceof Error ? error.message : 'AI lỗi', 'error');
     } finally {
       releaseHomeworkOperationController(controller);
-      if (isCurrentHomeworkContext(context)) setBusyId(null);
+      if (isCurrentHomeworkContext(context)) setQueueingIds((current) => { const next = new Set(current); next.delete(submission.id); return next; });
     }
   };
 
   const startBatchAi = async (scopeSubmissions: HomeworkSubmission[], selected: boolean) => {
     if (!scopeSubmissions.length) return toast.show(selected ? 'Chưa chọn bài nào' : 'Không có bài chờ chấm', 'error');
     const context = captureHomeworkContext(classId);
-    const scope: FrozenGradingScope = { classId: context.classId, submissions: scopeSubmissions, students, lessons, modelId: aiOptions.aiModel, customModelId: aiOptions.customModelId, thinkingLevel: aiOptions.thinkingLevel };
+    const scope: FrozenGradingScope = { classId: context.classId, kind: selected ? 'selected' : 'all', submissions: scopeSubmissions, students, lessons, modelId: aiOptions.aiModel, customModelId: aiOptions.customModelId, thinkingLevel: aiOptions.thinkingLevel };
     const apiKey = aiOptions.apiKey;
     const accepted = await confirm({ title: selected ? 'AI chấm bài đã chọn' : 'AI chấm tất cả bài chờ', description: `AI sẽ chấm ${scopeSubmissions.length} bài${selected ? ' đã chọn' : ' chờ'}. Tiếp tục?`, confirmLabel: selected ? 'AI chấm' : 'AI chấm tất cả' });
     if (!accepted || !isCurrentHomeworkContext(context)) return;
@@ -186,12 +239,14 @@ export function HomeworkPage() {
       const response = await createJobMutation.mutateAsync({ scope, apiKey, signal: controller.signal });
       if (!isCurrentHomeworkContext(context)) return;
       useHomeworkStore.getState().startJob(response.data.job.id, scope);
+      refreshQueue(context.classId);
       toast.show(`Đã tạo job AI cho ${scopeSubmissions.length} bài. Đang xử lý...`, 'info');
     } catch (error) {
       if (!isCurrentHomeworkContext(context) || controller.signal.aborted) return;
       const recoverableJobId = enqueueFailureJobId(error);
       if (recoverableJobId) {
         useHomeworkStore.getState().startJob(recoverableJobId, scope);
+        refreshQueue(context.classId);
         setJobActionError(error);
         toast.show('Job chỉ được đưa một phần vào hàng đợi. Có thể thử lại các bài lỗi.', 'error');
       } else {
@@ -229,6 +284,7 @@ export function HomeworkPage() {
       if (!isCurrentHomeworkContext(context) || useHomeworkStore.getState().activeJobId !== activeJobId) return;
       mergeJobCache(queryClient, activeJobId, response.data.job);
       toast.show(`Đã đưa lại ${response.data.queued} bài lỗi vào hàng đợi.`, 'info');
+      refreshQueue(context.classId);
       jobQuery.restart();
     } catch (error) {
       if (isCurrentHomeworkContext(context) && !controller.signal.aborted) {
@@ -252,11 +308,18 @@ export function HomeworkPage() {
 
   if (classes.error && auth.session) return <main className="homework-page"><HomeworkConfig value={aiOptions} onChange={setAiOptions} /><ErrorState error={classes.error} onRetry={() => void classes.refetch()} /></main>;
 
+  // Until the tracked job's own poll lands, show what the queue listing already knows about it.
+  const listedActiveJob = queue.jobs.find((entry) => entry.job.id === activeJobId);
+  const jobResponse = jobQuery.data ?? (listedActiveJob ? { success: true as const, data: listedActiveJob, requestId: 'queue-list' } : undefined);
+  const jobProgress = activeJobId ? <GradingJobProgress response={jobResponse} polling={jobQuery.isFetching} pollError={jobQuery.pollError} actionError={jobActionError} cancelling={cancelMutation.isPending} retrying={retryMutation.isPending} onCancel={() => void cancelJob()} onRetry={() => void retryFailed()} onResume={jobQuery.restart} onClose={() => { useHomeworkStore.getState().clearJob(); setJobActionError(null); }} /> : null;
+
   return <main className="homework-page" aria-label="Chấm bài tập">
     <HomeworkConfig value={aiOptions} onChange={setAiOptions} />
-    <HomeworkFilters classes={classes.data?.data.classes || []} lessons={lessons} refreshing={classes.isFetching || homework.isFetching} onRefresh={() => void refresh()} />
-    {activeJobId && <GradingJobProgress response={jobQuery.data} polling={jobQuery.isFetching} pollError={jobQuery.pollError} actionError={jobActionError} cancelling={cancelMutation.isPending} retrying={retryMutation.isPending} onCancel={() => void cancelJob()} onRetry={() => void retryFailed()} onResume={jobQuery.restart} onClose={() => { useHomeworkStore.getState().clearJob(); setJobActionError(null); }} />}
-    <SubmissionTable classSelected={Boolean(classId)} submissions={filtered} students={students} lessons={lessons} loading={Boolean(classId && homework.isPending)} error={homework.error} busyId={busyId} onRetry={() => void homework.refetch()} onMark={(submission) => void markSingle(submission)} onAiGrade={(submission) => void aiGradeSingle(submission)} onDownload={(submission, key) => void download(submission, key)} summary={stats.total > 0 && <div className="homework-stats" role="group" aria-label="Thống kê bài nộp"><Stat label="Tổng bài nộp" value={stats.total} /><Stat label="Chờ chấm" value={stats.pending} tone="warning" /><Stat label="Đã chấm" value={stats.marked} tone="success" /></div>} actions={<BatchActions disabled={!classId || !allSubmissions.length} pendingCount={stats.pending} jobActive={Boolean(activeJobId)} onMarkSelected={() => void markSelected()} onMarkAll={() => void markAll()} onAiSelected={() => void startBatchAi(selectedVisibleSubmissions(allSubmissions, selectedIds), true)} onAiAll={() => void startBatchAi(pendingSubmissions(allSubmissions), false)} />} />
+    <div className="homework-main">
+      <HomeworkFilters classes={classes.data?.data.classes || []} lessons={lessons} refreshing={classes.isFetching || homework.isFetching} onRefresh={() => void refresh()} />
+      <SubmissionTable classSelected={Boolean(classId)} submissions={filtered} students={students} lessons={lessons} loading={Boolean(classId && homework.isPending)} error={homework.error} busyIds={busyIds} onRetry={() => void homework.refetch()} onMark={(submission) => void markSingle(submission)} onAiGrade={(submission) => void aiGradeSingle(submission)} onDownload={(submission, key) => void download(submission, key)} summary={stats.total > 0 && <div className="homework-stats" role="group" aria-label="Thống kê bài nộp"><Stat label="Tổng bài nộp" value={stats.total} /><Stat label="Chờ chấm" value={stats.pending} tone="warning" /><Stat label="Đã chấm" value={stats.marked} tone="success" /></div>} actions={<BatchActions disabled={!classId || !allSubmissions.length} pendingCount={stats.pending} jobActive={Boolean(activeJobId) || markJobRunning} onMarkSelected={() => void markSelected()} onMarkAll={() => void markAll()} onAiSelected={() => void startBatchAi(selectedVisibleSubmissions(allSubmissions, selectedIds), true)} onAiAll={() => void startBatchAi(pendingSubmissions(allSubmissions), false)} />} />
+    </div>
+    <HomeworkSidebar classSelected={Boolean(classId)} jobs={queue.jobs} jobsLoading={Boolean(classId) && queue.isPending} activeJobId={activeJobId} activeJobSlot={jobProgress} students={students} lessons={lessons} scoreLog={scoreLog.data?.data.entries || []} scoreLogLoading={Boolean(classId) && scoreLog.isPending} scoreLogError={scoreLog.error} scoreLogRefreshing={scoreLog.isFetching} onRefreshScoreLog={() => void scoreLog.refetch()} />
   </main>;
 }
 

@@ -7,14 +7,14 @@ import { draftFor, lessonById, studentById } from './selectors';
 import { SubmissionRow } from './SubmissionRow';
 import { useHomeworkStore } from './store';
 
-export function SubmissionTable({ classSelected, submissions, students, lessons, loading, error, busyId, onRetry, onMark, onAiGrade, onDownload, summary, actions }: {
+export function SubmissionTable({ classSelected, submissions, students, lessons, loading, error, busyIds, onRetry, onMark, onAiGrade, onDownload, summary, actions }: {
   classSelected: boolean;
   submissions: HomeworkSubmission[];
   students: HomeworkStudent[];
   lessons: HomeworkLesson[];
   loading: boolean;
   error: unknown;
-  busyId: string | null;
+  busyIds: ReadonlySet<string>;
   onRetry: () => void;
   onMark: (submission: HomeworkSubmission) => void;
   onAiGrade: (submission: HomeworkSubmission) => void;
@@ -36,7 +36,7 @@ export function SubmissionTable({ classSelected, submissions, students, lessons,
   return <section className="card homework-table-card">
     <header className="card-header homework-table-header"><h2><ClipboardList size={18} />Danh sách bài nộp<span className="student-count-badge">{submissions.length} bài</span></h2>{summary}</header>
     {error && classSelected ? <div className="card-body"><ErrorState error={error} onRetry={onRetry} /></div> : <div className="table-container"><table className="homework-table"><thead><tr><th className="checkbox-cell"><label className="checkbox-touch-target"><input ref={selectAllRef} aria-label="Chọn tất cả bài đang hiển thị" type="checkbox" className="select-checkbox" checked={allSelected} disabled={!submissions.length} onChange={(event) => selectOnly(event.target.checked ? submissions.map((item) => item.id) : [])} /></label></th><th className="col-student">Học sinh</th><th className="col-lesson">Bài học</th><th className="col-files">Tệp</th><th className="col-status">Trạng thái</th><th className="col-score">Điểm</th><th className="col-note">Nhận xét</th><th className="col-actions">Thao tác</th></tr></thead><tbody>
-      {loading ? <LoadingRows /> : !classSelected ? <EmptyRow text="Chọn lớp để xem danh sách bài nộp" /> : submissions.length === 0 ? <EmptyRow text="Không tìm thấy bài nộp" /> : submissions.map((submission) => <SubmissionRow key={submission.id} submission={submission} student={studentById(students, submission.studentUid)} lesson={lessonById(lessons, submission.lessonId)} draft={draftFor(submission, drafts)} selected={selectedIds.has(submission.id)} busy={busyId === submission.id} onSelected={() => toggle(submission.id)} onScore={(value) => setScore(submission.id, value)} onNote={(value) => setNote(submission.id, value)} onMark={() => onMark(submission)} onAiGrade={() => onAiGrade(submission)} onDownload={(key) => onDownload(submission, key)} />)}
+      {loading ? <LoadingRows /> : !classSelected ? <EmptyRow text="Chọn lớp để xem danh sách bài nộp" /> : submissions.length === 0 ? <EmptyRow text="Không tìm thấy bài nộp" /> : submissions.map((submission) => <SubmissionRow key={submission.id} submission={submission} student={studentById(students, submission.studentUid)} lesson={lessonById(lessons, submission.lessonId)} draft={draftFor(submission, drafts)} selected={selectedIds.has(submission.id)} busy={busyIds.has(submission.id)} onSelected={() => toggle(submission.id)} onScore={(value) => setScore(submission.id, value)} onNote={(value) => setNote(submission.id, value)} onMark={() => onMark(submission)} onAiGrade={() => onAiGrade(submission)} onDownload={(key) => onDownload(submission, key)} />)}
     </tbody></table></div>}
     <footer className="homework-action-bar">{actions}</footer>
   </section>;

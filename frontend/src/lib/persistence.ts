@@ -3,7 +3,7 @@ export type StudentNotes = Record<string, string>;
 
 export const storageKeys = {
   email: 'lms_email', password: 'lms_password', apiKey: 'ai_api_key', theme: 'lms-theme',
-  studentNotes: 'studentNotes', firstVisit: 'lms_config_first_visit_seen',
+  studentNotes: 'studentNotes', firstVisit: 'lms_config_first_visit_seen', homeworkClass: 'lms_homework_class',
 } as const;
 
 export function readRememberedLogin(storage: Storage = localStorage) {
@@ -50,4 +50,14 @@ export function markConfigFirstVisitSeen(storage: Storage = localStorage): void 
 export function isConfigFirstVisit(storage: Storage = localStorage): boolean { return storage.getItem(storageKeys.firstVisit) !== '1'; }
 export function clearObsoleteAuthStorage(storage: Storage = localStorage): void {
   for (const key of ['lms_token', 'lms_token_expiry', 'lms_firebase_token']) storage.removeItem(key);
+}
+/** Last class opened on the homework page, per teacher, so a reload reopens the same queue. */
+export function readHomeworkClassId(email: string, storage: Storage = localStorage): string {
+  try { return storage.getItem(`${storageKeys.homeworkClass}:${email}`) || ''; } catch { return ''; }
+}
+export function writeHomeworkClassId(email: string, classId: string, storage: Storage = localStorage): void {
+  try {
+    const key = `${storageKeys.homeworkClass}:${email}`;
+    if (classId) storage.setItem(key, classId); else storage.removeItem(key);
+  } catch { /* storage unavailable: the class just is not remembered */ }
 }

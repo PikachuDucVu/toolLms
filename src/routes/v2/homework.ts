@@ -17,8 +17,10 @@ import {
   getOwnedGradingJob,
   GradingQueueEnqueueError,
   HomeworkApiKeyRequiredError,
+  listOwnedGradingJobs,
   retryOwnedFailedItems,
 } from "../../services/gradingJobService";
+import { listHomeworkScoreLog, recordHomeworkScores, scoreRecordFromHomework } from "../../services/homeworkScoreLogService";
 import {
   aiGradeHomework,
   assertAttachmentBelongsToSubmission,
@@ -110,6 +112,7 @@ v2HomeworkRoutes.post("/mark", async (c) => {
   await saveSession(c.env, result.session);
   const marked = normalizeMarkedSubmission(result.body.data?.studentHomework?.markStudentSubmission);
   if (!marked) return v2Error(c, "UPSTREAM_ERROR", firstGraphqlError(result.body), 502);
+  await recordHomeworkScores(c.env, session.email, [scoreRecordFromHomework(loaded, body.classId, body.id, marked.score, body.note, "manual")]);
   return v2Success(c, { submission: marked });
 });
 
@@ -134,6 +137,10 @@ v2HomeworkRoutes.post("/batch-mark", async (c) => {
       ? { id: item.id, success: true as const, submission }
       : { id: item.id, success: false as const, error: result?.error || "Không thể chấm bài." };
   });
+  const notes = new Map(body.submissions.map((item) => [item.id, item.note]));
+  await recordHomeworkScores(c.env, session.email, results.flatMap((item) => item.success
+    ? [scoreRecordFromHomework(loaded, body.classId, item.id, item.submission.score, notes.get(item.id) || "", "batch")]
+    : []));
   const successCount = results.filter((item) => item.success).length;
   return v2Success(c, { total: results.length, successCount, failureCount: results.length - successCount, results });
 });
@@ -193,6 +200,22 @@ v2HomeworkRoutes.post("/jobs", async (c) => {
     if (error instanceof GradingQueueEnqueueError) return gradingQueueUnavailable(c, error);
     throw error;
   }
+});
+
+v2HomeworkRoutes.get("/jobs", async (c) => {
+  const session = await requireV2Session(c);
+  if (session instanceof Response) return session;
+  const classId = queryClassId(c);
+  if (classId instanceof Response) return classId;
+  return v2Success(c, { jobs: await listOwnedGradingJobs(c.env, session.email, classId) });
+});
+
+v2HomeworkRoutes.get("/score-log", async (c) => {
+  const session = await requireV2Session(c);
+  if (session instanceof Response) return session;
+  const classId = queryClassId(c);
+  if (classId instanceof Response) return classId;
+  return v2Success(c, { entries: await listHomeworkScoreLog(c.env, session.email, classId) });
 });
 
 v2HomeworkRoutes.get("/jobs/:jobId", async (c) => {
@@ -285,6 +308,11 @@ function gradingQueueUnavailable(c: V2Context, error: GradingQueueEnqueueError):
 function pathId(c: V2Context, name: string): string | Response {
   const parsed = EntityIdSchema.safeParse(c.req.param(name));
   return parsed.success ? parsed.data : v2Error(c, "VALIDATION_ERROR", "Định danh không hợp lệ.", 422, parsed.error.flatten());
+}
+
+function queryClassId(c: V2Context): string | Response {
+  const parsed = EntityIdSchema.safeParse(new URL(c.req.url).searchParams.get("classId"));
+  return parsed.success ? parsed.data : v2Error(c, "VALIDATION_ERROR", "Định danh lớp không hợp lệ.", 422, parsed.error.flatten());
 }
 
 function canonicalSubmissions(data: NormalizedHomeworkData, ids: string[]) {

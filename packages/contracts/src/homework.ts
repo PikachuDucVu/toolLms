@@ -135,17 +135,22 @@ export const GradingJobScopeSchema = HomeworkAiOptionsSchema.extend({
   lessons: z.array(HomeworkLessonSchema).max(1_000),
 });
 export type GradingJobScope = z.infer<typeof GradingJobScopeSchema>;
-export const GradingJobCreateRequestSchema = GradingJobScopeSchema.extend({ classId: EntityIdSchema });
+/** 'all' and 'selected' mark on the LMS; 'single' (a per-row AI click) only stores a suggestion. */
+export const GradingJobKindSchema = z.enum(['all', 'selected', 'single']);
+export type GradingJobKind = z.infer<typeof GradingJobKindSchema>;
+export const GradingJobCreateRequestSchema = GradingJobScopeSchema.extend({ classId: EntityIdSchema, kind: GradingJobKindSchema.optional() });
 export type GradingJobCreateRequest = z.infer<typeof GradingJobCreateRequestSchema>;
 export const GradingJobRetryRequestSchema = GradingJobScopeSchema;
 export type GradingJobRetryRequest = z.infer<typeof GradingJobRetryRequestSchema>;
 
+export const GRADING_JOB_LIST_MAX = 30;
 export const GradingJobStatusSchema = z.enum(['queued', 'running', 'completed', 'cancelled']);
 export const GradingJobItemStatusSchema = z.enum(['queued', 'processing', 'completed', 'failed', 'cancelled']);
 export const GradingJobSchema = z.object({
   id: EntityIdSchema,
   classId: EntityIdSchema,
   status: GradingJobStatusSchema,
+  kind: GradingJobKindSchema.default('all'),
   totalItems: z.number().int().nonnegative(),
   completedItems: z.number().int().nonnegative(),
   failedItems: z.number().int().nonnegative(),
@@ -173,12 +178,44 @@ export const GradingJobResponseSchema = successEnvelope(z.object({
   items: z.array(GradingJobItemSchema).max(BATCH_MAX_ITEMS),
 }));
 export type GradingJobResponse = z.infer<typeof GradingJobResponseSchema>;
+export const GradingJobListResponseSchema = successEnvelope(z.object({
+  jobs: z.array(z.object({
+    job: GradingJobSchema,
+    items: z.array(GradingJobItemSchema).max(BATCH_MAX_ITEMS),
+  })).max(GRADING_JOB_LIST_MAX),
+}));
+export type GradingJobListResponse = z.infer<typeof GradingJobListResponseSchema>;
+export type GradingJobWithItems = GradingJobListResponse['data']['jobs'][number];
 export const GradingJobCreateResponseSchema = successEnvelope(z.object({ job: GradingJobSchema }));
 export type GradingJobCreateResponse = z.infer<typeof GradingJobCreateResponseSchema>;
 export const GradingJobCancelResponseSchema = successEnvelope(z.object({ job: GradingJobSchema }));
 export type GradingJobCancelResponse = z.infer<typeof GradingJobCancelResponseSchema>;
 export const GradingJobRetryResponseSchema = successEnvelope(z.object({ job: GradingJobSchema, queued: z.number().int().nonnegative() }));
 export type GradingJobRetryResponse = z.infer<typeof GradingJobRetryResponseSchema>;
+
+export const HOMEWORK_SCORE_LOG_MAX = 300;
+export const HomeworkScoreSourceSchema = z.enum(['manual', 'batch', 'ai_job']);
+export type HomeworkScoreSource = z.infer<typeof HomeworkScoreSourceSchema>;
+export const HomeworkScoreLogEntrySchema = z.object({
+  id: EntityIdSchema,
+  classId: EntityIdSchema,
+  submissionId: EntityIdSchema,
+  studentUid: z.string().max(200),
+  studentName: z.string().max(500),
+  lessonId: z.string().max(200),
+  lessonName: z.string().max(500),
+  score: z.number().min(0).max(100),
+  previousScore: z.number().min(0).max(100).nullable(),
+  note: z.string().max(10_000),
+  source: HomeworkScoreSourceSchema,
+  jobId: z.string().max(200).nullable(),
+  createdAt: z.string().max(100),
+});
+export type HomeworkScoreLogEntry = z.infer<typeof HomeworkScoreLogEntrySchema>;
+export const HomeworkScoreLogResponseSchema = successEnvelope(z.object({
+  entries: z.array(HomeworkScoreLogEntrySchema).max(HOMEWORK_SCORE_LOG_MAX),
+}));
+export type HomeworkScoreLogResponse = z.infer<typeof HomeworkScoreLogResponseSchema>;
 
 /**
  * Frozen runtime queue contract. This intentionally does not reuse bounded HTTP schemas:

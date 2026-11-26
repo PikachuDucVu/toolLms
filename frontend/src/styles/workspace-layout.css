@@ -145,3 +145,70 @@
     padding-right: 76px;
   }
 }
+
+/* Checkpoint mode: the batch action bar stays pinned to the bottom of the
+   scrolling column, like the regular-mode action bar. The card's own
+   overflow: hidden would trap the sticky child, so release it here. */
+@media (min-width: 1025px) {
+  .app-container--comments .checkpoint-workspace {
+    overflow: visible;
+  }
+
+  .app-container--comments .checkpoint-batch-wrapper {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    max-height: 50vh;
+    margin-top: 12px;
+    background: var(--surface-card);
+    /* Keep the last button clear of the fixed settings FAB. */
+    padding-right: 76px;
+  }
+
+  .app-container--comments .checkpoint-batch-wrapper > .checkpoint-batch-progress,
+  .app-container--comments .checkpoint-batch-wrapper > .checkpoint-batch-result {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .app-container--comments .checkpoint-batch-wrapper > .action-bar {
+    flex: none;
+    margin-top: 0;
+  }
+}
+
+/* Checkpoint review modal: score inputs and the AI note sit inside the
+   regular review row grid. */
+.checkpoint-review-score-inputs {
+  display: flex;
+  gap: 8px;
+}
+
+.checkpoint-review-score-inputs label {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--gray-600, #475569);
+}
+
+.checkpoint-review-score-inputs .checkpoint-score-input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.regular-review-comment.checkpoint-review-note {
+  min-height: 52px;
+  font-size: 12px;
+  background: var(--feature-checkpoint-bg, #fffbeb);
+  border-color: var(--feature-checkpoint-border, #fde68a) !important;
+}

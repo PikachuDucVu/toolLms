@@ -1,4 +1,4 @@
-import { getClasses, getGradingJob, getHomework } from './api';
+import { getClasses, getGradingJob, getHomework, getScoreLog, listGradingJobs } from './api';
 
 export const homeworkClassesQuery = () => ({
   queryKey: ['homework', 'classes'] as const,
@@ -15,4 +15,16 @@ export const gradingJobQuery = (jobId: string) => ({
   queryKey: ['homework', 'job', jobId] as const,
   queryFn: ({ signal }: { signal: AbortSignal }) => getGradingJob(jobId, signal),
   enabled: false,
+});
+
+export const homeworkJobsQuery = (classId: string) => ({
+  queryKey: ['homework', 'jobs', classId] as const,
+  queryFn: ({ signal }: { signal: AbortSignal }) => listGradingJobs(classId, signal),
+  enabled: Boolean(classId),
+});
+
+export const homeworkScoreLogQuery = (classId: string) => ({
+  queryKey: ['homework', 'score-log', classId] as const,
+  queryFn: ({ signal }: { signal: AbortSignal }) => getScoreLog(classId, signal),
+  enabled: Boolean(classId),
 });

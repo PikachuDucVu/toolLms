@@ -1,4 +1,4 @@
-import type { GradingJob, GradingJobItem, HomeworkLesson, HomeworkStudent } from "@tool-lms/contracts";
+import { GRADING_JOB_LIST_MAX, type GradingJob, type GradingJobItem, type GradingJobKind, type GradingJobWithItems, type HomeworkLesson, type HomeworkStudent } from "@tool-lms/contracts";
 import type { Env, GradingQueueMessage, HomeworkSubmission } from "../types";
 import { getConfig } from "./configService";
 import { resolveHomeworkAiKey } from "./homeworkService";
@@ -46,6 +46,7 @@ export interface GradingJobPayload {
   customModelId?: string;
   thinkingLevel?: string;
   apiKey?: string;
+  kind?: GradingJobKind;
 }
 
 interface CreateOptions {
@@ -62,6 +63,7 @@ export async function createGradingJob(
   const ephemeralApiKey = await requireKeyBeforeSideEffects(env, payload, options.enforceApiKey === true);
   const jobId = crypto.randomUUID();
   const now = new Date().toISOString();
+  const kind = payload.kind || "all";
   const items = payload.submissions.map((submission) => ({
     id: crypto.randomUUID(),
     submission,
@@ -69,8 +71,8 @@ export async function createGradingJob(
   const statements: D1PreparedStatement[] = [];
   if (options.ownerEmail) {
     statements.push(env.DB.prepare(
-      "INSERT INTO grading_jobs (id, class_id, status, total_items, completed_items, failed_items, created_at, updated_at, owner_email) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)",
-    ).bind(jobId, payload.classId, "queued", items.length, items.length, now, now, options.ownerEmail));
+      "INSERT INTO grading_jobs (id, class_id, status, total_items, completed_items, failed_items, created_at, updated_at, owner_email, kind) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?)",
+    ).bind(jobId, payload.classId, "queued", items.length, items.length, now, now, options.ownerEmail, kind));
   } else {
     statements.push(env.DB.prepare(
       "INSERT INTO grading_jobs (id, class_id, status, total_items, completed_items, failed_items, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?, ?)",
@@ -110,6 +112,7 @@ export async function createGradingJob(
     id: jobId,
     classId: payload.classId,
     status: "queued",
+    kind,
     totalItems: payload.submissions.length,
     completedItems: 0,
     failedItems: 0,
@@ -124,6 +127,29 @@ export async function getOwnedGradingJob(env: Env, jobId: string, ownerEmail: st
   if (!row) return null;
   const items = await env.DB.prepare("SELECT * FROM grading_job_items WHERE job_id = ? ORDER BY created_at ASC").bind(jobId).all<Record<string, unknown>>();
   return { job: normalizeJob(row), items: (items.results ?? []).map(normalizeJobItem) };
+}
+
+const JOB_LIST_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/** Active jobs plus anything from the last day, so the queue survives reloads and navigation. */
+export async function listOwnedGradingJobs(env: Env, ownerEmail: string, classId: string): Promise<GradingJobWithItems[]> {
+  const since = new Date(Date.now() - JOB_LIST_WINDOW_MS).toISOString();
+  const rows = await env.DB.prepare(
+    "SELECT * FROM grading_jobs WHERE owner_email = ? AND class_id = ? AND (status IN ('queued', 'running') OR created_at >= ?) ORDER BY created_at DESC LIMIT ?",
+  ).bind(ownerEmail, classId, since, GRADING_JOB_LIST_MAX).all<Record<string, unknown>>();
+  const jobs = (rows.results ?? []).map(normalizeJob);
+  if (jobs.length === 0) return [];
+  const placeholders = jobs.map(() => "?").join(", ");
+  const itemRows = await env.DB.prepare(`SELECT * FROM grading_job_items WHERE job_id IN (${placeholders}) ORDER BY created_at ASC`)
+    .bind(...jobs.map((job) => job.id)).all<Record<string, unknown>>();
+  const itemsByJob = new Map<string, GradingJobItem[]>();
+  for (const row of itemRows.results ?? []) {
+    const jobId = String(row.job_id || "");
+    const list = itemsByJob.get(jobId) ?? [];
+    list.push(normalizeJobItem(row));
+    itemsByJob.set(jobId, list);
+  }
+  return jobs.map((job) => ({ job, items: itemsByJob.get(job.id) ?? [] }));
 }
 
 export async function getLegacyGradingJob(env: Env, jobId: string): Promise<{ job: Record<string, unknown>; items: Record<string, unknown>[] } | null> {
@@ -372,6 +398,7 @@ function normalizeJob(row: Record<string, unknown>): GradingJob {
     id: String(row.id || ""),
     classId: String(row.class_id || ""),
     status,
+    kind: row.kind === "selected" || row.kind === "single" ? row.kind : "all",
     totalItems: nonnegativeInteger(row.total_items),
     completedItems: nonnegativeInteger(row.completed_items),
     failedItems: nonnegativeInteger(row.failed_items),

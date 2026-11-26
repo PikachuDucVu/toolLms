@@ -9,6 +9,7 @@ import { StudentFilters } from '../classes/public/components';
 import { useCommentStore } from '../comments/public/store';
 import { configQuery } from '../configuration/public/api';
 import { CheckpointBatchActions } from './CheckpointBatchActions';
+import { CheckpointReviewDialog } from './CheckpointReviewDialog';
 import { CheckpointStudentCard } from './CheckpointStudentCard';
 import { activateCheckpointContext, deactivateCheckpointContext, hydrateCheckpointContext, loadCheckpointSubmissionStatus, type CheckpointGenerationOptions, type CheckpointScope } from './checkpointController';
 import { useCheckpointStore } from './checkpointStore';
@@ -132,6 +133,8 @@ export function CheckpointWorkspace({ detail, slot, sessionNumber, students, sea
           disabled={locked || operationActive}
         />
       </section>
+
+      <CheckpointReviewDialog scope={scope} generationOptions={generationOptions} sessionNumber={sessionNumber} locked={locked} />
     </>
   );
 }

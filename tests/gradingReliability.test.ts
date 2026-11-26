@@ -178,8 +178,8 @@ function queueMessage(body: unknown) {
   };
 }
 
-function consumerEnv(jobStatus: string, itemStatus: string) {
-  const state = { jobStatus, itemStatus, cancelledAt: jobStatus === 'cancelled' ? 'now' : null as string | null };
+function consumerEnv(jobStatus: string, itemStatus: string, jobRow: { kind?: string; ownerEmail?: string } = {}) {
+  const state = { jobStatus, itemStatus, cancelledAt: jobStatus === 'cancelled' ? 'now' : null as string | null, scoreLog: [] as unknown[][] };
   const session = {
     id: 'session-queue', email: 'teacher@example.com', lmsToken: 'token', tokenExpiry: 2_100_000_000,
     createdAt: 'now', updatedAt: 'now',
@@ -193,13 +193,16 @@ function consumerEnv(jobStatus: string, itemStatus: string) {
           bind(...next: unknown[]) { values = next; return this; },
           all: async () => ({ results: [] }),
           first: async () => {
-            if (sql.startsWith('SELECT status, cancelled_at')) return { status: state.jobStatus, cancelled_at: state.cancelledAt };
+            if (sql.startsWith('SELECT status, cancelled_at')) return { status: state.jobStatus, cancelled_at: state.cancelledAt, kind: jobRow.kind, owner_email: jobRow.ownerEmail ?? null };
             if (sql === 'SELECT status FROM grading_jobs WHERE id = ?') return { status: state.jobStatus };
             return null;
           },
           run: async () => {
             let changes = 0;
-            if (sql.startsWith('UPDATE grading_job_items SET status = ?')) {
+            if (sql.startsWith('INSERT INTO homework_score_log')) {
+              state.scoreLog.push(values);
+              changes = 1;
+            } else if (sql.startsWith('UPDATE grading_job_items SET status = ?')) {
               const expected = String(values[7]);
               if (state.itemStatus === expected) { state.itemStatus = String(values[0]); changes = 1; }
             } else if (sql.startsWith('UPDATE grading_jobs SET status = ?')) {
@@ -367,6 +370,40 @@ describe('grading consumer transition observability', () => {
       'job:running->completed',
     ]);
     expect(state.state).toMatchObject({ jobStatus: 'completed', itemStatus: 'completed' });
+  });
+
+  function mockGradingFetch(onLms: () => void) {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes('resources.mindx.edu.vn/api/v1/get-presigned-url')) return Response.json({ success: true, url: 'https://download.test/work.js' });
+      if (url === 'https://download.test/work.js') return new Response('console.log("ok")');
+      if (url.includes('ai.ducvu.io.vn')) return Response.json({ choices: [{ message: { content: '{"score": 90, "note": "Tốt"}' } }] });
+      if (url.includes('lms-api.mindx.edu.vn')) {
+        onLms();
+        return Response.json({ data: { studentHomework: { markStudentSubmission: { id: 'submission-queue', score: 90, status: 'MARKED' } } } });
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+  }
+
+  it('records an owned AI mark in the score history', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const state = consumerEnv('queued', 'queued', { kind: 'all', ownerEmail: 'teacher@example.com' });
+    mockGradingFetch(() => undefined);
+    await processGradingMessage(state.env, message);
+    expect(state.state.scoreLog).toHaveLength(1);
+    expect(state.state.scoreLog[0]).toEqual(expect.arrayContaining(['teacher@example.com', 'class-1', 'submission-queue', 'Student', 'Lesson', 90, 'Tốt', 'ai_job', 'job-queue']));
+  });
+
+  it('stores a per-row suggestion without marking the LMS or writing score history', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const state = consumerEnv('queued', 'queued', { kind: 'single', ownerEmail: 'teacher@example.com' });
+    let lmsCalls = 0;
+    mockGradingFetch(() => { lmsCalls++; });
+    await processGradingMessage(state.env, message);
+    expect(lmsCalls).toBe(0);
+    expect(state.state).toMatchObject({ jobStatus: 'completed', itemStatus: 'completed' });
+    expect(state.state.scoreLog).toEqual([]);
   });
 });
 

@@ -3,9 +3,11 @@ import {
   ClassesResponseSchema,
   GradingJobCancelResponseSchema,
   GradingJobCreateResponseSchema,
+  GradingJobListResponseSchema,
   GradingJobRetryResponseSchema,
   HomeworkBatchMarkResponseSchema,
   HomeworkLoadResponseSchema,
+  HomeworkScoreLogResponseSchema,
 } from '@tool-lms/contracts';
 import { app } from '../../src/router';
 import type { Env, SessionRecord } from '../../src/types';
@@ -162,6 +164,40 @@ describe('Phase 4 v2 classes/homework routes', () => {
     ]);
     const operations = fetchMock.mock.calls.map(([, init]) => JSON.parse(String(init?.body || '{}')).operationName);
     expect(operations).toEqual(['FindStudentSubmissionByClass', 'MarkStudentSubmission']);
+  });
+
+  it('records successful marks in the owner-scoped score history with student and lesson names', async () => {
+    mockLms();
+    const sqlCalls: Array<{ sql: string; values: unknown[] }> = [];
+    const currentEnv = env({ onSql: (sql, values) => sqlCalls.push({ sql, values }) });
+    const single = await request('/api/v2/homework/mark', {
+      method: 'POST', body: JSON.stringify({ classId: 'class-1', id: 'submission-1', score: 88, note: 'Tốt' }),
+    }, currentEnv);
+    expect(single.status).toBe(200);
+    const batch = await request('/api/v2/homework/batch-mark', {
+      method: 'POST', body: JSON.stringify({ classId: 'class-1', submissions: [{ id: 'submission-1', score: 88, note: 'Lần hai' }, { id: 'foreign-submission', score: 70, note: '' }] }),
+    }, currentEnv);
+    expect(batch.status).toBe(200);
+    const inserts = sqlCalls.filter((call) => call.sql.startsWith('INSERT INTO homework_score_log'));
+    expect(inserts).toHaveLength(2);
+    expect(inserts[0].values).toEqual(expect.arrayContaining(['teacher-a@example.com', 'class-1', 'submission-1', 'student-1', 'An', 'lesson-1', 'Bài 1', 88, 'Tốt', 'manual']));
+    expect(inserts[1].values).toEqual(expect.arrayContaining(['submission-1', 88, 'Lần hai', 'batch']));
+  });
+
+  it('lists the owner\'s recent jobs and score history for a class', async () => {
+    const sqlCalls: Array<{ sql: string; values: unknown[] }> = [];
+    const currentEnv = env({ onSql: (sql, values) => sqlCalls.push({ sql, values }) });
+    const missing = await request('/api/v2/homework/jobs', {}, currentEnv);
+    expect(missing.status).toBe(422);
+    const jobs = await request('/api/v2/homework/jobs?classId=class-1', {}, currentEnv);
+    expect(jobs.status).toBe(200);
+    expect(GradingJobListResponseSchema.parse(await jobs.json()).data.jobs).toEqual([]);
+    const log = await request('/api/v2/homework/score-log?classId=class-1', {}, currentEnv);
+    expect(log.status).toBe(200);
+    expect(HomeworkScoreLogResponseSchema.parse(await log.json()).data.entries).toEqual([]);
+    const reads = sqlCalls.filter((call) => call.sql.startsWith('SELECT * FROM grading_jobs') || call.sql.startsWith('SELECT * FROM homework_score_log'));
+    expect(reads).toHaveLength(2);
+    for (const read of reads) expect(read.values.slice(0, 2)).toEqual(['teacher-a@example.com', 'class-1']);
   });
 
   it('does not issue a presigned-url fetch unless attachment membership is proven', async () => {

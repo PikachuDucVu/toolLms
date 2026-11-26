@@ -13,6 +13,7 @@ import {
   type CheckpointScope,
 } from './checkpointController';
 import { CheckpointStatus } from './CheckpointStatus';
+import { checkpointScoreReadout, formatScore } from './checkpointScore';
 import { effectiveCheckpointComment, isCheckpointDraftDirty, useCheckpointStore } from './checkpointStore';
 
 export function CheckpointStudentCard({ scope, student, generationOptions, locked = false }: {
@@ -35,9 +36,6 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
   const storedExpanded = useCheckpointStore((state) => state.expanded[student.studentId]);
   const dirty = useCheckpointStore((state) => isCheckpointDraftDirty(state, student.studentId));
 
-  const checkpointArea = student.commentByAreas?.find((a) => a.type === 'CHECKPOINT');
-  const serverTheory = checkpointArea?.checkpoint?.checkpointScore;
-  const serverPractice = checkpointArea?.checkpoint?.practiceScore;
   const existingContent = existingContentComment(student);
 
   const hasCheckpoint = hasModeSubmission(student, 'checkpoint') || Boolean(result);
@@ -55,14 +53,7 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
 
   if (!draft) return <article className="student-card cp-accordion" aria-busy="true"><span className="skeleton" /><span className="skeleton" /></article>;
 
-  // Resolve scores for header readout
-  const theoryInput = draft.theoryInput;
-  const practiceInput = draft.practiceInput;
-  const curTheory = theoryInput.trim() !== '' ? Number(theoryInput) : serverTheory != null ? Number(serverTheory) : result?.theoryScore ?? null;
-  const curPractice = practiceInput.trim() !== '' ? Number(practiceInput) : serverPractice != null ? Number(serverPractice) : result?.practiceScore ?? null;
-  const hasBoth = curTheory !== null && curPractice !== null && !Number.isNaN(curTheory) && !Number.isNaN(curPractice);
-  const averageText = result ? formatScore(result.totalScore) : hasBoth ? ((curTheory + curPractice) / 2).toFixed(1) : '?';
-  const rank = result?.rank || (hasBoth ? getCheckpointRank(curTheory, curPractice) : '');
+  const { averageText, rank, hasBoth } = checkpointScoreReadout(student, draft, result);
 
   const grade = async () => {
     try {
@@ -446,15 +437,6 @@ export function CheckpointStudentCard({ scope, student, generationOptions, locke
   );
 }
 
-function getCheckpointRank(theory: number, practice: number): 'A' | 'B' | 'C' | 'D' {
-  const total = (theory + practice) / 2;
-  if (total >= 4.5) return 'A';
-  if (total >= 3.5) return 'B';
-  if (total >= 2.5) return 'C';
-  return 'D';
-}
-
-function formatScore(value: number): string { return String(Math.round(value * 10) / 10); }
 function safeId(value: string): string { return value.replace(/[^a-zA-Z0-9_-]/g, '_'); }
 function errorText(error: unknown): string { return error instanceof Error ? error.message : String(error || 'Lỗi không xác định'); }
 function isAbort(error: unknown): boolean { return error instanceof DOMException && error.name === 'AbortError'; }
