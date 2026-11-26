@@ -74,11 +74,33 @@ export type CheckpointSubmitResult = z.infer<typeof CheckpointSubmitResultSchema
 export const CheckpointSubmitResponseSchema = successEnvelope(CheckpointSubmitResultSchema);
 export type CheckpointSubmitResponse = z.infer<typeof CheckpointSubmitResponseSchema>;
 
+const SessionNumberSchema = z.number().int().positive().max(500);
+
+/** Facts from session 1 up to the checkpoint, used for the "Đánh giá quá trình học" paragraph. */
+export const CheckpointLearningProcessSchema = z.object({
+  fromSession: SessionNumberSchema,
+  toSession: SessionNumberSchema,
+  lateSessions: z.array(SessionNumberSchema).max(500),
+  absentSessions: z.array(SessionNumberSchema).max(500),
+  /** null when homework could not be loaded; the paragraph then skips homework. */
+  homework: z.object({
+    assignedSessions: z.array(SessionNumberSchema).max(500),
+    missingSessions: z.array(SessionNumberSchema).max(500),
+  }).nullable(),
+  sessionComments: z.array(z.object({
+    session: SessionNumberSchema,
+    comment: z.string().trim().min(1).max(1_500),
+  })).max(100),
+  previousCheckpointScore: z.number().finite().min(0).max(5).nullable(),
+});
+export type CheckpointLearningProcess = z.infer<typeof CheckpointLearningProcessSchema>;
+
 export const GenerateCheckpointCommentRequestSchema = z.object({
   classId: EntityIdSchema,
   slotId: EntityIdSchema,
   studentId: EntityIdSchema,
   teacherDescription: z.string().max(10_000).default(''),
+  learningProcess: CheckpointLearningProcessSchema.optional(),
   modelId: z.string().trim().min(1).max(500).optional(),
   customModelId: z.string().trim().max(500).optional(),
   thinkingLevel: z.string().max(100).optional(),

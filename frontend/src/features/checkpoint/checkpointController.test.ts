@@ -117,17 +117,20 @@ describe('checkpoint generation controllers', () => {
   it('single generation sends no universal API key and preserves a newer description/comment edit', async () => {
     const bodies: Array<Record<string, unknown>> = [];
     let resolve!: (value: Response) => void;
-    vi.stubGlobal('fetch', vi.fn((_input: RequestInfo | URL, options?: RequestInit) => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, options?: RequestInit) => {
+      // The homework list for the learning-process paragraph is optional; a failure only drops that part.
+      if (String(input).endsWith('/homework')) return json({ success: false, error: { code: 'UPSTREAM_ERROR', message: 'LMS lỗi', requestId: 'hw' } }, 502);
       bodies.push(JSON.parse(String(options?.body)));
       return new Promise<Response>((next) => { resolve = next; });
     }));
     const pending = generateCheckpointStudent(scope, 'student-1', { modelId: ' model-a ', thinkingLevel: 'high', apiKey: '   ' });
     expect(isCheckpointOperationActive()).toBe(true);
+    await vi.waitFor(() => expect(bodies).toHaveLength(1));
     useCheckpointStore.getState().setTeacherDescription('student-1', 'Mô tả mới hơn');
     useCheckpointStore.getState().setManualComment('student-1', 'Nhận xét mới hơn');
     resolve(json(ok({ comment: '<p>AI từ mô tả cũ</p>' })));
     expect(await pending).toBe(false);
-    expect(bodies).toEqual([{ classId: 'class-1', slotId: 'slot-5', studentId: 'student-1', teacherDescription: 'Mô tả student-1', modelId: 'model-a', thinkingLevel: 'high' }]);
+    expect(bodies).toEqual([{ classId: 'class-1', slotId: 'slot-5', studentId: 'student-1', teacherDescription: 'Mô tả student-1', modelId: 'model-a', thinkingLevel: 'high', learningProcess: expect.objectContaining({ fromSession: 1, homework: null }) }]);
     expect(useCheckpointStore.getState().drafts['student-1']).toMatchObject({ teacherDescription: 'Mô tả mới hơn', manualComment: 'Nhận xét mới hơn', generatedComment: '' });
     expect(isCheckpointOperationActive()).toBe(false);
   });

@@ -92,6 +92,7 @@ v2CheckpointRoutes.post("/comments/generate", async (c) => {
     const comment = await generateCheckpointCommentWithAi(c.env, await getConfig(c.env), {
       studentName: loaded.context.attendance!.displayName,
       teacherDescription: body.teacherDescription,
+      learningProcess: body.learningProcess,
       modelId: body.modelId,
       customModelId: body.customModelId,
       thinkingLevel: body.thinkingLevel,

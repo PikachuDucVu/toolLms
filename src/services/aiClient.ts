@@ -15,7 +15,9 @@ import {
   type CheckpointEssayRubricItem,
   type CheckpointExamKey,
 } from "@tool-lms/contracts";
+import type { CheckpointLearningProcess } from "@tool-lms/contracts";
 import type { AppConfig, Env } from "../types";
+import { buildLearningProcessFacts } from "./checkpointProcessPrompt";
 import { extractJsonObject } from "./aiJson";
 import { roundCheckpointScore } from "./checkpointGrading";
 import { bytesToDataUrl } from "./remoteFileContent";
@@ -240,12 +242,14 @@ export async function generateCommentWithAi(
 export async function generateCheckpointCommentWithAi(
   env: Env,
   config: AppConfig,
-  input: { studentName: string; teacherDescription?: string; modelId?: string; customModelId?: string; thinkingLevel?: string; aiApiKey?: string },
+  input: { studentName: string; teacherDescription?: string; learningProcess?: CheckpointLearningProcess; modelId?: string; customModelId?: string; thinkingLevel?: string; aiApiKey?: string },
 ): Promise<string> {
   const model = resolveModelId(input.modelId, input.customModelId ?? String(config.custom_model_id || ""), String(config.ai_model || DEFAULT_AI_MODEL));
   const thinkingLevel = resolveThinkingLevel(model, input.thinkingLevel, String(config.thinking_level || ""));
   const shortName = input.studentName ? input.studentName.split(/\s+/).at(-1) || "em" : "em";
-  const prompt = `Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét checkpoint (kiểm tra giữa khóa) cho học sinh gửi phụ huynh.
+  const prompt = input.learningProcess
+    ? buildCheckpointPromptWithProcess(input.studentName, shortName, input.teacherDescription, input.learningProcess)
+    : `Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét checkpoint (kiểm tra giữa khóa) cho học sinh gửi phụ huynh.
 
 HỌC SINH: ${input.studentName} (gọi: ${shortName})
 MÔ TẢ TÓM TẮT TỪ GIÁO VIÊN: ${input.teacherDescription || "Học sinh hoàn thành bài kiểm tra tốt"}
@@ -277,6 +281,38 @@ CHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT THUẦN VĂN BẢN, KHÔNG GIẢI THÍCH
   const result = await callChatCompletion(env, provider, model, prompt, input.aiApiKey, String(config.openrouter_key || ""), thinkingLevel);
   if (result.error) return `<p>Lỗi AI (${model}): ${result.error}</p>`;
   return cleanAiResponse(result.content || "");
+}
+
+function buildCheckpointPromptWithProcess(studentName: string, shortName: string, teacherDescription: string | undefined, process: CheckpointLearningProcess): string {
+  return `Bạn là giáo viên lập trình tại MindX Technology School. Viết nhận xét checkpoint (kiểm tra giữa khóa) cho học sinh gửi phụ huynh.
+
+HỌC SINH: ${studentName} (gọi: ${shortName})
+MÔ TẢ TÓM TẮT TỪ GIÁO VIÊN VỀ BÀI CHECKPOINT: ${teacherDescription || "Học sinh hoàn thành bài kiểm tra tốt"}
+
+DỮ LIỆU QUÁ TRÌNH HỌC:
+${buildLearningProcessFacts(process)}
+
+HƯỚNG DẪN VIẾT (sử dụng ngôn từ phù hợp để phụ huynh đọc):
+Viết nhận xét gồm 4 phần theo đúng thứ tự:
+
+1. Đánh giá quá trình học của con: 3-5 câu tổng kết từ buổi ${process.fromSession} đến buổi ${process.toSession}, giọng văn giống nhận xét hằng ngày nhưng nhìn cả giai đoạn. Nêu lần lượt: giờ giấc/chuyên cần, bài tập về nhà, thái độ học tập, khả năng nắm bắt kiến thức. Làm rõ con thay đổi thế nào qua các buổi (ví dụ: "ở các buổi đầu ..., từ buổi X con ..."). Tuân thủ CHÍNH XÁC các chỉ dẫn trong DỮ LIỆU QUÁ TRÌNH HỌC; không bịa thêm chi tiết không có trong dữ liệu.
+
+2. Điểm mạnh: Khả năng, ưu điểm, tiến bộ rõ rệt mà học viên đã thể hiện trong bài checkpoint (chủ động, nhanh nhẹn, tích cực, áp dụng tốt,..). 1-2 câu.
+
+3. Điểm cần cải thiện: Các vấn đề, điểm yếu, kỹ năng cần cải thiện (Cần cải thiện thêm về ...; Tăng cường về...; Chú ý hơn khi...). 1-2 câu.
+
+4. Lời khuyên: Gợi ý giải pháp cụ thể giúp học viên phát triển thêm (Khuyến khích làm thêm bài tập bổ sung; Tìm hiểu thêm về...; Rèn luyện thêm..). 1-2 câu.
+
+CÁCH DIỄN ĐẠT:
+- Dùng "em" hoặc "${shortName}" để gọi học sinh, dùng "con" khi nói về học sinh với phụ huynh
+- Giọng văn chuyên nghiệp, tích cực, mang tính xây dựng
+- KHÔNG dùng markdown, KHÔNG dùng ký tự **, KHÔNG dùng bullet list
+- Mỗi phần bắt đầu bằng đúng nhãn thuần văn bản: "Đánh giá quá trình học của con:", "Điểm mạnh:", "Điểm cần cải thiện:", "Lời khuyên:"
+
+VÍ DỤ:
+"Đánh giá quá trình học của con: Từ buổi 1 đến buổi 9, ${shortName} đi học đều và tuân thủ tốt nội quy lớp. Con hoàn thành phần lớn bài tập về nhà, riêng BTVN buổi 6 chưa được nộp trên LMS, phụ huynh giúp nhắc con bổ sung nhé. Ở các buổi đầu con học ở mức ổn định, theo kịp tiến độ lớp; từ buổi 6 con chủ động hỏi lại giáo viên khi chưa hiểu và tự hoàn thiện được bài. Điểm mạnh: ... Điểm cần cải thiện: ... Lời khuyên: ..."
+
+CHỈ TRẢ VỀ NỘI DUNG NHẬN XÉT THUẦN VĂN BẢN, KHÔNG GIẢI THÍCH, KHÔNG MARKDOWN.`;
 }
 
 export async function gradeHomeworkWithAi(

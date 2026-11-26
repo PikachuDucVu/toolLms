@@ -111,6 +111,26 @@ export function homeworkStatuses(
   return result;
 }
 
+/**
+ * Whether a student handed in the homework of one session, or null when that
+ * session has no matching homework lesson on the LMS.
+ */
+export function homeworkSubmittedForSession(
+  response: HomeworkLoadResponse,
+  session: number,
+  attendance: Pick<StudentAttendance, 'studentId' | 'displayName'>,
+): boolean | null {
+  const data = response.data;
+  const lessons = data.lessons.filter((lesson) => lesson.isActive);
+  const lesson = lessons.find((item) => lessonNameLooksLikeSession(item.name, session)) || lessonForOrder(lessons, session);
+  if (!lesson) return null;
+  const student = data.students.find((item) => item.studentUid === attendance.studentId || item.id === attendance.studentId)
+    || data.students.find((item) => normalizeVietnameseText(item.displayName) === normalizeVietnameseText(attendance.displayName));
+  if (!student) return null;
+  const ids = new Set([student.studentUid, student.id, attendance.studentId]);
+  return data.submissions.some((submission) => submission.lessonId === lesson.id && ids.has(submission.studentUid) && isSubmittedHomework(submission));
+}
+
 function lessonNameLooksLikeSession(name: string, sessionNumber: number): boolean {
   const normalized = normalizeVietnameseText(name);
   const value = String(Number(sessionNumber));

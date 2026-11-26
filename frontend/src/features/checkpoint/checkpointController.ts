@@ -1,5 +1,7 @@
 import type {
   CheckpointBranch,
+  CheckpointLearningProcess,
+  HomeworkLoadResponse,
   CheckpointGradeResult,
   CheckpointNumber,
   CheckpointScoreInput,
@@ -15,6 +17,8 @@ import { ApiError } from '../../lib/apiError';
 import { currentAuthEpoch, createOperationController, isCurrentAuthEpoch, registerWorkflowReset, releaseOperationController } from '../../lib/operationContext';
 import { classDetailQuery, isPresent, applyOptimisticClassSubmissions, reconcileClassSubmissionsAfterRefetch } from '../classes/public/domain';
 import { generateCheckpointComment, getCheckpointStatus, gradeCheckpointExam, submitCheckpoint } from './api';
+import { buildCheckpointLearningProcess } from './learningProcess';
+import { getCommentHomework } from '../comments/public/homework';
 import {
   checkpointCommentPlainText,
   cloneCheckpointDraft,
@@ -302,7 +306,9 @@ export async function generateCheckpointStudent(scope: CheckpointScope, studentI
   useCheckpointStore.getState().setGenerationBusy(studentId, true);
   const controller = createCheckpointController();
   try {
-    const response = await requestGeneratedComment(context, frozen, frozenOptions, controller.signal);
+    const homework = await loadProcessHomework(scope, controller.signal);
+    assertScope(context, scope);
+    const response = await requestGeneratedComment(context, frozen, frozenOptions, controller.signal, buildCheckpointLearningProcess(scope.detail, scope.slot, studentId, homework));
     assertScope(context, scope);
     return useCheckpointStore.getState().applyGeneratedComment(studentId, response, frozen.expectedDescriptionVersion, frozen.expectedCommentVersion);
   } catch (error) {
@@ -336,10 +342,11 @@ export async function generateCheckpointBatch(scope: CheckpointScope, frozen: Fr
   const failures: CheckpointFailure[] = [];
   let attempted = 0;
   try {
+    const homework = await loadProcessHomework(scope, controller.signal);
     await runWithConcurrency(frozen.students, 3, async (student) => {
       assertScope(context, scope);
       try {
-        const comment = await requestGeneratedComment(context, student, frozen.options, controller.signal);
+        const comment = await requestGeneratedComment(context, student, frozen.options, controller.signal, buildCheckpointLearningProcess(scope.detail, scope.slot, student.studentId, homework));
         assertScope(context, scope);
         useCheckpointStore.getState().applyGeneratedComment(student.studentId, comment, student.expectedDescriptionVersion, student.expectedCommentVersion);
         successfulIds.push(student.studentId);
@@ -513,10 +520,11 @@ export async function submitCheckpointFullBatch(scope: CheckpointScope, frozen: 
   let generationSuccessful = 0;
   let attempted = 0;
   try {
+    const homework = generationTargets.length ? await loadProcessHomework(scope, controller.signal) : null;
     await runWithConcurrency(generationTargets, 3, async (student) => {
       assertScope(context, scope);
       try {
-        const comment = await requestGeneratedComment(context, student, frozen.options, controller.signal);
+        const comment = await requestGeneratedComment(context, student, frozen.options, controller.signal, buildCheckpointLearningProcess(scope.detail, scope.slot, student.studentId, homework));
         assertScope(context, scope);
         generated.set(student.studentId, comment);
         generationSuccessful += 1;
@@ -676,15 +684,26 @@ function freezeGenerationStudent(student: StudentAttendance, draft: CheckpointSt
   };
 }
 
-async function requestGeneratedComment(context: ContextSnapshot, student: FrozenGenerationStudent, options: CheckpointGenerationOptions, signal: AbortSignal): Promise<string> {
+async function requestGeneratedComment(context: ContextSnapshot, student: FrozenGenerationStudent, options: CheckpointGenerationOptions, signal: AbortSignal, learningProcess?: CheckpointLearningProcess): Promise<string> {
   const response = await generateCheckpointComment({
     classId: context.classId,
     slotId: context.slotId,
     studentId: student.studentId,
     teacherDescription: student.teacherDescription,
+    ...(learningProcess ? { learningProcess } : {}),
     ...options,
   }, signal);
   return response.data.comment;
+}
+
+/** Homework list for the learning-process paragraph; a failed load only drops the homework part. */
+async function loadProcessHomework(scope: CheckpointScope, signal: AbortSignal): Promise<HomeworkLoadResponse | null> {
+  try {
+    return await getCommentHomework(scope.detail.id, signal);
+  } catch (error) {
+    if (isAbort(error)) throw error;
+    return null;
+  }
 }
 
 function freezeGenerationOptions(options: CheckpointGenerationOptions): CheckpointGenerationOptions {
