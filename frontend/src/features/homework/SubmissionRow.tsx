@@ -1,9 +1,9 @@
 import type { HomeworkLesson, HomeworkSubmission, HomeworkStudent } from '@tool-lms/contracts';
-import { Check, Download, Sparkles } from 'lucide-react';
+import { Check, Download, Send, Sparkles } from 'lucide-react';
 import { Badge } from '../../components/ui/Status';
 import type { HomeworkDraft } from './store';
 
-export function SubmissionRow({ submission, student, lesson, draft, selected, busy, onSelected, onScore, onNote, onMark, onAiGrade, onDownload }: {
+export function SubmissionRow({ submission, student, lesson, draft, selected, busy, onSelected, onScore, onNote, onMark, onAiGrade, onAiGradeSubmit, onDownload }: {
   submission: HomeworkSubmission;
   student?: HomeworkStudent;
   lesson?: HomeworkLesson;
@@ -15,6 +15,7 @@ export function SubmissionRow({ submission, student, lesson, draft, selected, bu
   onNote: (value: string) => void;
   onMark: () => void;
   onAiGrade: () => void;
+  onAiGradeSubmit: () => void;
   onDownload: (key: string) => void;
 }) {
   const marked = submission.status === 'MARKED';
@@ -29,6 +30,6 @@ export function SubmissionRow({ submission, student, lesson, draft, selected, bu
     <td><Badge tone={marked ? 'success' : 'warning'}>{marked ? 'Đã chấm' : 'Chờ chấm'}</Badge></td>
     <td><input aria-label={`Điểm của ${student?.displayName || 'học sinh'}`} type="number" className="score-input" min="0" max="100" value={draft.score} onChange={(event) => onScore(event.target.value)} /></td>
     <td className="note-cell"><textarea aria-label={`Nhận xét cho ${student?.displayName || 'học sinh'}`} className="note-input" rows={2} placeholder="Nhận xét (AI sẽ tự điền)..." value={draft.note} onChange={(event) => onNote(event.target.value)} /></td>
-    <td><div className="row-actions"><button type="button" className="btn btn-success btn-sm" disabled={busy} onClick={onMark}><Check size={15} />Gửi</button><button type="button" aria-label={`AI chấm bài của ${student?.displayName || 'học sinh'}`} className="btn btn-outline btn-outline-primary btn-sm" disabled={busy} onClick={onAiGrade}>{busy ? <span className="button-spinner" /> : <Sparkles size={15} />}AI</button></div></td>
+    <td><div className="row-actions"><button type="button" className="btn btn-success btn-sm" disabled={busy} onClick={onMark}><Check size={15} />Gửi</button><button type="button" aria-label={`AI chấm bài của ${student?.displayName || 'học sinh'}`} className="btn btn-outline btn-outline-primary btn-sm" disabled={busy} onClick={onAiGrade}>{busy ? <span className="button-spinner" /> : <Sparkles size={15} />}AI</button><button type="button" aria-label={`AI chấm và gửi bài của ${student?.displayName || 'học sinh'}`} title="AI chấm rồi tự gửi điểm lên LMS, không cần duyệt" className="btn btn-primary btn-sm row-action-submit" disabled={busy} onClick={onAiGradeSubmit}><Send size={14} />AI + Gửi</button></div></td>
   </tr>;
 }

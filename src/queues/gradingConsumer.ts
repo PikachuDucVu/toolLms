@@ -96,6 +96,7 @@ export async function processGradingMessage(env: Env, message: GradingQueueMessa
   }
 
   // A per-row AI click only proposes a score; the teacher reviews it before sending.
+  // Every other kind (batch jobs and per-row "AI chấm & gửi") marks on the LMS below.
   if (job.kind === "single") {
     await setItemStatus(env, message.jobId, message.itemId, "processing", "completed", { score: grade.score, note: grade.note });
     await refreshJobCounters(env, message.jobId);

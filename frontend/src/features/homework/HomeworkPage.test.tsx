@@ -75,9 +75,9 @@ function installFetch() {
     }
     if (path === '/api/v2/homework/ai-grade') return json(envelope({ score: 77, note: 'AI đề xuất sửa vòng lặp.' }));
     if (path === '/api/v2/homework/jobs' && init?.method === 'POST') {
-      if (body.kind === 'single') {
+      if (body.kind === 'single' || body.kind === 'single_submit') {
         const submission = body.submissions[0];
-        const job = { ...gradingJob('queued', 0, 0), id: `single-${serverJobs.length + 1}`, kind: 'single', totalItems: 1 };
+        const job = { ...gradingJob('queued', 0, 0), id: `single-${serverJobs.length + 1}`, kind: body.kind, totalItems: 1 };
         serverJobs.unshift({ job, items: [{ id: `item-${serverJobs.length + 1}`, submissionId: submission.id, studentUid: submission.studentUid, lessonId: submission.lessonId, status: 'queued', score: null, note: null, error: null, result: null, createdAt: 'now', updatedAt: 'now' }] });
         return json(envelope({ job }), 201);
       }
@@ -86,7 +86,10 @@ function installFetch() {
     if (path === '/api/v2/homework/jobs?classId=class-1') {
       // The queue consumer finishes each suggestion before the next poll.
       const jobs = serverJobs;
-      serverJobs = serverJobs.map((entry) => entry.job.kind !== 'single' ? entry : ({ job: { ...entry.job, status: 'completed', completedItems: 1 }, items: entry.items.map((item) => ({ ...item, status: 'completed', score: 77, note: 'AI đề xuất sửa vòng lặp.', updatedAt: 'later' })) }));
+      if (serverJobs.some((entry) => entry.job.kind === 'single_submit' && entry.job.status !== 'completed')) {
+        submissions = submissions.map((item) => serverJobs.some((entry) => entry.job.kind === 'single_submit' && entry.items.some((jobItem) => jobItem.submissionId === item.id)) ? { ...item, status: 'MARKED' as const, score: 77, note: 'AI đề xuất sửa vòng lặp.' } : item);
+      }
+      serverJobs = serverJobs.map((entry) => entry.job.kind !== 'single' && entry.job.kind !== 'single_submit' ? entry : ({ job: { ...entry.job, status: 'completed', completedItems: 1 }, items: entry.items.map((item) => ({ ...item, status: 'completed', score: 77, note: 'AI đề xuất sửa vòng lặp.', updatedAt: 'later' })) }));
       return json(envelope({ jobs }));
     }
     if (path.startsWith('/api/v2/homework/jobs?classId=')) return json(envelope({ jobs: [] }));
@@ -263,6 +266,22 @@ describe('React homework page parity', () => {
     expect(fetchMock.mock.calls.some(([input]) => String(input).includes('classId=class-1') && String(input).includes('submissionId=submission-1') && String(input).includes('key=classes%2Fclass-1%2Fsubmission-1.zip'))).toBe(true);
   });
 
+  it('per-row AI + Gửi queues a grade-and-send job, keeps the old AI button, and shows the marked score', async () => {
+    const user = userEvent.setup(); renderPage(); await chooseClass(user);
+    await user.selectOptions(screen.getByLabelText('Trạng thái'), '');
+    const row = screen.getByRole('row', { name: /An/ });
+    expect(within(row).getByRole('button', { name: 'AI chấm bài của An' })).toBeEnabled();
+    await user.click(within(row).getByRole('button', { name: 'AI chấm và gửi bài của An' }));
+    expect(captured.find((item) => item.path === '/api/v2/homework/jobs')?.body).toMatchObject({ classId: 'class-1', kind: 'single_submit', submissions: [{ id: 'submission-1' }] });
+    expect(await screen.findByText('AI đã chấm và gửi 77 điểm cho An.', {}, { timeout: 4_000 })).toBeInTheDocument();
+    await waitFor(() => expect(within(screen.getByRole('row', { name: /An/ })).getByText('Đã chấm')).toBeInTheDocument());
+    expect(screen.getByLabelText('Điểm của An')).toHaveValue(77);
+    expect(captured.some((item) => item.path === '/api/v2/homework/mark')).toBe(false);
+    expect(within(screen.getByRole('region', { name: 'Hàng đợi AI chấm' })).getByText('Chấm & gửi')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Tiến độ AI chấm hàng loạt' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'AI Chấm tất cả' })).toBeEnabled();
+  }, 8_000);
+
   it('aborts and ignores a delayed manual mark after switching classes', async () => {
     const delayed = delayResponse('/api/v2/homework/mark');
     const user = userEvent.setup(); renderPage(); await chooseClass(user);
@@ -315,11 +334,16 @@ describe('React homework page parity', () => {
     renderPage();
     await screen.findByRole('cell', { name: 'An' });
     expect(screen.getByLabelText('Lớp')).toHaveValue('class-1');
-    const queue = screen.getByRole('region', { name: 'Hàng đợi AI chấm' });
     await waitFor(() => expect(useHomeworkStore.getState().activeJobId).toBe('job-run'));
-    expect(within(queue).getByText('2 đang chờ')).toBeInTheDocument();
-    expect(within(queue).getByText('Đang chấm')).toBeInTheDocument();
-    expect(within(queue).getByText('Chờ')).toBeInTheDocument();
+    // Batch jobs live in the floating dock, not in the per-row AI queue in the sidebar.
+    const dock = screen.getByRole('region', { name: 'Tiến độ AI chấm hàng loạt' });
+    expect(within(dock).getByText('1 đang chạy')).toBeInTheDocument();
+    expect(within(dock).getByText('Đang chấm')).toBeInTheDocument();
+    expect(within(dock).getByText('Chờ')).toBeInTheDocument();
+    expect(within(dock).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
+    expect(within(dock).getByRole('button', { name: /Hủy job/ })).toBeInTheDocument();
+    const queue = screen.getByRole('region', { name: 'Hàng đợi AI chấm' });
+    expect(within(queue).getByText('Chưa có lượt AI chấm từng bài nào trong 24 giờ qua.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'AI Chấm tất cả' })).toBeDisabled();
     expect(within(screen.getByRole('row', { name: /An/ })).getByRole('button', { name: 'AI chấm bài của An' })).toBeDisabled();
     const history = screen.getByRole('region', { name: 'Lịch sử điểm' });

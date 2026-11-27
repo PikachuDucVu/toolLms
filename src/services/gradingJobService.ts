@@ -398,7 +398,7 @@ function normalizeJob(row: Record<string, unknown>): GradingJob {
     id: String(row.id || ""),
     classId: String(row.class_id || ""),
     status,
-    kind: row.kind === "selected" || row.kind === "single" ? row.kind : "all",
+    kind: row.kind === "selected" || row.kind === "single" || row.kind === "single_submit" ? row.kind : "all",
     totalItems: nonnegativeInteger(row.total_items),
     completedItems: nonnegativeInteger(row.completed_items),
     failedItems: nonnegativeInteger(row.failed_items),

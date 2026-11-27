@@ -135,8 +135,11 @@ export const GradingJobScopeSchema = HomeworkAiOptionsSchema.extend({
   lessons: z.array(HomeworkLessonSchema).max(1_000),
 });
 export type GradingJobScope = z.infer<typeof GradingJobScopeSchema>;
-/** 'all' and 'selected' mark on the LMS; 'single' (a per-row AI click) only stores a suggestion. */
-export const GradingJobKindSchema = z.enum(['all', 'selected', 'single']);
+/**
+ * 'all' and 'selected' are batch jobs that mark on the LMS; 'single' (a per-row AI click) only
+ * stores a suggestion; 'single_submit' (per-row "AI chấm & gửi") grades one row and marks it.
+ */
+export const GradingJobKindSchema = z.enum(['all', 'selected', 'single', 'single_submit']);
 export type GradingJobKind = z.infer<typeof GradingJobKindSchema>;
 export const GradingJobCreateRequestSchema = GradingJobScopeSchema.extend({ classId: EntityIdSchema, kind: GradingJobKindSchema.optional() });
 export type GradingJobCreateRequest = z.infer<typeof GradingJobCreateRequestSchema>;

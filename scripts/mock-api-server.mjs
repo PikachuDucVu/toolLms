@@ -326,13 +326,13 @@ route('GET', /^\/api\/v2\/classes\/([^/]+)$/, ([classId]) => {
   if (!item) throw notFound();
   return { class: { ...item, commentProgress: commentProgress(item.slots) } };
 });
-route('GET', /^\/api\/v2\/classes\/([^/]+)\/homework$/, ([classId]) => ({
+route('GET', /^\/api\/v2\/classes\/([^/]+)\/homework$/, ([classId]) => withHomeworkMarks({
   classId,
   students: STUDENTS.map(([id, displayName]) => ({ id, studentUid: `uid-${id}`, displayName })),
   lessons: Array.from({ length: 8 }, (_, i) => ({ id: `lesson-${i + 1}`, name: `Bài ${i + 1}: Bài tập về nhà`, type: 'HOMEWORK', isActive: true, displayOrder: i + 1 })),
   submissions: STUDENTS.flatMap(([id], si) => Array.from({ length: 7 }, (_, li) => ({
     id: `sub-${id}-${li}`,
-    type: 'HOMEWORK',
+    type: 'UPLOAD_FILE',
     note: li % 2 ? 'Bài làm tốt' : '',
     score: (si + li) % 3 === 0 ? null : 7 + ((si + li) % 4),
     status: (si + li) % 3 === 0 ? 'SUBMITTED' : 'MARKED',
@@ -345,7 +345,7 @@ route('GET', /^\/api\/v2\/classes\/([^/]+)\/homework$/, ([classId]) => ({
     markedBy: 'Giáo viên Demo',
     submittedAt: daysAgo(21 - li),
     submittedCount: 1,
-    content: { attachments: [] },
+    content: { attachments: [`classes/${classId}/bai-${li + 1}-${id}.sb3`] },
   })).filter((_, li) => (si + li) % 5 !== 4)),
 }));
 route('GET', /^\/api\/v2\/classes\/([^/]+)\/storage-products$/, () => ({ files: [] }));
@@ -452,7 +452,61 @@ route('POST', /^\/api\/v2\/slots\/([^/]+)\/comments\/submit$/, ([slotId], body) 
   return { slotId, studentId: body.studentId, attendanceId: body.attendanceId, submitted: true, summaryIncluded: Boolean(body.summary), logged: true };
 });
 route('GET', /^\/api\/v2\/slots\/([^/]+)\/student-works$/, () => ({ studentWorks: [] }));
-route('GET', /^\/api\/v2\/homework\/jobs/, () => ({ jobs: [] }));
+// ---- Homework AI grading queue (simulated) ----
+// Each job grades one item every MOCK_GRADE_MS; batch and "single_submit" jobs mark the
+// submission when it finishes, "single" only returns a suggestion.
+const GRADE_MS = Number(process.env.MOCK_GRADE_MS || 1500);
+const homeworkMarks = new Map();
+const gradingJobs = [];
+function withHomeworkMarks(data) {
+  for (const job of gradingJobs) jobView(job);
+  data.submissions = data.submissions.map((item) => homeworkMarks.has(item.id) ? { ...item, ...homeworkMarks.get(item.id) } : item);
+  return data;
+}
+function jobView(job) {
+  const elapsed = Date.now() - job.startedAt;
+  const items = job.items.map((item, index) => {
+    if (job.cancelledAt && item.status !== 'completed') return { ...item, status: 'cancelled' };
+    const doneAt = (index + 1) * GRADE_MS;
+    const status = elapsed >= doneAt ? (item.submissionId.endsWith('-6') ? 'failed' : 'completed') : elapsed >= index * GRADE_MS ? 'processing' : 'queued';
+    const score = status === 'completed' ? 6 + (index % 5) : null;
+    const done = status === 'completed' || status === 'failed';
+    if (status === 'completed' && job.kind !== 'single' && !homeworkMarks.has(item.submissionId)) {
+      homeworkMarks.set(item.submissionId, { status: 'MARKED', score, note: 'AI (mock) đã chấm.', markedAt: iso(), markedBy: 'AI' });
+    }
+    return { ...item, status, score, note: status === 'completed' ? 'AI (mock) đã chấm.' : null, error: status === 'failed' ? 'Mock: AI không đọc được tệp' : null, updatedAt: done ? new Date(job.startedAt + doneAt).toISOString() : item.updatedAt };
+  });
+  const completedItems = items.filter((item) => item.status === 'completed').length;
+  const failedItems = items.filter((item) => item.status === 'failed').length;
+  const finished = items.every((item) => item.status !== 'queued' && item.status !== 'processing');
+  const status = job.cancelledAt ? 'cancelled' : finished ? 'completed' : elapsed > 0 ? 'running' : 'queued';
+  return { job: { id: job.id, classId: job.classId, status, kind: job.kind, totalItems: items.length, completedItems, failedItems, createdAt: job.createdAt, updatedAt: iso(), cancelledAt: job.cancelledAt }, items };
+}
+function findJob(jobId) {
+  const job = gradingJobs.find((entry) => entry.id === jobId);
+  if (!job) throw notFound();
+  return job;
+}
+route('POST', /^\/api\/v2\/homework\/jobs$/, (_m, body) => {
+  const id = `job-${gradingJobs.length + 1}`;
+  const job = {
+    id, classId: body.classId, kind: body.kind || 'all', createdAt: iso(), startedAt: Date.now(), cancelledAt: null,
+    items: body.submissions.map((submission, index) => ({ id: `${id}-item-${index + 1}`, submissionId: submission.id, studentUid: submission.studentUid, lessonId: submission.lessonId, status: 'queued', score: null, note: null, error: null, result: null, createdAt: iso(), updatedAt: iso() })),
+  };
+  gradingJobs.unshift(job);
+  return { job: jobView(job).job };
+});
+route('GET', /^\/api\/v2\/homework\/jobs$/, (_m, _b, query) => ({ jobs: gradingJobs.filter((job) => job.classId === query.get('classId')).slice(0, 30).map(jobView) }));
+route('GET', /^\/api\/v2\/homework\/jobs\/([^/]+)$/, ([jobId]) => jobView(findJob(jobId)));
+route('POST', /^\/api\/v2\/homework\/jobs\/([^/]+)\/cancel$/, ([jobId]) => {
+  const job = findJob(jobId);
+  job.cancelledAt = job.cancelledAt || iso();
+  return { job: jobView(job).job };
+});
+route('POST', /^\/api\/v2\/homework\/mark$/, (_m, body) => {
+  homeworkMarks.set(body.id, { status: 'MARKED', score: body.score, note: body.note || '', markedAt: iso(), markedBy: 'Giáo viên Demo' });
+  return { submission: { id: body.id, score: body.score, status: 'MARKED', markedAt: iso(), markedBy: 'Giáo viên Demo' } };
+});
 route('GET', /^\/api\/v2\/homework\/score-log/, () => ({ entries: [] }));
 
 function notFound() {

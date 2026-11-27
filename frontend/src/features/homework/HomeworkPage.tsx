@@ -12,6 +12,7 @@ import { readHomeworkClassId, writeHomeworkClassId } from '../../lib/persistence
 import { runtimeRoutes } from '../../lib/runtimeRoutes';
 import { batchMarkHomework, cancelGradingJob, createGradingJob, getDownloadUrl, markHomework, retryGradingJob } from './api';
 import { BatchActions } from './BatchActions';
+import { BatchQueueDock } from './BatchQueueDock';
 import { GradingJobProgress } from './GradingJobProgress';
 import { effectiveApiKey, HomeworkConfig, initialHomeworkAiOptions, type HomeworkAiOptions } from './HomeworkConfig';
 import { HomeworkFilters } from './HomeworkFilters';
@@ -21,7 +22,7 @@ import { filterHomeworkSubmissions, homeworkStats, lessonById, pendingSubmission
 import { SubmissionTable } from './SubmissionTable';
 import { useHomeworkStore, type FrozenGradingScope } from './store';
 import { useGradingJob } from './useGradingJob';
-import { isActiveJob, QUEUE_POLL_INTERVAL_MS, useHomeworkQueue } from './useHomeworkQueue';
+import { isActiveJob, isBatchJob, marksOnLms, QUEUE_POLL_INTERVAL_MS, useHomeworkQueue } from './useHomeworkQueue';
 
 export function HomeworkPage() {
   const auth = useAuth();
@@ -74,7 +75,10 @@ export function HomeworkPage() {
   }, [classId, classes.data]);
 
   const queue = useHomeworkQueue({ enabled: Boolean(auth.session), classId, submissions: allSubmissions, students, homeworkReady });
-  const markJobRunning = queue.jobs.some((entry) => entry.job.kind !== 'single' && isActiveJob(entry));
+  // Any job that writes scores (batch or per-row "AI chấm & gửi") keeps the score history live;
+  // only a running batch blocks starting another batch.
+  const markJobRunning = queue.jobs.some((entry) => marksOnLms(entry) && isActiveJob(entry));
+  const batchJobRunning = queue.jobs.some((entry) => isBatchJob(entry) && isActiveJob(entry));
   const scoreLog = useQuery({ ...homeworkScoreLogQuery(classId), enabled: Boolean(auth.session && classId), refetchInterval: markJobRunning ? QUEUE_POLL_INTERVAL_MS : false });
   const busyIds = useMemo(() => {
     const ids = new Set([...queue.busyIds, ...queueingIds]);
@@ -95,7 +99,7 @@ export function HomeworkPage() {
   // After a reload or a class switch, pick the running batch job back up so its controls return.
   useEffect(() => {
     if (activeJobId || !homeworkReady) return;
-    const running = queue.jobs.find((entry) => entry.job.kind !== 'single' && isActiveJob(entry));
+    const running = queue.jobs.find((entry) => isBatchJob(entry) && isActiveJob(entry));
     if (!running) return;
     const ids = new Set(running.items.map((item) => item.submissionId));
     const scopeSubmissions = allSubmissions.filter((submission) => ids.has(submission.id));
@@ -201,19 +205,19 @@ export function HomeworkPage() {
     } finally { releaseHomeworkOperationController(controller); }
   };
 
-  // A per-row AI click is queued on the server as a one-item suggestion job, so it keeps
-  // running and shows up again after a reload; the result fills the draft for review.
-  const aiGradeSingle = async (submission: HomeworkSubmission) => {
+  // A per-row AI click is queued on the server as a one-item job, so it keeps running and shows
+  // up again after a reload. "AI" only fills the draft for review; "AI chấm & gửi" also marks it.
+  const aiGradeSingle = async (submission: HomeworkSubmission, submit = false) => {
     const context = captureHomeworkContext(classId);
     if (!isCurrentHomeworkContext(context)) return;
-    const scope: FrozenGradingScope = { classId: context.classId, kind: 'single', submissions: [submission], students, lessons, modelId: aiOptions.aiModel, customModelId: aiOptions.customModelId, thinkingLevel: aiOptions.thinkingLevel };
+    const scope: FrozenGradingScope = { classId: context.classId, kind: submit ? 'single_submit' : 'single', submissions: [submission], students, lessons, modelId: aiOptions.aiModel, customModelId: aiOptions.customModelId, thinkingLevel: aiOptions.thinkingLevel };
     const studentName = studentById(students, submission.studentUid)?.displayName || 'học sinh';
     const controller = createHomeworkOperationController();
     setQueueingIds((current) => new Set(current).add(submission.id));
     try {
       await createJobMutation.mutateAsync({ scope, apiKey: aiOptions.apiKey, signal: controller.signal });
       if (!isCurrentHomeworkContext(context)) return;
-      toast.show(`Đã đưa bài của ${studentName} vào hàng đợi AI.`, 'info');
+      toast.show(submit ? `Đã đưa bài của ${studentName} vào hàng đợi AI (chấm xong sẽ tự gửi).` : `Đã đưa bài của ${studentName} vào hàng đợi AI.`, 'info');
       await queryClient.invalidateQueries({ queryKey: homeworkJobsQuery(context.classId).queryKey, exact: true });
     } catch (error) {
       if (!isCurrentHomeworkContext(context) || controller.signal.aborted) return;
@@ -317,9 +321,10 @@ export function HomeworkPage() {
     <HomeworkConfig value={aiOptions} onChange={setAiOptions} />
     <div className="homework-main">
       <HomeworkFilters classes={classes.data?.data.classes || []} lessons={lessons} refreshing={classes.isFetching || homework.isFetching} onRefresh={() => void refresh()} />
-      <SubmissionTable classSelected={Boolean(classId)} submissions={filtered} students={students} lessons={lessons} loading={Boolean(classId && homework.isPending)} error={homework.error} busyIds={busyIds} onRetry={() => void homework.refetch()} onMark={(submission) => void markSingle(submission)} onAiGrade={(submission) => void aiGradeSingle(submission)} onDownload={(submission, key) => void download(submission, key)} summary={stats.total > 0 && <div className="homework-stats" role="group" aria-label="Thống kê bài nộp"><Stat label="Tổng bài nộp" value={stats.total} /><Stat label="Chờ chấm" value={stats.pending} tone="warning" /><Stat label="Đã chấm" value={stats.marked} tone="success" /></div>} actions={<BatchActions disabled={!classId || !allSubmissions.length} pendingCount={stats.pending} jobActive={Boolean(activeJobId) || markJobRunning} onMarkSelected={() => void markSelected()} onMarkAll={() => void markAll()} onAiSelected={() => void startBatchAi(selectedVisibleSubmissions(allSubmissions, selectedIds), true)} onAiAll={() => void startBatchAi(pendingSubmissions(allSubmissions), false)} />} />
+      <SubmissionTable classSelected={Boolean(classId)} submissions={filtered} students={students} lessons={lessons} loading={Boolean(classId && homework.isPending)} error={homework.error} busyIds={busyIds} onRetry={() => void homework.refetch()} onMark={(submission) => void markSingle(submission)} onAiGrade={(submission) => void aiGradeSingle(submission)} onAiGradeSubmit={(submission) => void aiGradeSingle(submission, true)} onDownload={(submission, key) => void download(submission, key)} summary={stats.total > 0 && <div className="homework-stats" role="group" aria-label="Thống kê bài nộp"><Stat label="Tổng bài nộp" value={stats.total} /><Stat label="Chờ chấm" value={stats.pending} tone="warning" /><Stat label="Đã chấm" value={stats.marked} tone="success" /></div>} actions={<BatchActions disabled={!classId || !allSubmissions.length} pendingCount={stats.pending} jobActive={Boolean(activeJobId) || batchJobRunning} onMarkSelected={() => void markSelected()} onMarkAll={() => void markAll()} onAiSelected={() => void startBatchAi(selectedVisibleSubmissions(allSubmissions, selectedIds), true)} onAiAll={() => void startBatchAi(pendingSubmissions(allSubmissions), false)} />} />
     </div>
-    <HomeworkSidebar classSelected={Boolean(classId)} jobs={queue.jobs} jobsLoading={Boolean(classId) && queue.isPending} activeJobId={activeJobId} activeJobSlot={jobProgress} students={students} lessons={lessons} scoreLog={scoreLog.data?.data.entries || []} scoreLogLoading={Boolean(classId) && scoreLog.isPending} scoreLogError={scoreLog.error} scoreLogRefreshing={scoreLog.isFetching} onRefreshScoreLog={() => void scoreLog.refetch()} />
+    <HomeworkSidebar classSelected={Boolean(classId)} jobs={queue.jobs} jobsLoading={Boolean(classId) && queue.isPending} students={students} lessons={lessons} scoreLog={scoreLog.data?.data.entries || []} scoreLogLoading={Boolean(classId) && scoreLog.isPending} scoreLogError={scoreLog.error} scoreLogRefreshing={scoreLog.isFetching} onRefreshScoreLog={() => void scoreLog.refetch()} />
+    {classId && <BatchQueueDock jobs={queue.jobs} activeJobId={activeJobId} activeJobSlot={jobProgress} students={students} lessons={lessons} />}
   </main>;
 }
 

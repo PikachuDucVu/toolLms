@@ -12,6 +12,21 @@ export function isActiveJob(entry: GradingJobWithItems): boolean {
   return entry.job.status === 'queued' || entry.job.status === 'running';
 }
 
+/** 'Chấm tất cả' / 'Chấm đã chọn' jobs: shown in the floating batch dock, never mixed with per-row AI. */
+export function isBatchJob(entry: GradingJobWithItems): boolean {
+  return entry.job.kind === 'all' || entry.job.kind === 'selected';
+}
+
+/** Per-row AI clicks: a suggestion ('single') or grade-and-send ('single_submit'). */
+export function isRowJob(entry: GradingJobWithItems): boolean {
+  return entry.job.kind === 'single' || entry.job.kind === 'single_submit';
+}
+
+/** Every kind except a plain suggestion writes the score to the LMS. */
+export function marksOnLms(entry: GradingJobWithItems): boolean {
+  return entry.job.kind !== 'single';
+}
+
 export function isPendingItem(item: GradingJobItem): boolean {
   return item.status === 'queued' || item.status === 'processing';
 }
@@ -52,14 +67,14 @@ export function useHomeworkQueue({ enabled, classId, submissions, students, home
     lastMarkProgress.current = '';
   }, [classId]);
 
-  const markProgress = useMemo(() => jobs.filter((entry) => entry.job.kind !== 'single').map((entry) => `${entry.job.id}:${entry.job.status}:${entry.job.completedItems}`).join('|'), [jobs]);
+  const markProgress = useMemo(() => jobs.filter(marksOnLms).map((entry) => `${entry.job.id}:${entry.job.status}:${entry.job.completedItems}`).join('|'), [jobs]);
   useEffect(() => {
     if (!classId || !query.data) return;
     const previous = lastMarkProgress.current;
     lastMarkProgress.current = markProgress;
     if (!previous || previous === markProgress) return;
     void queryClient.invalidateQueries({ queryKey: homeworkScoreLogQuery(classId).queryKey, exact: true });
-    const finished = jobs.some((entry) => entry.job.kind !== 'single' && !isActiveJob(entry) && (previous.includes(`${entry.job.id}:queued`) || previous.includes(`${entry.job.id}:running`)));
+    const finished = jobs.some((entry) => marksOnLms(entry) && !isActiveJob(entry) && (previous.includes(`${entry.job.id}:queued`) || previous.includes(`${entry.job.id}:running`)));
     if (finished) void queryClient.invalidateQueries({ queryKey: homeworkQuery(classId).queryKey, exact: true });
   }, [classId, jobs, markProgress, query.data, queryClient]);
 
@@ -70,13 +85,16 @@ export function useHomeworkQueue({ enabled, classId, submissions, students, home
     const byId = new Map(submissions.map((submission) => [submission.id, submission]));
     const latest = new Map<string, GradingJobItem>();
     const failures: GradingJobItem[] = [];
+    const sent: GradingJobItem[] = [];
     for (const entry of jobs) {
-      if (entry.job.kind !== 'single') continue;
+      if (!isRowJob(entry)) continue;
       for (const item of entry.items) {
         if (handledItems.current.has(item.id) || isPendingItem(item)) continue;
         handledItems.current.add(item.id);
         if (item.status === 'failed') { failures.push(item); continue; }
         if (item.status !== 'completed' || item.score == null) continue;
+        // Grade-and-send rows are already on the LMS; the homework refetch brings the score in.
+        if (entry.job.kind === 'single_submit') { sent.push(item); continue; }
         const current = latest.get(item.submissionId);
         if (!current || current.updatedAt < item.updatedAt) latest.set(item.submissionId, item);
       }
@@ -92,8 +110,13 @@ export function useHomeworkQueue({ enabled, classId, submissions, students, home
       if (!restoring) toast.show(`AI đề xuất ${item.score} điểm cho ${studentById(students, submission.studentUid)?.displayName || 'học sinh'}. Kiểm tra rồi bấm "Gửi".`, 'info');
     }
     if (restoring && applied) toast.show(`Đã khôi phục ${applied} đề xuất AI chưa gửi.`, 'info');
+    if (sent.length && classId && !restoring) {
+      void queryClient.invalidateQueries({ queryKey: homeworkQuery(classId).queryKey, exact: true });
+      void queryClient.invalidateQueries({ queryKey: homeworkScoreLogQuery(classId).queryKey, exact: true });
+    }
+    if (!restoring) for (const item of sent) toast.show(`AI đã chấm và gửi ${item.score} điểm cho ${studentById(students, item.studentUid)?.displayName || 'học sinh'}.`, 'success');
     if (!restoring) for (const item of failures) toast.show(`AI lỗi (${studentById(students, item.studentUid)?.displayName || 'học sinh'}): ${item.error || 'không rõ nguyên nhân'}`, 'error');
-  }, [homeworkReady, jobs, query.data, students, submissions, toast]);
+  }, [classId, homeworkReady, jobs, query.data, queryClient, students, submissions, toast]);
 
   return { ...query, jobs, busyIds };
 }

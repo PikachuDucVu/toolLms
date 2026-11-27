@@ -1,16 +1,13 @@
 import type { GradingJobItem, GradingJobWithItems, HomeworkLesson, HomeworkScoreLogEntry, HomeworkStudent } from '@tool-lms/contracts';
 import { History, ListChecks, RefreshCw } from 'lucide-react';
-import type { ReactNode } from 'react';
 import { safeErrorMessage } from '../../app/providers';
 import { lessonById, studentById } from './selectors';
-import { isActiveJob, isPendingItem } from './useHomeworkQueue';
+import { isActiveJob, isPendingItem, isRowJob } from './useHomeworkQueue';
 
-export function HomeworkSidebar({ classSelected, jobs, jobsLoading, activeJobId, activeJobSlot, students, lessons, scoreLog, scoreLogLoading, scoreLogError, scoreLogRefreshing, onRefreshScoreLog }: {
+export function HomeworkSidebar({ classSelected, jobs, jobsLoading, students, lessons, scoreLog, scoreLogLoading, scoreLogError, scoreLogRefreshing, onRefreshScoreLog }: {
   classSelected: boolean;
   jobs: GradingJobWithItems[];
   jobsLoading: boolean;
-  activeJobId: string | null;
-  activeJobSlot: ReactNode;
   students: HomeworkStudent[];
   lessons: HomeworkLesson[];
   scoreLog: HomeworkScoreLogEntry[];
@@ -20,72 +17,46 @@ export function HomeworkSidebar({ classSelected, jobs, jobsLoading, activeJobId,
   onRefreshScoreLog: () => void;
 }) {
   return <aside className="homework-sidebar" aria-label="Hàng đợi AI và lịch sử điểm">
-    <QueuePanel classSelected={classSelected} jobs={jobs} loading={jobsLoading} activeJobId={activeJobId} activeJobSlot={activeJobSlot} students={students} lessons={lessons} />
+    <QueuePanel classSelected={classSelected} jobs={jobs} loading={jobsLoading} students={students} lessons={lessons} />
     <ScoreHistoryPanel classSelected={classSelected} entries={scoreLog} loading={scoreLogLoading} error={scoreLogError} refreshing={scoreLogRefreshing} onRefresh={onRefreshScoreLog} />
   </aside>;
 }
 
-function QueuePanel({ classSelected, jobs, loading, activeJobId, activeJobSlot, students, lessons }: {
+export type QueueItemLabel = (item: GradingJobItem) => { student: string; lesson: string };
+
+export function queueItemLabel(students: HomeworkStudent[], lessons: HomeworkLesson[]): QueueItemLabel {
+  return (item) => ({ student: studentById(students, item.studentUid)?.displayName || 'Học sinh', lesson: lessonById(lessons, item.lessonId)?.name || '' });
+}
+
+/** Per-row AI only ("AI" suggestions and "AI chấm & gửi"); batch jobs live in the floating dock. */
+function QueuePanel({ classSelected, jobs, loading, students, lessons }: {
   classSelected: boolean;
   jobs: GradingJobWithItems[];
   loading: boolean;
-  activeJobId: string | null;
-  activeJobSlot: ReactNode;
   students: HomeworkStudent[];
   lessons: HomeworkLesson[];
 }) {
-  const pending = jobs.filter(isActiveJob).reduce((total, entry) => total + entry.items.filter(isPendingItem).length, 0);
-  const activeListed = jobs.some((entry) => entry.job.id === activeJobId);
-  const batches = jobs.filter((entry) => entry.job.kind !== 'single');
-  const singles = jobs.filter((entry) => entry.job.kind === 'single');
-  const label = (item: GradingJobItem) => ({ student: studentById(students, item.studentUid)?.displayName || 'Học sinh', lesson: lessonById(lessons, item.lessonId)?.name || '' });
+  const rows = jobs.filter(isRowJob);
+  const pending = rows.filter(isActiveJob).reduce((total, entry) => total + entry.items.filter(isPendingItem).length, 0);
+  const label = queueItemLabel(students, lessons);
   return <section className="card homework-side-card homework-queue-card" aria-label="Hàng đợi AI chấm">
     <header className="homework-side-header">
-      <h2><ListChecks size={17} />Hàng đợi AI</h2>
+      <h2><ListChecks size={17} />AI chấm từng bài</h2>
       {pending > 0 && <span className="homework-side-badge is-live" role="status">{pending} đang chờ</span>}
     </header>
     <div className="homework-side-body">
-      {activeJobSlot && !activeListed && activeJobSlot}
       {!classSelected ? <p className="homework-side-empty">Chọn lớp để xem hàng đợi.</p>
         : loading && !jobs.length ? <span className="skeleton homework-side-skeleton" aria-hidden="true" />
-        : !jobs.length && !activeJobSlot ? <p className="homework-side-empty">Chưa có lượt AI chấm nào trong 24 giờ qua.</p>
-        : <>
-          {batches.map((entry) => <BatchJob key={entry.job.id} entry={entry} slot={entry.job.id === activeJobId ? activeJobSlot : null} label={label} />)}
-          {singles.length > 0 && <div className="queue-group">
-            <h3 className="queue-group-title">AI gợi ý từng bài</h3>
-            <ul className="queue-items">{singles.flatMap((entry) => entry.items.map((item) => <QueueItem key={item.id} item={item} {...label(item)} time={entry.job.createdAt} />))}</ul>
-          </div>}
-        </>}
+        : !rows.length ? <p className="homework-side-empty">Chưa có lượt AI chấm từng bài nào trong 24 giờ qua.</p>
+        : <ul className="queue-items">{rows.flatMap((entry) => entry.items.map((item) => <QueueItem key={item.id} item={item} {...label(item)} time={entry.job.createdAt} sent={entry.job.kind === 'single_submit'} />))}</ul>}
     </div>
   </section>;
 }
 
-function BatchJob({ entry, slot, label }: { entry: GradingJobWithItems; slot: ReactNode; label: (item: GradingJobItem) => { student: string; lesson: string } }) {
-  const { job, items } = entry;
-  const active = isActiveJob(entry);
-  const cancelled = items.filter((item) => item.status === 'cancelled').length;
-  const done = job.completedItems + job.failedItems + cancelled;
-  const percent = job.totalItems ? Math.min(100, Math.round(done / job.totalItems * 100)) : 0;
-  const ordered = [...items].sort((left, right) => itemRank(left) - itemRank(right));
-  const title = job.kind === 'selected' ? 'AI chấm đã chọn' : 'AI chấm tất cả';
-  const list = <ul className="queue-items">{ordered.map((item) => <QueueItem key={item.id} item={item} {...label(item)} />)}</ul>;
-  // The job the page is tracking keeps its controls (cancel / retry) on top of its student list.
-  if (slot) return <div className="queue-group queue-batch is-active">{slot}{list}</div>;
-  return <details className={`queue-group queue-batch${active ? ' is-active' : ''}`} open={active}>
-    <summary>
-      <div className="queue-batch-head">
-        <div className="queue-batch-title"><strong>{title}</strong><span>{formatTime(job.createdAt)} · {done}/{job.totalItems} bài{job.failedItems ? ` · ${job.failedItems} lỗi` : ''}</span></div>
-        <JobChip status={job.status} />
-      </div>
-      <div className="progress-track size-sm" aria-label={`Tiến độ ${percent}%`}><span style={{ width: `${percent}%` }} /></div>
-    </summary>
-    {list}
-  </details>;
-}
-
-function QueueItem({ item, student, lesson, time }: { item: GradingJobItem; student: string; lesson: string; time?: string }) {
+export function QueueItem({ item, student, lesson, time, sent }: { item: GradingJobItem; student: string; lesson: string; time?: string; sent?: boolean }) {
+  const meta = [lesson, time && formatTime(time)].filter(Boolean).join(' · ');
   return <li className={`queue-item queue-item-${item.status}`} title={item.error || item.note || undefined}>
-    <span className="queue-item-main"><strong>{student}</strong>{(lesson || time) && <span>{[lesson, time && formatTime(time)].filter(Boolean).join(' · ')}</span>}</span>
+    <span className="queue-item-main"><strong>{student}</strong>{(meta || sent) && <span>{sent && <span className="queue-item-mode">Chấm & gửi</span>}{meta}</span>}</span>
     <ItemChip item={item} />
   </li>;
 }
@@ -98,12 +69,7 @@ function ItemChip({ item }: { item: GradingJobItem }) {
   return <span className="queue-chip is-failed">Lỗi</span>;
 }
 
-function JobChip({ status }: { status: GradingJobWithItems['job']['status'] }) {
-  const text = status === 'queued' ? 'Đang chờ' : status === 'running' ? 'Đang chấm' : status === 'completed' ? 'Xong' : 'Đã hủy';
-  return <span className={`job-status job-status-${status}`}>{text}</span>;
-}
-
-function itemRank(item: GradingJobItem): number {
+export function itemRank(item: GradingJobItem): number {
   return item.status === 'processing' ? 0 : item.status === 'queued' ? 1 : item.status === 'failed' ? 2 : 3;
 }
 
@@ -148,7 +114,7 @@ function TimeStamp({ value }: { value: string }) {
   return <time dateTime={value}>{time}{!today && <span className="score-history-date">{date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}</span>}</time>;
 }
 
-function formatTime(value: string): string {
+export function formatTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
   const time = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });

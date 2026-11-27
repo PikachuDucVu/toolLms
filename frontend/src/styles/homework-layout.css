@@ -118,6 +118,25 @@
   color: var(--primary);
 }
 
+.job-progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.job-progress-bar .progress-track {
+  flex: 1 1 auto;
+}
+
+.job-progress-percent {
+  min-width: 36px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .job-truth-note {
   margin: 0;
   font-size: 12.5px;
@@ -316,7 +335,13 @@
 
 .homework-table .row-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
+}
+
+/* "AI + Gửi" sits on its own line under "Gửi" / "AI" so the column stays narrow. */
+.homework-table .row-actions .row-action-submit {
+  flex-basis: 100%;
 }
 
 .homework-table .row-actions .btn {
@@ -946,5 +971,126 @@ details.queue-batch[open] > summary {
 
   .batch-score-field .score-input {
     flex: 1;
+  }
+}
+
+/* ---------- Floating batch dock (AI chấm tất cả / đã chọn) ----------
+   Fixed in the bottom-right corner, left of the settings FAB, so batch
+   progress is visible at every width without scrolling to the sidebar. */
+.queue-item-mode {
+  margin-right: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--primary-bg);
+  color: var(--primary);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.batch-dock {
+  position: fixed;
+  right: 90px;
+  bottom: 22px;
+  z-index: 1030;
+  display: flex;
+  flex-direction: column;
+  width: min(380px, calc(100vw - 112px));
+  max-height: min(60vh, 520px);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--surface-card);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18), 0 2px 6px rgba(15, 23, 42, 0.08);
+  animation: batch-dock-in 180ms ease-out;
+}
+
+@keyframes batch-dock-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.batch-dock-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 10px 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.batch-dock-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-color, var(--gray-800));
+}
+
+.batch-dock-header h2 svg {
+  color: var(--primary);
+}
+
+.batch-dock-header .icon-button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.batch-dock-header .icon-button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.batch-dock-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.batch-dock-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface-card);
+}
+
+.batch-dock-card.is-tracked {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px var(--primary-bg);
+}
+
+.batch-dock-card .progress-track > span {
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+}
+
+.batch-dock-card .queue-items {
+  max-height: 220px;
+}
+
+.batch-dock.is-collapsed .job-truth-note {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .batch-dock {
+    right: 16px;
+    left: 16px;
+    bottom: 80px;
+    width: auto;
   }
 }
