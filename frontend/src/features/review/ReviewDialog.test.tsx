@@ -121,6 +121,24 @@ describe('ReviewDialog modal interaction contract', () => {
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
     expect(screen.getByRole('dialog', { name: 'Review cả lớp' })).toBeVisible();
   });
+
+  it('lets an LMS comment be edited in the row and re-submitted with the row button', async () => {
+    const submitted: StudentAttendance = { id: 'attendance-4', studentId: 'student-4', displayName: 'Phạm Bảo Ngọc', status: 'ATTENDED', comment: 'Bảo Ngọc làm bài tốt.', commentByAreas: [] } as StudentAttendance;
+    const withSubmitted = { ...detail, slots: [{ ...detail.slots[0], studentAttendance: [...students, submitted] }] } as unknown as ClassDetail;
+    const user = userEvent.setup(); renderHarness(withSubmitted); await user.click(screen.getByRole('button', { name: 'Mở review' }));
+    const textarea = screen.getByLabelText('Nhận xét của Phạm Bảo Ngọc') as HTMLTextAreaElement;
+    expect(textarea).toHaveValue('Bảo Ngọc làm bài tốt.');
+    const resend = screen.getByRole('button', { name: 'Gửi lại nhận xét của Phạm Bảo Ngọc lên LMS' });
+    expect(resend).toBeDisabled();
+    await user.type(textarea, ' Con tiến bộ rõ.');
+    expect(useCommentStore.getState().drafts['student-4'].content).toBe('Bảo Ngọc làm bài tốt. Con tiến bộ rõ.');
+    await waitFor(() => expect(resend).toBeEnabled());
+    expect(screen.getByText(/Đang sửa nhận xét đã có trên LMS/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Hoàn tác' }));
+    expect(useCommentStore.getState().drafts['student-4']).toBeUndefined();
+    expect(textarea).toHaveValue('Bảo Ngọc làm bài tốt.');
+    expect(resend).toBeDisabled();
+  });
 });
 
 function detailButtonFor(studentName: string): HTMLButtonElement {
@@ -129,13 +147,13 @@ function detailButtonFor(studentName: string): HTMLButtonElement {
   return row.querySelector('button[aria-expanded]') as HTMLButtonElement;
 }
 
-function renderHarness() {
+function renderHarness(classDetail: ClassDetail = detail) {
   const root = document.createElement('div'); root.id = 'root'; document.body.appendChild(root);
   let hideEntry = () => {};
   function Harness() {
     const [showEntry, setShowEntry] = useState(true);
     hideEntry = () => setShowEntry(false);
-    return <ToastProvider><ConfirmProvider>{showEntry && <button type="button" onClick={() => useReviewStore.getState().openReview()}>Mở review</button>}<section aria-label="Thống kê học sinh" data-review-focus-fallback tabIndex={-1}>Fallback</section><ReviewDialog detail={detail} slot={detail.slots[0]} sessionNumber={1} /></ConfirmProvider></ToastProvider>;
+    return <ToastProvider><ConfirmProvider>{showEntry && <button type="button" onClick={() => useReviewStore.getState().openReview()}>Mở review</button>}<section aria-label="Thống kê học sinh" data-review-focus-fallback tabIndex={-1}>Fallback</section><ReviewDialog detail={classDetail} slot={classDetail.slots[0]} sessionNumber={1} /></ConfirmProvider></ToastProvider>;
   }
   const result = render(<Harness />, { container: root });
   return { ...result, root, entry: screen.getByRole('button', { name: 'Mở review' }), fallback: screen.getByRole('region', { name: 'Thống kê học sinh' }), hideEntry };

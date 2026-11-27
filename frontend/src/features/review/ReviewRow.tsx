@@ -17,6 +17,7 @@ import { useToast } from '../../components/ui/Toast';
 import { queueLearningLevelAutosave } from '../assessments/public/controller';
 import { LEARNING_LEVEL_ORDER, levelCatalog } from '../assessments/public/selectors';
 import { useAssessmentStore } from '../assessments/public/store';
+import { existingContentComment, stripHtml } from '../classes/public/domain';
 import { useCommentStore } from '../comments/public/store';
 import { useSessionCommentMode } from '../comments/public/sessionMode';
 import { DuplicateWarning } from './DuplicateWarning';
@@ -59,6 +60,7 @@ export type ReviewRowProps = {
   works?: StudentWork[];
   onOpenDetail: (studentId: string, trigger: HTMLButtonElement) => void;
   onGenerate: (studentId: string, hasDraft: boolean) => void;
+  onSubmitOne?: (studentId: string) => void;
   onToggleProductMenu?: (studentId: string) => void;
   onCloseProductMenu?: () => void;
   onRetryStorage?: () => void;
@@ -78,6 +80,7 @@ export const ReviewRow = memo(function ReviewRow({
   works = [],
   onOpenDetail,
   onGenerate,
+  onSubmitOne,
   onToggleProductMenu,
   onCloseProductMenu,
   onRetryStorage,
@@ -92,12 +95,22 @@ export const ReviewRow = memo(function ReviewRow({
     row.assessmentStatus.kind === 'load-error' ||
     row.assessmentStatus.kind === 'saving';
 
+  const draft = useCommentStore((state) => state.drafts[row.studentId]);
+  const hasSummary = useCommentStore((state) => Boolean(state.summaryDraft.trim()));
+  const existingComment = row.hasExistingComment ? stripHtml(existingContentComment(row.student)) : '';
+  const commentValue = draft ? draft.content : existingComment;
+  const editingExisting = Boolean(draft && row.hasExistingComment);
+  const canSubmit = Boolean(draft?.content.trim()) && hasSummary && !locked;
+  const submitTitle = !draft?.content.trim()
+    ? row.hasExistingComment ? 'Sửa nhận xét để gửi lại lên LMS' : 'Chưa có nhận xét để gửi'
+    : !hasSummary ? 'Cần nhập tổng kết buổi học trước khi gửi' : 'Gửi nhận xét này lên LMS';
+
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = 'auto';
     textarea.style.height = `${Math.max(72, textarea.scrollHeight)}px`;
-  }, [row.commentText]);
+  }, [commentValue]);
 
   const setLevel = (learningLevel: LearningLevel) => {
     useAssessmentStore.getState().setLearningLevelDraft(row.studentId, learningLevel);
@@ -221,37 +234,41 @@ export const ReviewRow = memo(function ReviewRow({
       )}
 
       <div className="regular-review-comment-cell">
-        {row.isDraft ? (
-          <>
-            <label className="sr-only" htmlFor={`review-comment-${safeId(row.studentId)}`}>
-              Nhận xét của {row.studentName}
-            </label>
-            <textarea
-              ref={textareaRef}
-              id={`review-comment-${safeId(row.studentId)}`}
-              className="regular-review-comment"
-              rows={3}
-              value={useCommentStore.getState().drafts[row.studentId]?.content || ''}
+        <label className="sr-only" htmlFor={`review-comment-${safeId(row.studentId)}`}>
+          Nhận xét của {row.studentName}
+        </label>
+        <textarea
+          ref={textareaRef}
+          id={`review-comment-${safeId(row.studentId)}`}
+          className="regular-review-comment"
+          rows={3}
+          value={commentValue}
+          disabled={locked}
+          placeholder={
+            row.isPresent
+              ? 'Nhập nhận xét thủ công, hoặc bấm Tạo AI…'
+              : 'Học sinh vắng, không nằm trong thao tác hàng loạt. Có thể nhập nhận xét thủ công.'
+          }
+          onChange={(event) => useCommentStore.getState().editDraft(row.studentId, event.target.value)}
+          onKeyDown={(event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+              event.preventDefault();
+              toast.show('Đã cập nhật bản nháp trong phiên làm việc', 'success');
+            }
+          }}
+        />
+        {editingExisting && (
+          <small className="regular-review-edit-note">
+            Đang sửa nhận xét đã có trên LMS — bấm “Gửi lại” để cập nhật.{' '}
+            <button
+              type="button"
+              className="regular-review-edit-undo"
               disabled={locked}
-              onChange={(event) => useCommentStore.getState().editDraft(row.studentId, event.target.value)}
-              onKeyDown={(event) => {
-                if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-                  event.preventDefault();
-                  toast.show('Đã cập nhật bản nháp trong phiên làm việc', 'success');
-                }
-              }}
-            />
-          </>
-        ) : (
-          <div
-            className={`regular-review-comment-placeholder ${row.hasExistingComment ? 'has-existing' : ''} ${!row.isPresent ? 'is-absent' : ''}`}
-          >
-            {row.hasExistingComment
-              ? row.commentText
-              : row.isPresent
-                ? 'Chưa có bản nháp AI cho học sinh này.'
-                : 'Học sinh vắng, không nằm trong thao tác hàng loạt.'}
-          </div>
+              onClick={() => useCommentStore.getState().removeDraft(row.studentId)}
+            >
+              Hoàn tác
+            </button>
+          </small>
         )}
         <div className="regular-review-comment-meta">
           <DuplicateWarning row={row} />
@@ -282,6 +299,19 @@ export const ReviewRow = memo(function ReviewRow({
           {row.busy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
           <span>{row.busy ? 'Đang tạo...' : row.isDraft ? 'Tạo lại' : 'Tạo AI'}</span>
         </button>
+        {onSubmitOne && (
+          <button
+            type="button"
+            className="btn btn-sm btn-success regular-review-action-btn"
+            disabled={!canSubmit}
+            title={submitTitle}
+            aria-label={`${row.hasExistingComment ? 'Gửi lại' : 'Gửi'} nhận xét của ${row.studentName} lên LMS`}
+            onClick={() => onSubmitOne(row.studentId)}
+          >
+            <Send size={13} />
+            <span>{row.hasExistingComment ? 'Gửi lại' : 'Gửi'}</span>
+          </button>
+        )}
       </div>
     </article>
   );
@@ -296,6 +326,7 @@ export function sameReviewRowProps(left: ReviewRowProps, right: ReviewRowProps):
     left.sessionNumber === right.sessionNumber &&
     left.onOpenDetail === right.onOpenDetail &&
     left.onGenerate === right.onGenerate &&
+    left.onSubmitOne === right.onSubmitOne &&
     left.showProductColumn === right.showProductColumn &&
     left.storageFiles === right.storageFiles &&
     left.storageLoading === right.storageLoading &&

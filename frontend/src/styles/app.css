@@ -3104,6 +3104,30 @@ html[data-theme="dark"] body::before {
   margin-top: 2px;
 }
 
+.regular-review-edit-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--warning-dark);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.regular-review-edit-undo {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.regular-review-edit-undo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .regular-review-actions-cell {
   display: flex;
   flex-direction: column;

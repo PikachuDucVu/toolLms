@@ -5,7 +5,7 @@ import { useConfirm } from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../components/ui/Toast';
 import { useClassWorkspaceStore } from '../classes/public/domain';
 import { useCommentStore } from '../comments/public/store';
-import { generateBatchComments, generateSingleComment, submitBatchComments, type RegularCommentScope } from '../comments/public/controller';
+import { generateBatchComments, generateSingleComment, submitBatchComments, submitSingleComment, type RegularCommentScope } from '../comments/public/controller';
 import { allPresentIds, type ReviewRow } from './selectors';
 import { freezeReviewGenerationScope, freezeReviewSubmitScope } from './scopedActions';
 
@@ -63,7 +63,20 @@ export function useReviewScopedActions({ detail, slot, sessionNumber }: { detail
       if (!(error instanceof DOMException && error.name === 'AbortError')) toast.show(`Lỗi tạo nhận xét: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
   }, [confirm, scope, toast]);
-  return { generate, submit, generateOne };
+
+  const submitOne = useCallback(async (studentId: string) => {
+    const commentState = useCommentStore.getState();
+    if (!commentState.drafts[studentId]?.content.trim()) return toast.show('Chưa có nhận xét để gửi', 'error');
+    if (!commentState.summaryDraft.trim()) return toast.show('Vui lòng nhập tổng kết buổi học', 'error');
+    const student = slot.studentAttendance.find((item) => item.studentId === studentId);
+    try {
+      await submitSingleComment(scope(useClassWorkspaceStore.getState().studentId), studentId);
+      toast.show(`Đã gửi nhận xét của ${student?.displayName || 'học sinh'} lên LMS!`, 'success');
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) toast.show(`Lỗi gửi nhận xét: ${error instanceof Error ? error.message : String(error)}`, 'error');
+    }
+  }, [scope, slot.studentAttendance, toast]);
+  return { generate, submit, generateOne, submitOne };
 }
 
 export function ReviewSubmitActions({ allRows, filteredRows, locked, onGenerate, onSubmit }: {

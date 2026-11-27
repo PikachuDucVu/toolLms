@@ -7,5 +7,6 @@ export {
   isCommentOperationActive,
   saveSessionSummary,
   submitBatchComments,
+  submitSingleComment,
   type RegularCommentScope,
 } from '../generationController';

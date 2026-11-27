@@ -13,6 +13,7 @@ export function ReviewList({
   sessionNumber,
   onOpenDetail,
   onGenerate,
+  onSubmitOne,
   showProductColumn = false,
   storageFiles = [],
   storageLoading = false,
@@ -36,6 +37,7 @@ export function ReviewList({
   worksByStudent?: Map<string, StudentWork[]>;
   onOpenDetail: (studentId: string, trigger: HTMLButtonElement) => void;
   onGenerate: (studentId: string, hasDraft: boolean) => void;
+  onSubmitOne?: (studentId: string) => void;
   onToggleProductMenu?: (studentId: string) => void;
   onCloseProductMenu?: () => void;
   onRetryStorage?: () => void;
@@ -80,6 +82,7 @@ export function ReviewList({
               works={worksByStudent?.get(row.studentId) ?? EMPTY_REVIEW_WORKS}
               onOpenDetail={onOpenDetail}
               onGenerate={onGenerate}
+              onSubmitOne={onSubmitOne}
               onToggleProductMenu={onToggleProductMenu}
               onCloseProductMenu={onCloseProductMenu}
               onRetryStorage={onRetryStorage}
